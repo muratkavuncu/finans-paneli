@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 
 import impact
+import notify
 
 OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join("data", "news.json")
 PREV_URL = os.environ.get("PREV_URL", "")
@@ -289,6 +290,17 @@ def load_log():
         return []
 
 
+def load_side(name, default):
+    """news.json ile aynı yerde duran yardımcı dosyayı (önceki yayından ya da diskten) okur."""
+    try:
+        if PREV_URL:
+            return json.loads(fetch(PREV_URL.replace("news.json", name) + "?t=" + str(int(time.time()))).decode("utf-8"))
+        with open(os.path.join(os.path.dirname(OUT) or ".", name), encoding="utf-8") as fh:
+            return json.load(fh)
+    except Exception:
+        return default
+
+
 def main():
     prev = load_previous()
     prev_log = load_log()
@@ -346,6 +358,11 @@ def main():
     with open(os.path.join(os.path.dirname(OUT) or ".", "events_log.json"), "w", encoding="utf-8") as fh:
         json.dump(log_out, fh, ensure_ascii=False, separators=(",", ":"))
     print("olay:", len(top), "kayıt:", len(log_out))
+
+    # Telefona bildirim: gönderilenler tekrar gitmesin diye küçük bir durum dosyası tutulur
+    state = notify.run(events, calendar, impact.Prices(markets_path), load_side("notify_state.json", {}))
+    with open(os.path.join(os.path.dirname(OUT) or ".", "notify_state.json"), "w", encoding="utf-8") as fh:
+        json.dump(state, fh, separators=(",", ":"))
     print("haber:", len(items), "yeni çekilen:", len(fresh), "takvim:", len(calendar), "hata:", errors)
     if not items:
         sys.exit(1)

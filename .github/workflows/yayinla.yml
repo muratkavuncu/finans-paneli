@@ -6,7 +6,7 @@ on:
   push:
     branches: [main]
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: "3-59/10 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -46,6 +46,7 @@ jobs:
       - name: Haberleri, takvimi ve olay puanlarını hazırla
         env:
           PREV_URL: ${{ env.SITE }}/news.json
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
         run: |
           python3 scripts/fetch_news.py data/news.json || {
             echo "Toplama başarısız, önceki haberler korunuyor"
@@ -53,12 +54,13 @@ jobs:
           }
           # Olay kaydı kaybolmasın: yeni dosya yoksa eskisini taşı
           test -s data/events_log.json || curl -fsS "$SITE/events_log.json" -o data/events_log.json || echo '[]' > data/events_log.json
+          test -s data/notify_state.json || curl -fsS "$SITE/notify_state.json" -o data/notify_state.json || echo '{"sent":{}}' > data/notify_state.json
 
       - name: Site klasörünü hazırla
         run: |
           mkdir -p _site/data
           cp index.html style.css app.js _site/
-          cp data/news.json data/markets.json data/events_log.json _site/data/
+          cp data/news.json data/markets.json data/events_log.json data/notify_state.json _site/data/
 
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
