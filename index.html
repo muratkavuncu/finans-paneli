@@ -133,6 +133,47 @@
     <div class="chart" id="chart"><p class="chart-msg" id="chart-msg">Grafik yükleniyor…</p></div>
   </section>
 
+  <section class="panel" data-tab="kripto" aria-label="Kripto göstergeleri">
+    <div class="panel-head">
+      <h2>Göstergeler · <span id="ind-sym">BTC</span></h2>
+      <span class="hint">vadeli işlem verisi Binance'ten · grafikte seçili varlığı izler</span>
+    </div>
+    <div class="inds">
+      <div class="ind">
+        <div class="label">Fonlama oranı</div>
+        <div class="value" id="ind-fund">—</div>
+        <div class="verdict" id="ind-fund-v">&nbsp;</div>
+        <p>Artıysa long tutanlar short tutanlara ödeme yapar. Çok yüksek değer, kalabalığın aynı yönde yığıldığını gösterir.</p>
+      </div>
+      <div class="ind">
+        <div class="label">Açık pozisyon</div>
+        <div class="value" id="ind-oi">—</div>
+        <div class="verdict" id="ind-oi-v">&nbsp;</div>
+        <p>Vadeli piyasadaki açık sözleşmelerin toplam değeri. Hızlı artış, kaldıracın biriktiğini gösterir.</p>
+      </div>
+      <div class="ind">
+        <div class="label">Long / short hesap oranı</div>
+        <div class="value" id="ind-ls">—</div>
+        <div class="verdict" id="ind-ls-v">&nbsp;</div>
+        <div class="lsbar" aria-hidden="true"><i id="ind-ls-bar"></i></div>
+        <p>Hesap sayısına göre; küçük yatırımcının yönünü yansıtır, pozisyon büyüklüğünü değil.</p>
+      </div>
+      <div class="ind">
+        <div class="label">200 günlük ortalama</div>
+        <div class="value" id="ind-ma">—</div>
+        <div class="verdict" id="ind-ma-v">&nbsp;</div>
+        <p>Fiyatın uzun vadeli ortalamasına uzaklığı. Üstünde olması genelde yükseliş trendi sayılır.</p>
+      </div>
+      <div class="ind">
+        <div class="label">Altcoin gücü (30 gün)</div>
+        <div class="value" id="ind-alt">—</div>
+        <div class="verdict" id="ind-alt-v">&nbsp;</div>
+        <p>Takip listesindeki altcoinlerden kaçı son 30 günde BTC'den iyi getiri sağladı.</p>
+      </div>
+    </div>
+    <p class="hint events-note">Etiketler ("nötr", "aşırı ısınmış" vb.) yaygın kullanılan eşiklere dayalı kaba yorumlardır; tek başına al-sat işareti değildir.</p>
+  </section>
+
   <div class="two" data-tab="kripto">
     <section class="panel" aria-label="Isı haritası">
       <div class="panel-head">

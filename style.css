@@ -250,6 +250,16 @@ h2 { font-size: 16px; font-weight: 600; }
   border: 1px solid var(--line); background: var(--surface-2); font-weight: 500;
 }
 
+/* Kripto göstergeleri */
+.inds { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
+.ind { background: var(--surface-2); border-radius: 12px; padding: 12px; min-width: 0; }
+.ind .value { font-size: 19px; }
+.ind p { margin: 8px 0 0; color: var(--muted); font-size: 12px; line-height: 1.4; }
+.verdict { font-size: 12.5px; font-weight: 600; margin-top: 2px; }
+.verdict.warn { color: var(--accent); }
+.lsbar { height: 6px; border-radius: 999px; background: var(--down); overflow: hidden; margin-top: 8px; }
+.lsbar i { display: block; height: 100%; width: 50%; background: var(--up); transition: width .6s; }
+
 /* Büyük olaylar */
 .events { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px; }
 .event {

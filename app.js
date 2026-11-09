@@ -567,6 +567,8 @@
     markDirty(sym);
     swapKline();
     loadChart();
+    loadFutures();
+    loadMA();
   }
   function selectInterval(id) {
     if (id === interval) return;
@@ -575,6 +577,86 @@
     markSelection();
     swapKline();
     loadChart();
+  }
+
+  // ---------- Kripto göstergeleri ----------
+  const FAPI = 'https://fapi.binance.com';
+  let indToken = 0;
+  function setVerdict(id, text, tone) {
+    const n = $(id);
+    n.textContent = text;
+    n.className = 'verdict' + (tone ? ' ' + tone : '');
+  }
+  async function getJson(url) {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  }
+
+  async function loadFutures() {
+    const token = ++indToken;
+    const sym = selected;
+    const pair = sym + 'USDT';
+    $('ind-sym').textContent = sym;
+    const fresh = () => token === indToken;
+
+    getJson(FAPI + '/fapi/v1/premiumIndex?symbol=' + pair).then((d) => {
+      if (!fresh()) return;
+      const rate = +d.lastFundingRate * 100;
+      $('ind-fund').textContent = '%' + NF[4].format(rate);
+      const v = rate >= 0.05 ? ['aşırı ısınmış, long kalabalık', 'warn'] : rate >= 0.02 ? ['long ağırlıklı', '']
+        : rate <= -0.05 ? ['aşırı short, sıkışma riski', 'warn'] : rate <= -0.01 ? ['short ağırlıklı', ''] : ['nötr', ''];
+      setVerdict('ind-fund-v', v[0], v[1]);
+    }).catch(() => { if (fresh()) { $('ind-fund').textContent = '—'; setVerdict('ind-fund-v', 'bu varlık için veri yok'); } });
+
+    getJson(FAPI + '/futures/data/openInterestHist?symbol=' + pair + '&period=1h&limit=25').then((rows) => {
+      if (!fresh() || !rows.length) return;
+      const now = +rows[rows.length - 1].sumOpenInterestValue;
+      const chg = (now / +rows[0].sumOpenInterestValue - 1) * 100;
+      $('ind-oi').textContent = fmtBig(now);
+      const v = chg >= 5 ? ['kaldıraç artıyor', 'warn'] : chg <= -5 ? ['kaldıraç boşalıyor', ''] : ['yatay', ''];
+      setVerdict('ind-oi-v', '24s ' + fmtPct(chg) + ' · ' + v[0], v[1]);
+    }).catch(() => { if (fresh()) { $('ind-oi').textContent = '—'; setVerdict('ind-oi-v', 'bu varlık için veri yok'); } });
+
+    getJson(FAPI + '/futures/data/globalLongShortAccountRatio?symbol=' + pair + '&period=1h&limit=1').then((rows) => {
+      if (!fresh() || !rows.length) return;
+      const long = +rows[0].longAccount * 100;
+      $('ind-ls').textContent = '%' + NF[1].format(long) + ' long';
+      $('ind-ls-bar').style.width = long.toFixed(1) + '%';
+      const v = long >= 70 ? ['kalabalık long tarafta', 'warn'] : long <= 40 ? ['kalabalık short tarafta', 'warn'] : ['dengeli', ''];
+      setVerdict('ind-ls-v', v[0], v[1]);
+    }).catch(() => { if (fresh()) { $('ind-ls').textContent = '—'; setVerdict('ind-ls-v', 'bu varlık için veri yok'); } });
+  }
+
+  async function loadMA() {
+    const sym = selected;
+    try {
+      const rows = await binance('/api/v3/klines?symbol=' + sym + 'USDT&interval=1d&limit=200');
+      if (sym !== selected) return;
+      const closes = rows.map((r) => +r[4]);
+      const ma = closes.reduce((a, b) => a + b, 0) / closes.length;
+      const dist = (closes[closes.length - 1] / ma - 1) * 100;
+      $('ind-ma').textContent = fmtPrice(ma);
+      const short = closes.length < 200 ? ' (' + closes.length + ' gün veri)' : '';
+      setVerdict('ind-ma-v', 'fiyat ' + fmtPct(dist) + (dist >= 0 ? ' üstünde' : ' altında') + short, dist >= 0 ? 'pos' : 'neg');
+    } catch (err) { $('ind-ma').textContent = '—'; setVerdict('ind-ma-v', 'veri alınamadı'); }
+  }
+
+  async function loadAltStrength() {
+    try {
+      const rets = await Promise.all(COINS.map(async (c) => {
+        const rows = await binance('/api/v3/klines?symbol=' + c.s + 'USDT&interval=1d&limit=31');
+        return { s: c.s, r: +rows[rows.length - 1][4] / +rows[0][1] - 1 };
+      }));
+      const btc = rets.find((x) => x.s === 'BTC').r;
+      const alts = rets.filter((x) => x.s !== 'BTC');
+      const better = alts.filter((x) => x.r > btc);
+      $('ind-alt').textContent = better.length + ' / ' + alts.length;
+      const share = better.length / alts.length;
+      const label = share >= 0.75 ? 'altcoinler önde' : share <= 0.25 ? 'BTC önde' : 'karışık';
+      const best = alts.slice().sort((a, b) => b.r - a.r)[0];
+      setVerdict('ind-alt-v', label + ' · en iyi ' + best.s + ' ' + fmtPct(best.r * 100) + ', BTC ' + fmtPct(btc * 100));
+    } catch (err) { setVerdict('ind-alt-v', 'veri alınamadı'); }
   }
 
   function selectStock(sym) {
@@ -996,6 +1078,12 @@
   setInterval(() => { renderNews(); renderCalendar(); renderNextEvent(); }, 60000);
   loadSnapshot().catch(() => {});
   loadSparks();
+  loadFutures();
+  loadMA();
+  loadAltStrength();
+  setInterval(() => { if (!document.hidden && tab === 'kripto') loadFutures(); }, 60000);
+  setInterval(loadMA, 1800000);
+  setInterval(loadAltStrength, 3600000);
   connect();
   loadGlobal();
   loadFng();
