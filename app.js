@@ -825,6 +825,7 @@
 
   function renderNews() {
     if (!news) return;
+    renderEvents();
     const list = $('news');
     const filter = FILTERS.find((f) => f.id === newsFilter);
     const base = news.items.filter(inTab);
@@ -841,6 +842,7 @@
       const body = el('span');
       const meta = el('span', 'n-meta', ago(n.ts) + ' · ' + n.source + (n.tier === 'B' ? ' · sektör yayını' : ''));
       if (n.conf >= 2) meta.appendChild(el('span', 'badge-conf', n.conf + ' kaynak'));
+      if (n.score >= 40) meta.appendChild(el('span', 'badge-score', 'etki ' + n.score));
       if (seenBefore && n.ts > seenBefore) meta.appendChild(el('span', 'badge-new', 'YENİ'));
       body.appendChild(meta);
       body.appendChild(el('span', 'n-title', n.title));
@@ -867,6 +869,61 @@
     $('mood-neu').style.flexGrow = neu;
     $('mood-neg').style.flexGrow = neg;
     $('mood-text').textContent = 'Son 24 saatte ' + recent.length + ' haber: ' + pos + ' olumlu, ' + neg + ' olumsuz, ' + neu + ' nötr';
+  }
+
+  function levelOf(score) {
+    return score >= 75 ? ['Çok yüksek etki', 'l4'] : score >= 55 ? ['Yüksek etki', 'l3'] : ['Orta etki', 'l2'];
+  }
+
+  // Büyük olay kartları: puan, tipik etki ve ölçülen ilk tepki
+  function renderEvents() {
+    if (!news) return;
+    const box = $('events');
+    box.textContent = '';
+    const list = (news.events || []).filter(inTab).slice(0, 4);
+    if (!list.length) {
+      box.appendChild(el('p', 'empty', 'Son 48 saatte bu sekmede yüksek etkili bir olay yok.'));
+      return;
+    }
+    list.forEach((e) => {
+      const lv = levelOf(e.score);
+      const card = el('article', 'event ' + lv[1]);
+      const head = el('div', 'event-head');
+      head.appendChild(el('span', 'event-score', e.score));
+      const headText = el('div');
+      headText.appendChild(el('strong', '', lv[0]));
+      headText.appendChild(el('span', 'hint', e.type_label + ' · ' + e.n + ' kaynak · ' + ago(e.ts)));
+      head.appendChild(headText);
+      card.appendChild(head);
+
+      const a = el('a', 'event-title', e.title);
+      if (/^https?:\/\//.test(e.url)) a.href = e.url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      card.appendChild(a);
+
+      const fx = el('div', 'event-fx');
+      fx.appendChild(el('span', 'fx-label', 'Tipik etki'));
+      if (e.up.length || e.down.length) {
+        const chips = el('div', 'fx-chips');
+        e.up.forEach((x) => chips.appendChild(el('span', 'fx up', '▲ ' + x)));
+        e.down.forEach((x) => chips.appendChild(el('span', 'fx down', '▼ ' + x)));
+        fx.appendChild(chips);
+      }
+      fx.appendChild(el('p', 'fx-why', e.why));
+      card.appendChild(fx);
+
+      if (e.react && e.react.length) {
+        const re = el('div', 'event-react');
+        re.appendChild(el('span', 'fx-label', e.react.every((r) => r.full) ? 'İlk 3 saatte' : 'Şu ana kadar'));
+        e.react.forEach((r) => {
+          const s = el('span', 'react ' + signClass(r.pct), r.k + ' ' + fmtPct(r.pct));
+          re.appendChild(s);
+        });
+        card.appendChild(re);
+      }
+      box.appendChild(card);
+    });
   }
 
   function untilText(ts) {

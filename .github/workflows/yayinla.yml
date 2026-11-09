@@ -1,6 +1,6 @@
 name: Paneli yayınla
 
-# Haberleri toplar ve paneli GitHub Pages'e koyar.
+# Piyasa verisini ve haberleri toplar, paneli GitHub Pages'e koyar.
 # Kod her değiştiğinde ve 10 dakikada bir çalışır.
 on:
   push:
@@ -26,32 +26,37 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     env:
-      PREV_URL: https://muratkavuncu.github.io/finans-paneli/data/news.json
+      SITE: https://muratkavuncu.github.io/finans-paneli/data
     steps:
       - uses: actions/checkout@v7
 
-      - name: Haberleri ve takvimi topla
-        run: |
-          python3 scripts/fetch_news.py data/news.json || {
-            echo "Toplama başarısız, önceki haberler korunuyor"
-            mkdir -p data
-            curl -fsS "$PREV_URL" -o data/news.json || echo '{"updated":0,"items":[],"calendar":[],"errors":["hepsi"]}' > data/news.json
-          }
-
+      # Önce fiyatlar: haber puanlaması piyasa tepkisini bu dosyadan ölçer
       - name: Hisse ve endeks verisini topla
         env:
-          PREV_MARKETS_URL: https://muratkavuncu.github.io/finans-paneli/data/markets.json
+          PREV_MARKETS_URL: ${{ env.SITE }}/markets.json
         run: |
           python3 scripts/fetch_markets.py data/markets.json || {
             echo "Hisse verisi alınamadı, önceki veri korunuyor"
+            mkdir -p data
             curl -fsS "$PREV_MARKETS_URL" -o data/markets.json || echo '{"updated":0,"symbols":{},"errors":["hepsi"]}' > data/markets.json
           }
+
+      - name: Haberleri, takvimi ve olay puanlarını hazırla
+        env:
+          PREV_URL: ${{ env.SITE }}/news.json
+        run: |
+          python3 scripts/fetch_news.py data/news.json || {
+            echo "Toplama başarısız, önceki haberler korunuyor"
+            curl -fsS "$PREV_URL" -o data/news.json || echo '{"updated":0,"items":[],"events":[],"calendar":[],"errors":["hepsi"]}' > data/news.json
+          }
+          # Olay kaydı kaybolmasın: yeni dosya yoksa eskisini taşı
+          test -s data/events_log.json || curl -fsS "$SITE/events_log.json" -o data/events_log.json || echo '[]' > data/events_log.json
 
       - name: Site klasörünü hazırla
         run: |
           mkdir -p _site/data
           cp index.html style.css app.js _site/
-          cp data/news.json data/markets.json _site/data/
+          cp data/news.json data/markets.json data/events_log.json _site/data/
 
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5

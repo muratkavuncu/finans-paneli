@@ -20,6 +20,8 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 
+import impact
+
 OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join("data", "news.json")
 PREV_URL = os.environ.get("PREV_URL", "")
 MAX_AGE_HOURS = 72
@@ -118,11 +120,6 @@ CAL_TR = {
 SKIP = [r"price predictions?", r"price analysis", r"fiyat tahmin\w*", r"sponsored", r"press release", r"partner content",
         r"presale\w*", r"giveaways?", r"airdrops?", r"best crypto\w* to buy", r"top \d+ \w+ to (?:buy|watch)",
         r"could (?:hit|reach)", r"to the moon", r"\d+x", r"here.s what happened", r"how to buy", r"casinos?", r"bonus\w*"]
-
-STOP = set("""the a an and or of to in on for with from at by as is are was be its it this that after over into amid
-new says say will has have had not more than up down out about what why how when who you your their his her our
-bir ve ile için bu da de mi den dan olarak göre daha çok""".split())
-
 
 def compile_words(words):
     return re.compile(r"(?<![\w$])(?:" + "|".join(words) + r")(?!\w)", re.IGNORECASE)
@@ -224,27 +221,6 @@ def read_feed(feed):
     return items
 
 
-def keywords(title):
-    words = re.findall(r"[\w$]+", title.lower())
-    return {w for w in words if len(w) > 2 and w not in STOP}
-
-
-def cross_confirm(items):
-    """Aynı olayı 36 saat içinde kaç bağımsız kaynağın haberleştirdiğini sayar."""
-    keys = [keywords(i["title"]) for i in items]
-    for a, item in enumerate(items):
-        sources = {item["source"].split(" ")[0]}
-        for b, other in enumerate(items):
-            if a == b or abs(item["ts"] - other["ts"]) > 36 * 3600 or not keys[a] or not keys[b]:
-                continue
-            common = len(keys[a] & keys[b])
-            if common >= 4 and common / min(len(keys[a]), len(keys[b])) >= 0.6:
-                sources.add(other["source"].split(" ")[0])
-        item["conf"] = len(sources)
-        # "Önemli" rozeti yalnızca A seviye kaynağa ya da birden çok kaynağın teyidine verilir
-        item["hot"] = bool(HOT_RE.search(item["title"])) and (item.get("tier") == "A" or item["conf"] >= 2)
-
-
 def load_previous():
     try:
         if PREV_URL:
@@ -289,8 +265,19 @@ def read_calendar():
     return events
 
 
+def load_log():
+    try:
+        if PREV_URL:
+            return json.loads(fetch(PREV_URL.replace("news.json", "events_log.json") + "?t=" + str(int(time.time()))).decode("utf-8"))
+        with open(os.path.join(os.path.dirname(OUT) or ".", "events_log.json"), encoding="utf-8") as fh:
+            return json.load(fh)
+    except Exception:
+        return []
+
+
 def main():
     prev = load_previous()
+    prev_log = load_log()
     errors = []
     fresh = []
     with ThreadPoolExecutor(max_workers=6) as pool:
@@ -315,7 +302,21 @@ def main():
     items = sorted(merged.values(), key=lambda i: i["ts"], reverse=True)[:MAX_ITEMS]
     known = {f[0] for f in FEEDS}
     items = [i for i in items if i["source"] in known and not SKIP_RE.search(i["title"])]
-    cross_confirm(items)
+    markets_path = os.path.join(os.path.dirname(OUT) or ".", "markets.json")
+    events = impact.analyze(items, markets_path)
+    for item in items:
+        # "Önemli" rozeti yalnızca A seviye kaynağa ya da birden çok kaynağın teyidine verilir
+        item["hot"] = bool(HOT_RE.search(item["title"])) and (item.get("tier") == "A" or item["conf"] >= 2)
+    now = time.time()
+    top = [e for e in events if e["score"] >= 45 and now - e["ts"] <= 48 * 3600][:8]
+
+    # Olay kaydı: ileride "bu türden olaylardan sonra fiyat ne yaptı" istatistiği için
+    log = {e["id"]: e for e in prev_log}
+    for e in events:
+        if e["score"] >= 55 and e["id"] not in log:
+            log[e["id"]] = {"id": e["id"], "ts": e["ts"], "type": e["type"], "score": e["score"],
+                            "title": e["title"], "assets": e["assets"], "cat": e["cat"]}
+    log_out = sorted(log.values(), key=lambda e: e["ts"])[-3000:]
 
     try:
         calendar = read_calendar()
@@ -324,10 +325,13 @@ def main():
         print("HATA takvim", repr(exc)[:160], file=sys.stderr)
         calendar = prev.get("calendar", [])
 
-    out = {"updated": int(time.time()), "items": items, "calendar": calendar, "errors": errors}
+    out = {"updated": int(time.time()), "items": items, "events": top, "calendar": calendar, "errors": errors}
     os.makedirs(os.path.dirname(OUT) or ".", exist_ok=True)
     with open(OUT, "w", encoding="utf-8") as fh:
         json.dump(out, fh, ensure_ascii=False, separators=(",", ":"))
+    with open(os.path.join(os.path.dirname(OUT) or ".", "events_log.json"), "w", encoding="utf-8") as fh:
+        json.dump(log_out, fh, ensure_ascii=False, separators=(",", ":"))
+    print("olay:", len(top), "kayıt:", len(log_out))
     print("haber:", len(items), "yeni çekilen:", len(fresh), "takvim:", len(calendar), "hata:", errors)
     if not items:
         sys.exit(1)

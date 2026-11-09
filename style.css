@@ -250,6 +250,35 @@ h2 { font-size: 16px; font-weight: 600; }
   border: 1px solid var(--line); background: var(--surface-2); font-weight: 500;
 }
 
+/* Büyük olaylar */
+.events { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px; }
+.event {
+  background: var(--surface-2); border-radius: 12px; padding: 12px; min-width: 0;
+  display: flex; flex-direction: column; gap: 10px; --lv: var(--c6);
+}
+.event.l3 { --lv: var(--accent); }
+.event.l4 { --lv: var(--down); }
+.event-head { display: flex; align-items: center; gap: 10px; }
+.event-head strong { display: block; font-size: 13.5px; }
+.event-score {
+  flex: none; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center;
+  font-family: var(--font-display); font-size: 18px; font-weight: 700;
+  border: 3px solid var(--lv); background: var(--surface);
+}
+.event-title { color: inherit; text-decoration: none; font-weight: 600; font-size: 14.5px; line-height: 1.35; overflow-wrap: anywhere; }
+.event-title:hover { text-decoration: underline; }
+.fx-label { display: block; color: var(--muted); font-size: 11px; letter-spacing: .05em; text-transform: uppercase; margin-bottom: 5px; }
+.fx-chips { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 6px; }
+.fx { font-size: 12.5px; font-weight: 600; padding: 2px 8px; border-radius: 6px; color: var(--fg); }
+.fx.up { background: var(--up-soft); }
+.fx.down { background: var(--down-soft); }
+.fx-why { margin: 0; color: var(--muted); font-size: 12.5px; }
+.event-react { border-top: 1px solid var(--line); padding-top: 8px; display: flex; gap: 10px; flex-wrap: wrap; align-items: baseline; }
+.event-react .fx-label { margin: 0; }
+.react { font-weight: 600; font-size: 13px; }
+.events-note { margin: 10px 0 0; }
+.badge-score { font-size: 11px; font-weight: 600; padding: 0 6px; border-radius: 5px; border: 1px solid var(--accent); color: var(--accent); }
+
 /* Takvim */
 .cal { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
 .cal .day { color: var(--muted); font-size: 11.5px; letter-spacing: .05em; text-transform: uppercase; padding: 10px 0 4px; }
