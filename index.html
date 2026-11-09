@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Finans Paneli</title>
+<meta name="description" content="Kripto ve teknoloji piyasaları için canlı takip paneli">
+<meta name="theme-color" content="#0d131f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Finans Paneli">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230d131f'/%3E%3Cpath d='M12 44l12-14 10 8 18-22' fill='none' stroke='%23f2a93b' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="page">
+
+  <header class="top">
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="var(--surface-2)"/><path d="M12 44l12-14 10 8 18-22" fill="none" stroke="var(--accent)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <h1>Finans Paneli</h1>
+    </div>
+    <div class="status" id="status" data-state="connecting" role="status">
+      <span class="dot" aria-hidden="true"></span>
+      <span id="status-text">Bağlanıyor…</span>
+      <span class="status-time" id="status-time"></span>
+    </div>
+  </header>
+
+  <section class="summary" aria-label="Piyasa özeti">
+    <div class="stat">
+      <div class="label">Toplam piyasa değeri</div>
+      <div class="value" id="g-mcap">—</div>
+      <div class="sub" id="g-mcap-chg">&nbsp;</div>
+    </div>
+    <div class="stat">
+      <div class="label">BTC dominansı</div>
+      <div class="value" id="g-dom">—</div>
+      <div class="sub" id="g-vol">&nbsp;</div>
+    </div>
+    <div class="stat">
+      <div class="label">Dolar (USDT/TRY)</div>
+      <div class="value" id="g-try">—</div>
+      <div class="sub" id="g-try-chg">&nbsp;</div>
+    </div>
+    <div class="stat stat-fng">
+      <div>
+        <div class="label">Korku ve Açgözlülük</div>
+        <div class="value" id="fng-val">—</div>
+        <div class="sub" id="fng-label">&nbsp;</div>
+      </div>
+      <svg class="gauge" viewBox="0 0 120 70" aria-hidden="true">
+        <defs>
+          <linearGradient id="fng-grad" gradientUnits="userSpaceOnUse" x1="10" y1="0" x2="110" y2="0">
+            <stop offset="0" stop-color="var(--down)"/>
+            <stop offset=".5" stop-color="var(--accent)"/>
+            <stop offset="1" stop-color="var(--up)"/>
+          </linearGradient>
+        </defs>
+        <path d="M10 60 A50 50 0 0 1 110 60" fill="none" stroke="url(#fng-grad)" stroke-width="9" stroke-linecap="round"/>
+        <g id="fng-needle" style="transform: rotate(-90deg)">
+          <line x1="60" y1="60" x2="60" y2="22" stroke="var(--fg)" stroke-width="3" stroke-linecap="round"/>
+        </g>
+        <circle cx="60" cy="60" r="5" fill="var(--fg)"/>
+      </svg>
+    </div>
+  </section>
+
+  <section class="watch" id="watch" aria-label="Takip listesi"></section>
+
+  <section class="panel chart-panel" aria-label="Fiyat grafiği">
+    <div class="chart-head">
+      <div class="chart-title">
+        <h2 id="chart-name">Bitcoin</h2>
+        <span class="pair" id="chart-pair">BTC/USDT</span>
+      </div>
+      <div class="chart-price">
+        <span class="big" id="chart-price">—</span>
+        <span class="chip" id="chart-pct">—</span>
+      </div>
+    </div>
+    <div class="chart-tools">
+      <div class="tabs" id="intervals" role="tablist" aria-label="Zaman dilimi"></div>
+      <dl class="range">
+        <div><dt>24s en yüksek</dt><dd id="chart-high">—</dd></div>
+        <div><dt>24s en düşük</dt><dd id="chart-low">—</dd></div>
+        <div><dt>24s hacim</dt><dd id="chart-vol">—</dd></div>
+      </dl>
+    </div>
+    <div class="chart" id="chart"><p class="chart-msg" id="chart-msg">Grafik yükleniyor…</p></div>
+  </section>
+
+  <div class="two">
+    <section class="panel" aria-label="Isı haritası">
+      <div class="panel-head">
+        <h2>Isı haritası</h2>
+        <span class="hint">24 saatlik değişim · dokun, grafiği aç</span>
+      </div>
+      <div class="heat" id="heat"></div>
+    </section>
+
+    <section class="panel" aria-label="Piyasa değeri dağılımı">
+      <div class="panel-head">
+        <h2>Piyasa dağılımı</h2>
+        <span class="hint">piyasa değerine göre pay</span>
+      </div>
+      <div class="donut-wrap">
+        <div class="donut">
+          <svg viewBox="0 0 42 42" id="donut" role="img" aria-label="Piyasa değeri dağılımı"></svg>
+          <div class="donut-center"><strong id="donut-main">—</strong><span>BTC</span></div>
+        </div>
+        <ul class="legend" id="legend"></ul>
+      </div>
+    </section>
+  </div>
+
+  <footer class="foot">
+    <p>Fiyatlar Binance canlı akışından, piyasa özeti CoinGecko'dan, Korku ve Açgözlülük endeksi alternative.me'den gelir.</p>
+    <p>Bu panel bilgi amaçlıdır, yatırım tavsiyesi değildir.</p>
+  </footer>
+</div>
+
+<script src="https://unpkg.com/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
