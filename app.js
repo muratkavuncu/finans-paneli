@@ -497,6 +497,7 @@
   // ---------- Gündem ve takvim ----------
   const FILTERS = [
     { id: 'all', label: 'Tümü', test: () => true },
+    { id: 'conf', label: 'Teyitli', test: (n) => n.conf >= 2 },
     { id: 'hot', label: 'Önemli', test: (n) => n.hot },
     { id: 'BTC', label: 'BTC', test: (n) => n.tags.includes('BTC') },
     { id: 'RENDER', label: 'RENDER', test: (n) => n.tags.includes('RENDER') },
@@ -560,7 +561,8 @@
       a.rel = 'noopener noreferrer';
       a.appendChild(el('span', 'n-dot' + (n.sent > 0 ? ' pos' : n.sent < 0 ? ' neg' : '')));
       const body = el('span');
-      const meta = el('span', 'n-meta', ago(n.ts) + ' · ' + n.source);
+      const meta = el('span', 'n-meta', ago(n.ts) + ' · ' + n.source + (n.tier === 'B' ? ' · sektör yayını' : ''));
+      if (n.conf >= 2) meta.appendChild(el('span', 'badge-conf', n.conf + ' kaynak'));
       if (seenBefore && n.ts > seenBefore) meta.appendChild(el('span', 'badge-new', 'YENİ'));
       body.appendChild(meta);
       body.appendChild(el('span', 'n-title', n.title));

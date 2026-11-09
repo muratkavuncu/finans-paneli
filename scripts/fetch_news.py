@@ -26,22 +26,26 @@ MAX_AGE_HOURS = 72
 MAX_ITEMS = 250
 UA = "Mozilla/5.0 (compatible; finans-paneli/1.0; +https://github.com/)"
 
-# (kaynak adı, adres, kategori, dil)
+# (kaynak adı, adres, kategori, dil, seviye)
+# Seviye A: editoryal süreci olan kurumsal haber odası. B: sektör yayını; haber verir ama
+# görüş, tanıtım ve sponsorlu içerik de yayımlayabilir. Seviyesi bilinmeyen kaynak eklenmez.
 FEEDS = [
-    ("CoinDesk", "https://www.coindesk.com/arc/outboundfeeds/rss", "kripto", "en"),
-    ("Cointelegraph", "https://cointelegraph.com/rss", "kripto", "en"),
-    ("Decrypt", "https://decrypt.co/feed", "kripto", "en"),
-    ("The Block", "https://www.theblock.co/rss.xml", "kripto", "en"),
-    ("Bitcoin Magazine", "https://bitcoinmagazine.com/feed", "kripto", "en"),
-    ("BTCHaber", "https://www.btchaber.com/feed/", "kripto", "tr"),
-    ("Uzmancoin", "https://uzmancoin.com/feed/", "kripto", "tr"),
-    ("Investing TR", "https://tr.investing.com/rss/news_301.rss", "kripto", "tr"),
-    ("TechCrunch", "https://techcrunch.com/feed/", "teknoloji", "en"),
-    ("The Verge", "https://www.theverge.com/rss/index.xml", "teknoloji", "en"),
-    ("Ars Technica", "https://feeds.arstechnica.com/arstechnica/index", "teknoloji", "en"),
-    ("CNBC Teknoloji", "https://www.cnbc.com/id/19854910/device/rss/rss.html", "teknoloji", "en"),
-    ("CNBC Piyasalar", "https://www.cnbc.com/id/20910258/device/rss/rss.html", "makro", "en"),
-    ("Bloomberg HT", "https://www.bloomberght.com/rss", "makro", "tr"),
+    ("CoinDesk", "https://www.coindesk.com/arc/outboundfeeds/rss", "kripto", "en", "A"),
+    ("Cointelegraph", "https://cointelegraph.com/rss", "kripto", "en", "B"),
+    ("Decrypt", "https://decrypt.co/feed", "kripto", "en", "B"),
+    ("The Block", "https://www.theblock.co/rss.xml", "kripto", "en", "A"),
+    ("Bitcoin Magazine", "https://bitcoinmagazine.com/feed", "kripto", "en", "B"),
+    ("Investing TR", "https://tr.investing.com/rss/news_301.rss", "kripto", "tr", "B"),
+    ("TechCrunch", "https://techcrunch.com/feed/", "teknoloji", "en", "A"),
+    ("The Verge", "https://www.theverge.com/rss/index.xml", "teknoloji", "en", "A"),
+    ("Ars Technica", "https://feeds.arstechnica.com/arstechnica/index", "teknoloji", "en", "A"),
+    ("CNBC Teknoloji", "https://www.cnbc.com/id/19854910/device/rss/rss.html", "teknoloji", "en", "A"),
+    ("CNBC Piyasalar", "https://www.cnbc.com/id/20910258/device/rss/rss.html", "makro", "en", "A"),
+    ("Bloomberg HT", "https://www.bloomberght.com/rss", "makro", "tr", "A"),
+    ("Anadolu Ajansı", "https://www.aa.com.tr/tr/rss/default?cat=ekonomi", "makro", "tr", "A"),
+    ("Dünya", "https://www.dunya.com/rss", "makro", "tr", "A"),
+    ("BBC", "https://feeds.bbci.co.uk/news/business/rss.xml", "makro", "en", "A"),
+    ("Financial Times", "https://www.ft.com/cryptofinance?format=rss", "kripto", "en", "A"),
 ]
 
 CALENDAR_URL = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
@@ -111,6 +115,15 @@ CAL_TR = {
 }
 
 
+SKIP = [r"price predictions?", r"price analysis", r"fiyat tahmin\w*", r"sponsored", r"press release", r"partner content",
+        r"presale\w*", r"giveaways?", r"airdrops?", r"best crypto\w* to buy", r"top \d+ \w+ to (?:buy|watch)",
+        r"could (?:hit|reach)", r"to the moon", r"\d+x", r"here.s what happened", r"how to buy", r"casinos?", r"bonus\w*"]
+
+STOP = set("""the a an and or of to in on for with from at by as is are was be its it this that after over into amid
+new says say will has have had not more than up down out about what why how when who you your their his her our
+bir ve ile için bu da de mi den dan olarak göre daha çok""".split())
+
+
 def compile_words(words):
     return re.compile(r"(?<![\w$])(?:" + "|".join(words) + r")(?!\w)", re.IGNORECASE)
 
@@ -118,6 +131,7 @@ def compile_words(words):
 TAG_RE = {tag: compile_words(words) for tag, words in TAGS.items()}
 HOT_RE = compile_words(HOT)
 POS_RE = compile_words(POSITIVE)
+SKIP_RE = compile_words(SKIP)
 NEG_RE = compile_words(NEGATIVE)
 
 
@@ -183,11 +197,13 @@ def classify(title):
 
 
 def read_feed(feed):
-    name, url, cat, lang = feed
+    name, url, cat, lang, tier = feed
     now = time.time()
     items = []
     for title, link, ts in parse_feed(fetch(url)):
         ts = min(ts or now, now)
+        if SKIP_RE.search(title):
+            continue  # tahmin, tanıtım ve sponsorlu içerik haber sayılmaz
         tags, sent, hot = classify(title)
         if cat != "kripto" and not tags:
             continue  # piyasayla ilgisi olmayan genel haberleri ele
@@ -198,12 +214,35 @@ def read_feed(feed):
             "source": name,
             "cat": cat,
             "lang": lang,
+            "tier": tier,
+            "conf": 1,
             "ts": int(ts),
             "tags": tags,
             "sent": sent,
             "hot": hot,
         })
     return items
+
+
+def keywords(title):
+    words = re.findall(r"[\w$]+", title.lower())
+    return {w for w in words if len(w) > 2 and w not in STOP}
+
+
+def cross_confirm(items):
+    """Aynı olayı 36 saat içinde kaç bağımsız kaynağın haberleştirdiğini sayar."""
+    keys = [keywords(i["title"]) for i in items]
+    for a, item in enumerate(items):
+        sources = {item["source"].split(" ")[0]}
+        for b, other in enumerate(items):
+            if a == b or abs(item["ts"] - other["ts"]) > 36 * 3600 or not keys[a] or not keys[b]:
+                continue
+            common = len(keys[a] & keys[b])
+            if common >= 4 and common / min(len(keys[a]), len(keys[b])) >= 0.6:
+                sources.add(other["source"].split(" ")[0])
+        item["conf"] = len(sources)
+        # "Önemli" rozeti yalnızca A seviye kaynağa ya da birden çok kaynağın teyidine verilir
+        item["hot"] = bool(HOT_RE.search(item["title"])) and (item.get("tier") == "A" or item["conf"] >= 2)
 
 
 def load_previous():
@@ -274,6 +313,9 @@ def main():
         merged[item["id"]] = item
         seen_titles.add(key)
     items = sorted(merged.values(), key=lambda i: i["ts"], reverse=True)[:MAX_ITEMS]
+    known = {f[0] for f in FEEDS}
+    items = [i for i in items if i["source"] in known and not SKIP_RE.search(i["title"])]
+    cross_confirm(items)
 
     try:
         calendar = read_calendar()
