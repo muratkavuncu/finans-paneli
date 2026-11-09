@@ -72,6 +72,12 @@ def run(events, calendar, prices, state):
         return {"sent": sent}
     count = 0
 
+    # Elle başlatılan deneme: zincirin uçtan uca çalıştığını gösterir
+    if os.environ.get("NTFY_TEST") == "true":
+        ok = send("Deneme bildirimi", "Finans Paneli bildirimleri çalışıyor. Önemli bir olay olduğunda buraya düşecek.",
+                  priority=3, tags=["white_check_mark"])
+        print("deneme bildirimi:", "gönderildi" if ok else "gönderilemedi")
+
     # 1) Yüksek etkili haber
     fresh = [e for e in events if e["score"] >= NEWS_MIN_SCORE and now - e["ts"] <= NEWS_MAX_AGE
              and not e.get("preview") and "n:" + e["id"] not in sent]

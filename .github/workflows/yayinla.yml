@@ -8,6 +8,11 @@ on:
   schedule:
     - cron: "3-59/10 * * * *"
   workflow_dispatch:
+    inputs:
+      deneme:
+        description: Telefona deneme bildirimi gönder
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -47,6 +52,7 @@ jobs:
         env:
           PREV_URL: ${{ env.SITE }}/news.json
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          NTFY_TEST: ${{ inputs.deneme }}
         run: |
           python3 scripts/fetch_news.py data/news.json || {
             echo "Toplama başarısız, önceki haberler korunuyor"
