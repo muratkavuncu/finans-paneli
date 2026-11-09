@@ -28,7 +28,7 @@ jobs:
     env:
       PREV_URL: https://muratkavuncu.github.io/finans-paneli/data/news.json
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Haberleri ve takvimi topla
         run: |
@@ -44,9 +44,9 @@ jobs:
           cp index.html style.css app.js _site/
           cp data/news.json _site/data/
 
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v4
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: _site
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
