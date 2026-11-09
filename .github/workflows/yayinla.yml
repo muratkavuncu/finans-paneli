@@ -38,11 +38,20 @@ jobs:
             curl -fsS "$PREV_URL" -o data/news.json || echo '{"updated":0,"items":[],"calendar":[],"errors":["hepsi"]}' > data/news.json
           }
 
+      - name: Hisse ve endeks verisini topla
+        env:
+          PREV_MARKETS_URL: https://muratkavuncu.github.io/finans-paneli/data/markets.json
+        run: |
+          python3 scripts/fetch_markets.py data/markets.json || {
+            echo "Hisse verisi alınamadı, önceki veri korunuyor"
+            curl -fsS "$PREV_MARKETS_URL" -o data/markets.json || echo '{"updated":0,"symbols":{},"errors":["hepsi"]}' > data/markets.json
+          }
+
       - name: Site klasörünü hazırla
         run: |
           mkdir -p _site/data
           cp index.html style.css app.js _site/
-          cp data/news.json _site/data/
+          cp data/news.json data/markets.json _site/data/
 
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5

@@ -47,9 +47,30 @@
   let interval = load('fp.interval', '1h');
   if (!INTERVALS.some((i) => i.id === interval)) interval = '1h';
 
+  // Hisseler: veri GitHub zamanlayıcısının hazırladığı data/markets.json dosyasından gelir
+  const STOCKS = [
+    { s: 'NVDA', name: 'Nvidia', main: true },
+    { s: 'MSFT', name: 'Microsoft', main: true },
+    { s: 'AAPL', name: 'Apple', main: true },
+    { s: 'TSLA', name: 'Tesla', main: true },
+    { s: 'GOOGL', name: 'Alphabet' },
+    { s: 'AMZN', name: 'Amazon' },
+    { s: 'META', name: 'Meta' },
+    { s: 'AMD', name: 'AMD' },
+    { s: 'TSM', name: 'TSMC' },
+  ];
+  const STOCK_INTERVALS = [{ id: '30m', label: '30dk' }, { id: '1d', label: '1G' }];
+  const stockBy = Object.fromEntries(STOCKS.map((c) => [c.s, c]));
+  const sEls = {};
+  let markets = null, marketsStamp = 0;
+  let tab = load('fp.tab', 'kripto') === 'tek' ? 'tek' : 'kripto';
+  let stock = load('fp.stock', 'NVDA');
+  if (!stockBy[stock]) stock = 'NVDA';
+  let stockInterval = load('fp.sint', '30m') === '1d' ? '1d' : '30m';
+
   // ---------- Biçimlendirme ----------
   const nf = (min, max) => new Intl.NumberFormat('tr-TR', { minimumFractionDigits: min, maximumFractionDigits: max });
-  const NF = { 0: nf(0, 0), 1: nf(1, 1), 2: nf(2, 2), 3: nf(3, 3), 4: nf(4, 4), 6: nf(6, 6) };
+  const NF = { 0: nf(0, 0), 1: nf(1, 1), 2: nf(2, 2), 3: nf(3, 3), 4: nf(4, 4), 5: nf(5, 5), 6: nf(6, 6) };
 
   function decimalsFor(p) {
     if (p >= 100) return 2;
@@ -115,28 +136,94 @@
       e.tilePrice = t.querySelector('small');
     });
 
-    const tabs = $('intervals');
-    INTERVALS.forEach((i) => {
+    const watchTek = $('watch-tek');
+    const heatTek = $('heat-tek');
+    STOCKS.forEach((c) => {
+      const e = (sEls[c.s] = {});
+      if (c.main) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'card';
+        b.innerHTML =
+          '<div class="card-top"><span><span class="sym">' + c.s + '</span><span class="name">' + c.name +
+          '</span></span><span class="chip">—</span></div><div class="price">—</div>' +
+          '<svg class="spark" viewBox="0 0 100 34" preserveAspectRatio="none" aria-hidden="true"></svg>';
+        b.addEventListener('click', () => selectStock(c.s));
+        watchTek.appendChild(b);
+        e.card = b;
+        e.cardPrice = b.querySelector('.price');
+        e.cardPct = b.querySelector('.chip');
+        e.spark = b.querySelector('.spark');
+      }
+      const t = document.createElement('button');
+      t.type = 'button';
+      t.className = 'tile';
+      t.title = c.name;
+      t.innerHTML = '<b>' + c.s + '</b><span>—</span><small>—</small>';
+      t.addEventListener('click', () => {
+        selectStock(c.s);
+        document.querySelector('.chart-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+      heatTek.appendChild(t);
+      e.tile = t;
+      e.tilePct = t.querySelector(':scope > span');
+      e.tilePrice = t.querySelector('small');
+    });
+
+    document.querySelectorAll('#maintabs button').forEach((b) => {
+      b.addEventListener('click', () => {
+        if (b.dataset.id === tab) return;
+        tab = b.dataset.id;
+        save('fp.tab', tab);
+        applyTab();
+      });
+    });
+  }
+
+  function buildIntervals() {
+    const box = $('intervals');
+    box.textContent = '';
+    (tab === 'tek' ? STOCK_INTERVALS : INTERVALS).forEach((i) => {
       const b = document.createElement('button');
       b.type = 'button';
       b.role = 'tab';
       b.textContent = i.label;
       b.dataset.id = i.id;
-      b.addEventListener('click', () => selectInterval(i.id));
-      tabs.appendChild(b);
+      b.addEventListener('click', () => (tab === 'tek' ? selectStockInterval(i.id) : selectInterval(i.id)));
+      box.appendChild(b);
     });
-    markSelection();
   }
 
   function markSelection() {
     COINS.forEach((c) => {
       if (els[c.s].card) els[c.s].card.setAttribute('aria-pressed', String(c.s === selected));
     });
-    document.querySelectorAll('#intervals button').forEach((b) => {
-      b.setAttribute('aria-selected', String(b.dataset.id === interval));
+    STOCKS.forEach((c) => {
+      if (sEls[c.s].card) sEls[c.s].card.setAttribute('aria-pressed', String(c.s === stock));
     });
-    $('chart-name').textContent = bySym[selected].name;
-    $('chart-pair').textContent = selected + '/USDT';
+    const tek = tab === 'tek';
+    document.querySelectorAll('#intervals button').forEach((b) => {
+      b.setAttribute('aria-selected', String(b.dataset.id === (tek ? stockInterval : interval)));
+    });
+    $('chart-name').textContent = tek ? stockBy[stock].name : bySym[selected].name;
+    $('chart-pair').textContent = tek ? stock + ' · ABD borsası' : selected + '/USDT';
+    $('chart-l1').textContent = tek ? 'Seans en yüksek' : '24s en yüksek';
+    $('chart-l2').textContent = tek ? 'Seans en düşük' : '24s en düşük';
+    $('chart-l3').textContent = tek ? 'Seans hacmi (adet)' : '24s hacim';
+  }
+
+  // Sekme değişince görünür bölümleri, grafiği ve haber filtrelerini eşitle
+  function applyTab() {
+    document.querySelectorAll('[data-tab]').forEach((n) => { n.hidden = n.dataset.tab !== tab; });
+    document.querySelectorAll('#maintabs button').forEach((b) => {
+      b.setAttribute('aria-selected', String(b.dataset.id === tab));
+    });
+    buildIntervals();
+    markSelection();
+    if (tab === 'kripto') { state[selected].shown = null; markDirty(selected); } else renderStocks();
+    buildFilters();
+    renderNews();
+    loadChart();
   }
 
   // ---------- Çizim (kare başına en fazla bir kez) ----------
@@ -181,7 +268,11 @@
       e.tile.style.setProperty('--heat', st.pct >= 0 ? 'var(--up)' : 'var(--down)');
       e.tile.style.setProperty('--mix', mix.toFixed(0) + '%');
     }
-    if (sym === selected) {
+    if (sym === 'ETH' || sym === 'BTC') {
+      const ratio = state.ETH.price / state.BTC.price;
+      if (isFinite(ratio)) $('g-ethbtc').textContent = NF[5].format(ratio);
+    }
+    if (sym === selected && tab === 'kripto') {
       const big = $('chart-price');
       big.textContent = priceText;
       flash(big, dir);
@@ -194,6 +285,11 @@
   }
 
   setInterval(() => {
+    if (tab === 'tek') {
+      const m = markets && markets.symbols[stock];
+      if (m) document.title = stock + ' $' + NF[2].format(m.price) + ' · Finans Paneli';
+      return;
+    }
     const st = state[selected];
     if (st.price != null) document.title = selected + ' ' + fmtPrice(st.price) + ' · Finans Paneli';
   }, 1000);
@@ -247,16 +343,18 @@
     }));
   }
 
-  function drawSpark(svg, values) {
+  // mode: true = renksiz, 1 / -1 = yönü dışarıdan ver, boş = ilk ve son değere göre
+  function drawSpark(svg, values, mode) {
+    const neutral = mode === true;
     if (values.length < 2) return;
     const min = Math.min.apply(null, values);
     const max = Math.max.apply(null, values);
     const span = max - min || 1;
     const pts = values.map((v, i) => [(i / (values.length - 1)) * 100, 31 - ((v - min) / span) * 28]);
     const line = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(2) + ' ' + p[1].toFixed(2)).join(' ');
-    const up = values[values.length - 1] >= values[0];
-    const color = up ? 'var(--up)' : 'var(--down)';
-    const soft = up ? 'var(--up-soft)' : 'var(--down-soft)';
+    const up = mode === 1 || mode === -1 ? mode === 1 : values[values.length - 1] >= values[0];
+    const color = neutral ? 'var(--muted)' : up ? 'var(--up)' : 'var(--down)';
+    const soft = neutral ? 'var(--line)' : up ? 'var(--up-soft)' : 'var(--down-soft)';
     svg.innerHTML =
       '<path d="' + line + ' L100 34 L0 34 Z" fill="' + soft + '" opacity=".45"/>' +
       '<path d="' + line + '" fill="none" stroke="' + color + '" stroke-width="1.6" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>';
@@ -302,8 +400,46 @@
   const toCandle = (t, o, h, l, c) => ({ time: t / 1000 + tzShift, open: +o, high: +h, low: +l, close: +c });
   const toVolume = (t, o, c, v) => ({ time: t / 1000 + tzShift, value: +v, color: +c >= +o ? cssVar('--up-soft') : cssVar('--down-soft') });
 
+  // 30 dakikalık mumları günlük mumlara toplar
+  function dailyBars(rows) {
+    const out = [];
+    let day = null, cur = null;
+    rows.forEach((r) => {
+      const d = Math.floor(r[0] / 86400);
+      if (d !== day) { cur = [d * 86400, r[1], r[2], r[3], r[4], r[5]]; out.push(cur); day = d; return; }
+      cur[2] = Math.max(cur[2], r[2]);
+      cur[3] = Math.min(cur[3], r[3]);
+      cur[4] = r[4];
+      cur[5] += r[5];
+    });
+    return out;
+  }
+
+  function loadStockChart() {
+    ++chartToken;
+    haveData = false;
+    const msg = $('chart-msg');
+    const m = markets && markets.symbols[stock];
+    if (!m) {
+      candles.setData([]);
+      volume.setData([]);
+      msg.hidden = false;
+      msg.textContent = markets ? 'Bu hisse için veri alınamadı.' : 'Hisse verisi yükleniyor…';
+      return;
+    }
+    const rows = stockInterval === '1d' ? dailyBars(m.bars) : m.bars;
+    candles.applyOptions({ priceFormat: { type: 'price', precision: 2, minMove: 0.01 } });
+    candles.setData(rows.map((r) => toCandle(r[0] * 1000, r[1], r[2], r[3], r[4])));
+    volume.setData(rows.map((r) => toVolume(r[0] * 1000, r[1], r[4], r[5])));
+    const bars = $('chart').clientWidth < 520 ? 60 : 130;
+    if (rows.length <= bars) chart.timeScale().fitContent();
+    else chart.timeScale().setVisibleLogicalRange({ from: rows.length - bars, to: rows.length + 2 });
+    msg.hidden = true;
+  }
+
   async function loadChart() {
     if (!chart) return;
+    if (tab === 'tek') { loadStockChart(); return; }
     const token = ++chartToken;
     const sym = selected;
     const msg = $('chart-msg');
@@ -329,7 +465,7 @@
 
   function onKline(d) {
     const k = d.k;
-    if (!haveData || d.s !== selected + 'USDT' || k.i !== interval) return;
+    if (tab !== 'kripto' || !haveData || d.s !== selected + 'USDT' || k.i !== interval) return;
     candles.update(toCandle(k.t, k.o, k.h, k.l, k.c));
     volume.update(toVolume(k.t, k.o, k.c, k.v));
   }
@@ -441,6 +577,134 @@
     loadChart();
   }
 
+  function selectStock(sym) {
+    if (sym === stock) return;
+    stock = sym;
+    save('fp.stock', sym);
+    markSelection();
+    renderStocks();
+    loadChart();
+  }
+  function selectStockInterval(id) {
+    if (id === stockInterval) return;
+    stockInterval = id;
+    save('fp.sint', id);
+    markSelection();
+    loadChart();
+  }
+
+  // ---------- Hisseler, endeksler ve piyasa nabzı ----------
+  const usd = (v) => '$' + NF[2].format(v);
+  const plain = (v) => NF[2].format(v);
+  function vixMood(v) {
+    return v < 15 ? 'sakin' : v < 20 ? 'normal' : v < 30 ? 'gergin' : 'korku';
+  }
+  // neutral: yön iyi/kötü anlamı taşımaz, renk verilmez
+  const INDEX_CELLS = [
+    { id: 'pulse-VIX', k: 'VIX', label: 'VIX · hisse korkusu', fmt: plain, neutral: true, note: (m) => vixMood(m.price) },
+    { id: 'pulse-DXY', k: 'DXY', label: 'Dolar endeksi (DXY)', fmt: plain, neutral: true },
+    { id: 'pulse-US10Y', k: 'US10Y', label: 'ABD 10 yıllık faiz', fmt: (v) => '%' + NF[2].format(v), neutral: true, bp: true },
+    { id: 'pulse-NDX', k: 'NDX', label: 'Nasdaq 100', fmt: (v) => NF[0].format(v) },
+    { id: 'tek-SOX', k: 'SOX', label: 'Yarı iletken endeksi (SOX)', fmt: (v) => NF[0].format(v) },
+    { id: 'tek-SPX', k: 'SPX', label: 'S&P 500', fmt: (v) => NF[0].format(v) },
+  ];
+
+  function buildIndexCells() {
+    INDEX_CELLS.forEach((c) => {
+      const box = $(c.id);
+      box.innerHTML = '<div class="label"></div><div class="value">—</div><div class="sub">&nbsp;</div>' +
+        '<svg class="spark wide" viewBox="0 0 100 34" preserveAspectRatio="none" aria-hidden="true"></svg>';
+      box.querySelector('.label').textContent = c.label;
+    });
+  }
+
+  function renderIndexCells() {
+    INDEX_CELLS.forEach((c) => {
+      const m = markets.symbols[c.k];
+      if (!m) return;
+      const box = $(c.id);
+      box.querySelector('.value').textContent = c.fmt(m.price);
+      const sub = box.querySelector('.sub');
+      let text;
+      if (c.bp) {
+        const bp = (m.price - m.prev) * 100;
+        text = (bp > 0 ? '▲ ' : bp < 0 ? '▼ ' : '') + NF[1].format(Math.abs(bp)) + ' baz puan';
+      } else if (c.neutral) {
+        text = (m.pct > 0 ? '▲ ' : m.pct < 0 ? '▼ ' : '') + NF[2].format(Math.abs(m.pct)) + '%';
+      } else {
+        text = fmtPct(m.pct);
+      }
+      if (c.note) text += ' · ' + c.note(m);
+      sub.textContent = text;
+      sub.className = 'sub' + (c.neutral ? '' : ' ' + signClass(m.pct));
+      drawSpark(box.querySelector('.spark'), m.bars.slice(-70).map((r) => r[4]), c.neutral ? true : m.pct >= 0 ? 1 : -1);
+    });
+  }
+
+  function renderStocks() {
+    if (!markets) return;
+    STOCKS.forEach((c) => {
+      const m = markets.symbols[c.s];
+      const e = sEls[c.s];
+      if (!m) return;
+      if (e.card) {
+        e.cardPrice.textContent = usd(m.price);
+        e.cardPct.textContent = fmtPct(m.pct);
+        setSigned(e.cardPct, 'chip', m.pct);
+        drawSpark(e.spark, m.bars.slice(-70).map((r) => r[4]), m.pct >= 0 ? 1 : -1);
+      }
+      e.tilePct.textContent = fmtPct(m.pct);
+      e.tilePrice.textContent = usd(m.price);
+      const mix = Math.min(70, 12 + (Math.abs(m.pct) / 5) * 58);
+      e.tile.style.setProperty('--heat', m.pct >= 0 ? 'var(--up)' : 'var(--down)');
+      e.tile.style.setProperty('--mix', mix.toFixed(0) + '%');
+    });
+
+    const any = markets.symbols.NVDA || markets.symbols.NDX;
+    if (any) {
+      $('t-state').textContent = any.open ? 'Açık' : 'Kapalı';
+      $('t-time').textContent = 'son işlem: ' + new Date(any.time * 1000).toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    }
+
+    if (tab !== 'tek') return;
+    const m = markets.symbols[stock];
+    if (!m) return;
+    $('chart-price').textContent = usd(m.price);
+    $('chart-pct').textContent = fmtPct(m.pct);
+    setSigned($('chart-pct'), 'chip', m.pct);
+    const lastDay = Math.floor(m.bars[m.bars.length - 1][0] / 86400);
+    const session = m.bars.filter((r) => Math.floor(r[0] / 86400) === lastDay);
+    $('chart-high').textContent = usd(Math.max.apply(null, session.map((r) => r[2])));
+    $('chart-low').textContent = usd(Math.min.apply(null, session.map((r) => r[3])));
+    const vol = session.reduce((s, r) => s + r[5], 0);
+    $('chart-vol').textContent = vol >= 1e6 ? NF[1].format(vol / 1e6) + ' Mn' : NF[0].format(vol);
+  }
+
+  async function loadMarkets() {
+    try {
+      const r = await fetch('data/markets.json?t=' + Math.floor(Date.now() / 60000), { cache: 'no-store' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      markets = await r.json();
+      renderIndexCells();
+      renderStocks();
+      if (markets.updated !== marketsStamp) {
+        marketsStamp = markets.updated;
+        if (tab === 'tek') loadChart();
+      }
+    } catch (err) { /* bir sonraki turda yeniden denenir */ }
+  }
+
+  function renderNextEvent() {
+    if (!news) return;
+    const now = Date.now() / 1000;
+    const upcoming = (news.calendar || []).filter((e) => e.ts > now && e.impact !== 'Holiday');
+    const ev = upcoming.find((e) => e.impact === 'High') || upcoming[0];
+    if (!ev) { $('ev-val').textContent = 'Yok'; $('ev-sub').textContent = 'bu hafta kalan önemli veri yok'; return; }
+    $('ev-val').textContent = untilText(ev.ts).replace(' sonra', '');
+    $('ev-sub').textContent = (ev.title_tr || ev.title) + ' · ' +
+      new Date(ev.ts * 1000).toLocaleString('tr-TR', { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+  }
+
   // ---------- Piyasa özeti ----------
   async function loadGlobal() {
     try {
@@ -482,7 +746,7 @@
   const FNG_TR = { 'Extreme Fear': 'Aşırı korku', 'Fear': 'Korku', 'Neutral': 'Nötr', 'Greed': 'Açgözlülük', 'Extreme Greed': 'Aşırı açgözlülük' };
   async function loadFng() {
     try {
-      const r = await fetch('https://api.alternative.me/fng/?limit=2');
+      const r = await fetch('https://api.alternative.me/fng/?limit=30');
       if (!r.ok) return;
       const rows = (await r.json()).data;
       const v = +rows[0].value;
@@ -491,6 +755,7 @@
       $('fng-label').textContent = (FNG_TR[rows[0].value_classification] || rows[0].value_classification) +
         (diff ? ' · dün ' + (diff > 0 ? '+' : '') + diff : '');
       $('fng-needle').style.transform = 'rotate(' + (-90 + v * 1.8) + 'deg)';
+      drawSpark($('fng-spark'), rows.map((x) => +x.value).reverse(), true);
     } catch (err) { /* isteğe bağlı gösterge */ }
   }
 
@@ -502,14 +767,24 @@
     { id: 'BTC', label: 'BTC', test: (n) => n.tags.includes('BTC') },
     { id: 'RENDER', label: 'RENDER', test: (n) => n.tags.includes('RENDER') },
     { id: 'AI', label: 'AI', test: (n) => n.tags.includes('AI') },
+    { id: 'Teknoloji', label: 'Şirketler', test: (n) => n.tags.includes('Teknoloji') },
     { id: 'Makro', label: 'Makro', test: (n) => n.tags.includes('Makro') },
     { id: 'Regülasyon', label: 'Regülasyon', test: (n) => n.tags.includes('Regülasyon') },
-    { id: 'Teknoloji', label: 'Teknoloji', test: (n) => n.tags.includes('Teknoloji') },
     { id: 'tr', label: 'Türkçe', test: (n) => n.lang === 'tr' },
   ];
+  const TAB_FILTERS = {
+    kripto: ['all', 'conf', 'hot', 'BTC', 'RENDER', 'Makro', 'Regülasyon', 'tr'],
+    tek: ['all', 'conf', 'hot', 'AI', 'Teknoloji', 'Makro', 'Regülasyon', 'tr'],
+  };
+  const COIN_TAGS = ['BTC', 'ETH', 'SOL', 'RENDER', 'XRP', 'BNB', 'DOGE'];
+  // Makro haberler iki sekmede de görünür; gerisi sekmenin konusuna göre ayrılır
+  function inTab(n) {
+    if (n.cat === 'makro') return true;
+    if (tab === 'tek') return n.cat === 'teknoloji' || n.tags.includes('AI') || n.tags.includes('Teknoloji');
+    return n.cat === 'kripto' || n.tags.some((t) => COIN_TAGS.includes(t));
+  }
   const NEWS_STEP = 20;
-  let news = null, newsFilter = load('fp.filter', 'all'), newsShown = NEWS_STEP;
-  if (!FILTERS.some((f) => f.id === newsFilter)) newsFilter = 'all';
+  let news = null, newsFilter = 'all', newsShown = NEWS_STEP;
   const seenBefore = +load('fp.newsSeen', '0');
 
   function ago(ts) {
@@ -528,7 +803,10 @@
 
   function buildFilters() {
     const box = $('news-filters');
-    FILTERS.forEach((f) => {
+    box.textContent = '';
+    newsFilter = 'all';
+    newsShown = NEWS_STEP;
+    FILTERS.filter((f) => TAB_FILTERS[tab].includes(f.id)).forEach((f) => {
       const b = el('button', '', f.label);
       b.type = 'button';
       b.role = 'tab';
@@ -537,20 +815,20 @@
       b.addEventListener('click', () => {
         newsFilter = f.id;
         newsShown = NEWS_STEP;
-        save('fp.filter', f.id);
         box.querySelectorAll('button').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
         renderNews();
       });
       box.appendChild(b);
     });
-    $('news-more').addEventListener('click', () => { newsShown += NEWS_STEP; renderNews(); });
   }
+  $('news-more').addEventListener('click', () => { newsShown += NEWS_STEP; renderNews(); });
 
   function renderNews() {
     if (!news) return;
     const list = $('news');
     const filter = FILTERS.find((f) => f.id === newsFilter);
-    const items = news.items.filter(filter.test);
+    const base = news.items.filter(inTab);
+    const items = base.filter(filter.test);
     list.textContent = '';
     if (!items.length) list.appendChild(el('li', 'empty', 'Son 3 günde bu filtreye uyan haber yok.'));
     items.slice(0, newsShown).forEach((n) => {
@@ -580,7 +858,7 @@
     $('news-updated').textContent = 'güncellendi: ' + ago(news.updated);
 
     const dayAgo = Date.now() / 1000 - 86400;
-    const recent = news.items.filter((n) => n.ts >= dayAgo);
+    const recent = base.filter((n) => n.ts >= dayAgo);
     const pos = recent.filter((n) => n.sent > 0).length;
     const neg = recent.filter((n) => n.sent < 0).length;
     const neu = recent.length - pos - neg;
@@ -637,6 +915,7 @@
       news = await r.json();
       renderNews();
       renderCalendar();
+      renderNextEvent();
       if (news.items.length) setTimeout(() => save('fp.newsSeen', String(news.items[0].ts)), 8000);
     } catch (err) {
       if (!news) {
@@ -646,17 +925,19 @@
       }
     }
   }
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) loadNews(); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { loadNews(); loadMarkets(); } });
 
   // ---------- Başlat ----------
-  buildFilters();
-  loadNews();
-  setInterval(loadNews, 120000);
-  setInterval(() => { renderNews(); renderCalendar(); }, 60000);
   buildUI();
+  buildIndexCells();
   initChart();
+  applyTab();
+  loadNews();
+  loadMarkets();
+  setInterval(loadNews, 120000);
+  setInterval(loadMarkets, 120000);
+  setInterval(() => { renderNews(); renderCalendar(); renderNextEvent(); }, 60000);
   loadSnapshot().catch(() => {});
-  loadChart();
   loadSparks();
   connect();
   loadGlobal();

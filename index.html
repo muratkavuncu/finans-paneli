@@ -31,25 +31,10 @@
     </div>
   </header>
 
-  <section class="summary" aria-label="Piyasa özeti">
-    <div class="stat">
-      <div class="label">Toplam piyasa değeri</div>
-      <div class="value" id="g-mcap">—</div>
-      <div class="sub" id="g-mcap-chg">&nbsp;</div>
-    </div>
-    <div class="stat">
-      <div class="label">BTC dominansı</div>
-      <div class="value" id="g-dom">—</div>
-      <div class="sub" id="g-vol">&nbsp;</div>
-    </div>
-    <div class="stat">
-      <div class="label">Dolar (USDT/TRY)</div>
-      <div class="value" id="g-try">—</div>
-      <div class="sub" id="g-try-chg">&nbsp;</div>
-    </div>
+  <section class="pulse" aria-label="Piyasa nabzı">
     <div class="stat stat-fng">
-      <div>
-        <div class="label">Korku ve Açgözlülük</div>
+      <div class="fng-text">
+        <div class="label">Kripto korku / açgözlülük</div>
         <div class="value" id="fng-val">—</div>
         <div class="sub" id="fng-label">&nbsp;</div>
       </div>
@@ -67,10 +52,64 @@
         </g>
         <circle cx="60" cy="60" r="5" fill="var(--fg)"/>
       </svg>
+      <svg class="spark wide" id="fng-spark" viewBox="0 0 100 34" preserveAspectRatio="none" aria-hidden="true"></svg>
+    </div>
+    <div class="stat" id="pulse-VIX"></div>
+    <div class="stat" id="pulse-DXY"></div>
+    <div class="stat" id="pulse-US10Y"></div>
+    <div class="stat" id="pulse-NDX"></div>
+    <div class="stat stat-event">
+      <div class="label">Sıradaki kritik veri</div>
+      <div class="value" id="ev-val">—</div>
+      <div class="sub" id="ev-sub">&nbsp;</div>
     </div>
   </section>
 
-  <section class="watch" id="watch" aria-label="Takip listesi"></section>
+  <nav class="maintabs" id="maintabs" role="tablist" aria-label="Piyasa">
+    <button type="button" role="tab" data-id="kripto">Kripto</button>
+    <button type="button" role="tab" data-id="tek">Teknoloji</button>
+  </nav>
+
+  <section class="summary" data-tab="kripto" aria-label="Kripto özeti">
+    <div class="stat">
+      <div class="label">Toplam piyasa değeri</div>
+      <div class="value" id="g-mcap">—</div>
+      <div class="sub" id="g-mcap-chg">&nbsp;</div>
+    </div>
+    <div class="stat">
+      <div class="label">BTC dominansı</div>
+      <div class="value" id="g-dom">—</div>
+      <div class="sub" id="g-vol">&nbsp;</div>
+    </div>
+    <div class="stat">
+      <div class="label">ETH / BTC</div>
+      <div class="value" id="g-ethbtc">—</div>
+      <div class="sub">altcoin iştahının ölçüsü</div>
+    </div>
+    <div class="stat">
+      <div class="label">Dolar (USDT/TRY)</div>
+      <div class="value" id="g-try">—</div>
+      <div class="sub" id="g-try-chg">&nbsp;</div>
+    </div>
+  </section>
+
+  <section class="summary" data-tab="tek" aria-label="Teknoloji özeti" hidden>
+    <div class="stat" id="tek-SOX"></div>
+    <div class="stat" id="tek-SPX"></div>
+    <div class="stat">
+      <div class="label">ABD borsası</div>
+      <div class="value" id="t-state">—</div>
+      <div class="sub" id="t-time">&nbsp;</div>
+    </div>
+    <div class="stat">
+      <div class="label">Veri gecikmesi</div>
+      <div class="value">≈15 dk</div>
+      <div class="sub">hisseler anlık değil, 10 dakikada bir yenilenir</div>
+    </div>
+  </section>
+
+  <section class="watch" id="watch" data-tab="kripto" aria-label="Kripto takip listesi"></section>
+  <section class="watch" id="watch-tek" data-tab="tek" aria-label="Teknoloji takip listesi" hidden></section>
 
   <section class="panel chart-panel" aria-label="Fiyat grafiği">
     <div class="chart-head">
@@ -86,12 +125,44 @@
     <div class="chart-tools">
       <div class="tabs" id="intervals" role="tablist" aria-label="Zaman dilimi"></div>
       <dl class="range">
-        <div><dt>24s en yüksek</dt><dd id="chart-high">—</dd></div>
-        <div><dt>24s en düşük</dt><dd id="chart-low">—</dd></div>
-        <div><dt>24s hacim</dt><dd id="chart-vol">—</dd></div>
+        <div><dt id="chart-l1">24s en yüksek</dt><dd id="chart-high">—</dd></div>
+        <div><dt id="chart-l2">24s en düşük</dt><dd id="chart-low">—</dd></div>
+        <div><dt id="chart-l3">24s hacim</dt><dd id="chart-vol">—</dd></div>
       </dl>
     </div>
     <div class="chart" id="chart"><p class="chart-msg" id="chart-msg">Grafik yükleniyor…</p></div>
+  </section>
+
+  <div class="two" data-tab="kripto">
+    <section class="panel" aria-label="Isı haritası">
+      <div class="panel-head">
+        <h2>Isı haritası</h2>
+        <span class="hint">24 saatlik değişim · dokun, grafiği aç</span>
+      </div>
+      <div class="heat" id="heat"></div>
+    </section>
+
+    <section class="panel" aria-label="Piyasa değeri dağılımı">
+      <div class="panel-head">
+        <h2>Piyasa dağılımı</h2>
+        <span class="hint">piyasa değerine göre pay</span>
+      </div>
+      <div class="donut-wrap">
+        <div class="donut">
+          <svg viewBox="0 0 42 42" id="donut" role="img" aria-label="Piyasa değeri dağılımı"></svg>
+          <div class="donut-center"><strong id="donut-main">—</strong><span>BTC</span></div>
+        </div>
+        <ul class="legend" id="legend"></ul>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel" data-tab="tek" aria-label="Teknoloji ısı haritası" hidden>
+    <div class="panel-head">
+      <h2>Büyük teknoloji</h2>
+      <span class="hint">günlük değişim · dokun, grafiği aç</span>
+    </div>
+    <div class="heat" id="heat-tek"></div>
   </section>
 
   <div class="two">
@@ -118,32 +189,8 @@
     </section>
   </div>
 
-  <div class="two">
-    <section class="panel" aria-label="Isı haritası">
-      <div class="panel-head">
-        <h2>Isı haritası</h2>
-        <span class="hint">24 saatlik değişim · dokun, grafiği aç</span>
-      </div>
-      <div class="heat" id="heat"></div>
-    </section>
-
-    <section class="panel" aria-label="Piyasa değeri dağılımı">
-      <div class="panel-head">
-        <h2>Piyasa dağılımı</h2>
-        <span class="hint">piyasa değerine göre pay</span>
-      </div>
-      <div class="donut-wrap">
-        <div class="donut">
-          <svg viewBox="0 0 42 42" id="donut" role="img" aria-label="Piyasa değeri dağılımı"></svg>
-          <div class="donut-center"><strong id="donut-main">—</strong><span>BTC</span></div>
-        </div>
-        <ul class="legend" id="legend"></ul>
-      </div>
-    </section>
-  </div>
-
   <footer class="foot">
-    <p>Fiyatlar Binance canlı akışından, piyasa özeti CoinGecko'dan, Korku ve Açgözlülük endeksi alternative.me'den gelir.</p>
+    <p>Kripto fiyatları Binance canlı akışından, piyasa özeti CoinGecko'dan, Korku ve Açgözlülük endeksi alternative.me'den gelir. Hisse ve endeks verileri Yahoo Finance'ten yaklaşık 15 dakika gecikmeli alınır.</p>
     <p>Haber başlıkları kaynakların kendi RSS akışlarından birkaç dakikada bir toplanır ve değiştirilmeden gösterilir. "2 kaynak" gibi rozetler, aynı olayı kaç ayrı yayının haberleştirdiğini gösterir. "Sektör yayını" notu olan kaynaklar görüş ve tanıtım içeriği de yayımlayabilir. Fiyat tahmini ve sponsorlu içerik elenir.</p>
     <p>Olumlu/olumsuz etiketi başlıktaki kelimelere dayalı kaba bir tahmindir. Bir başlık, haberin doğru olduğunu kanıtlamaz; işlem öncesi haberin aslını oku. Takvim verisi Forex Factory'den gelir.</p>
     <p>Bu panel bilgi amaçlıdır, yatırım tavsiyesi değildir.</p>

@@ -93,6 +93,22 @@ h1 { font-size: 20px; font-weight: 700; letter-spacing: -.01em; }
   100% { box-shadow: 0 0 0 9px transparent; }
 }
 
+[hidden] { display: none !important; }
+
+/* Piyasa nabzı: iki sekmeyi de etkileyen göstergeler */
+.pulse { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
+.pulse .value { font-size: 20px; }
+.spark.wide { height: 26px; margin-top: 6px; }
+.stat-event .value { color: var(--accent); }
+
+/* Ana sekmeler */
+.maintabs { display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--line); padding: 4px; border-radius: 12px; }
+.maintabs button {
+  flex: 1; border: 0; background: transparent; padding: 10px 12px; border-radius: 9px; cursor: pointer;
+  font-family: var(--font-display); font-size: 15px; font-weight: 600; color: var(--muted);
+}
+.maintabs button[aria-selected="true"] { background: var(--accent); color: var(--bg); }
+
 /* Özet şeridi */
 .summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
 .stat {
@@ -102,8 +118,9 @@ h1 { font-size: 20px; font-weight: 700; letter-spacing: -.01em; }
 .label { color: var(--muted); font-size: 11.5px; letter-spacing: .04em; text-transform: uppercase; }
 .value { font-family: var(--font-display); font-size: 22px; font-weight: 600; margin-top: 4px; white-space: nowrap; }
 .sub { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
-.stat-fng { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.gauge { width: 84px; flex: none; }
+.stat-fng { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 6px; }
+.stat-fng .spark { grid-column: 1 / -1; }
+.gauge { width: 58px; }
 #fng-needle { transform-origin: 60px 60px; transition: transform .9s cubic-bezier(.3, 1.4, .5, 1); }
 
 .pos { color: var(--up); }
@@ -253,13 +270,16 @@ h2 { font-size: 16px; font-weight: 600; }
 
 @media (max-width: 860px) {
   .summary, .watch { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pulse { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .two { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 520px) {
   .value { font-size: 19px; }
   .price { font-size: 18px; }
   .big { font-size: 25px; }
-  .gauge { width: 62px; }
+  .gauge { width: 46px; }
+  .pulse { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pulse .value { font-size: 18px; }
   .name { display: none; }
   .chart { height: 320px; }
   .range { gap: 14px; }

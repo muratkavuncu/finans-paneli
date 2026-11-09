@@ -1,2 +1,2 @@
-data/news.json
+data/*.json
 __pycache__/
