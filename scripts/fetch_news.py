@@ -184,7 +184,7 @@ def parse_feed(raw):
     for node in root.iter():
         if local(node.tag) not in ("item", "entry"):
             continue
-        title = link = date = None
+        title = link = date = desc = None
         for child in node:
             name = local(child.tag)
             if name == "title" and title is None:
@@ -194,10 +194,24 @@ def parse_feed(raw):
                 if href and child.attrib.get("rel", "alternate") != "alternate":
                     continue
                 link = (href or child.text or "").strip()
+            elif name in ("description", "summary") and desc is None:
+                desc = child.text or ""
             elif name in ("pubDate", "published", "updated", "date") and date is None:
                 date = parse_date(child.text)
         if title and link and re.match(r"https?://[^\s\"'<>]+$", link):
-            yield title, link, date
+            yield title, link, date, shorten(desc, title)
+
+
+def shorten(text, title, limit=280):
+    """Kaynağın RSS'te verdiği kısa tanıtım yazısı; uzun ise kelime sınırından kesilir."""
+    text = clean(text)
+    text = re.sub(r"\s*The post .{0,200}? (?:appeared first|first appeared) on .*$", "", text)
+    text = re.sub(r"\s*(?:Read more|Continue reading|Devamını oku)\W*$", "", text, flags=re.I).strip()
+    if len(text) < 40 or text.lower().startswith(title.lower()[:60]):
+        return ""
+    if len(text) > limit:
+        text = text[:limit].rsplit(" ", 1)[0].rstrip(",;:-") + "…"
+    return text
 
 
 def classify(title):
@@ -212,7 +226,7 @@ def read_feed(feed):
     name, url, cat, lang, tier = feed
     now = time.time()
     items = []
-    for title, link, ts in parse_feed(fetch(url)):
+    for title, link, ts, desc in parse_feed(fetch(url)):
         ts = min(ts or now, now)
         if SKIP_RE.search(title):
             continue  # tahmin, tanıtım ve sponsorlu içerik haber sayılmaz
@@ -222,6 +236,7 @@ def read_feed(feed):
         items.append({
             "id": hashlib.sha1(link.encode("utf-8")).hexdigest()[:12],
             "title": title[:240],
+            "desc": desc,
             "url": link,
             "source": name,
             "cat": cat,

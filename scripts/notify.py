@@ -83,6 +83,8 @@ def run(events, calendar, prices, state):
              and not e.get("preview") and "n:" + e["id"] not in sent]
     for e in fresh[:NEWS_PER_RUN]:
         lines = [e["title"]]
+        if e.get("desc"):
+            lines.append(e["desc"][:220])
         if e["up"]:
             lines.append("▲ " + ", ".join(e["up"]))
         if e["down"]:

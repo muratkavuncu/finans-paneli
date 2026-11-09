@@ -229,11 +229,17 @@ h2 { font-size: 16px; font-weight: 600; }
 .news { list-style: none; margin: 0; padding: 0; }
 .news li { border-top: 1px solid var(--line); }
 .news li:first-child { border-top: 0; }
-.news a {
-  display: grid; grid-template-columns: 10px minmax(0, 1fr); gap: 10px; align-items: start;
-  padding: 10px 2px; color: inherit; text-decoration: none; border-radius: 8px;
+.n-row {
+  display: grid; grid-template-columns: 10px minmax(0, 1fr); gap: 10px; align-items: start; width: 100%;
+  padding: 10px 2px; border: 0; background: transparent; text-align: left; cursor: pointer; border-radius: 8px;
 }
-.news a:hover .n-title { text-decoration: underline; }
+.n-row:hover .n-title { text-decoration: underline; }
+.n-row[aria-expanded="true"] .n-title { color: var(--accent); }
+.n-more { margin: 0 2px 12px 22px; padding: 10px 12px; background: var(--surface-2); border-radius: 10px; }
+.n-more p { margin: 0 0 8px; font-size: 13.5px; line-height: 1.5; }
+.n-more a { color: var(--accent); font-size: 13px; font-weight: 600; text-decoration: none; }
+.n-more a:hover { text-decoration: underline; }
+.event-desc { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
 .n-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; background: var(--c6); }
 .n-dot.pos { background: var(--up); }
 .n-dot.neg { background: var(--down); }
