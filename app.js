@@ -494,7 +494,163 @@
     } catch (err) { /* isteğe bağlı gösterge */ }
   }
 
+  // ---------- Gündem ve takvim ----------
+  const FILTERS = [
+    { id: 'all', label: 'Tümü', test: () => true },
+    { id: 'hot', label: 'Önemli', test: (n) => n.hot },
+    { id: 'BTC', label: 'BTC', test: (n) => n.tags.includes('BTC') },
+    { id: 'RENDER', label: 'RENDER', test: (n) => n.tags.includes('RENDER') },
+    { id: 'AI', label: 'AI', test: (n) => n.tags.includes('AI') },
+    { id: 'Makro', label: 'Makro', test: (n) => n.tags.includes('Makro') },
+    { id: 'Regülasyon', label: 'Regülasyon', test: (n) => n.tags.includes('Regülasyon') },
+    { id: 'Teknoloji', label: 'Teknoloji', test: (n) => n.tags.includes('Teknoloji') },
+    { id: 'tr', label: 'Türkçe', test: (n) => n.lang === 'tr' },
+  ];
+  const NEWS_STEP = 20;
+  let news = null, newsFilter = load('fp.filter', 'all'), newsShown = NEWS_STEP;
+  if (!FILTERS.some((f) => f.id === newsFilter)) newsFilter = 'all';
+  const seenBefore = +load('fp.newsSeen', '0');
+
+  function ago(ts) {
+    const s = Math.max(0, Date.now() / 1000 - ts);
+    if (s < 90) return 'az önce';
+    if (s < 3600) return Math.round(s / 60) + ' dk önce';
+    if (s < 86400) return Math.round(s / 3600) + ' sa önce';
+    return Math.round(s / 86400) + ' gün önce';
+  }
+  function el(tag, cls, text) {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+
+  function buildFilters() {
+    const box = $('news-filters');
+    FILTERS.forEach((f) => {
+      const b = el('button', '', f.label);
+      b.type = 'button';
+      b.role = 'tab';
+      b.dataset.id = f.id;
+      b.setAttribute('aria-selected', String(f.id === newsFilter));
+      b.addEventListener('click', () => {
+        newsFilter = f.id;
+        newsShown = NEWS_STEP;
+        save('fp.filter', f.id);
+        box.querySelectorAll('button').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
+        renderNews();
+      });
+      box.appendChild(b);
+    });
+    $('news-more').addEventListener('click', () => { newsShown += NEWS_STEP; renderNews(); });
+  }
+
+  function renderNews() {
+    if (!news) return;
+    const list = $('news');
+    const filter = FILTERS.find((f) => f.id === newsFilter);
+    const items = news.items.filter(filter.test);
+    list.textContent = '';
+    if (!items.length) list.appendChild(el('li', 'empty', 'Son 3 günde bu filtreye uyan haber yok.'));
+    items.slice(0, newsShown).forEach((n) => {
+      const li = el('li');
+      const a = el('a');
+      if (/^https?:\/\//.test(n.url)) a.href = n.url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.appendChild(el('span', 'n-dot' + (n.sent > 0 ? ' pos' : n.sent < 0 ? ' neg' : '')));
+      const body = el('span');
+      const meta = el('span', 'n-meta', ago(n.ts) + ' · ' + n.source);
+      if (seenBefore && n.ts > seenBefore) meta.appendChild(el('span', 'badge-new', 'YENİ'));
+      body.appendChild(meta);
+      body.appendChild(el('span', 'n-title', n.title));
+      if (n.hot || n.tags.length) {
+        const tags = el('span', 'n-tags');
+        if (n.hot) tags.appendChild(el('span', 'hot', 'Önemli'));
+        n.tags.forEach((t) => tags.appendChild(el('span', '', t)));
+        body.appendChild(tags);
+      }
+      a.appendChild(body);
+      li.appendChild(a);
+      list.appendChild(li);
+    });
+    $('news-more').hidden = items.length <= newsShown;
+    $('news-updated').textContent = 'güncellendi: ' + ago(news.updated);
+
+    const dayAgo = Date.now() / 1000 - 86400;
+    const recent = news.items.filter((n) => n.ts >= dayAgo);
+    const pos = recent.filter((n) => n.sent > 0).length;
+    const neg = recent.filter((n) => n.sent < 0).length;
+    const neu = recent.length - pos - neg;
+    $('mood').hidden = !recent.length;
+    $('mood-pos').style.flexGrow = pos;
+    $('mood-neu').style.flexGrow = neu;
+    $('mood-neg').style.flexGrow = neg;
+    $('mood-text').textContent = 'Son 24 saatte ' + recent.length + ' haber: ' + pos + ' olumlu, ' + neg + ' olumsuz, ' + neu + ' nötr';
+  }
+
+  function untilText(ts) {
+    const m = Math.round((ts - Date.now() / 1000) / 60);
+    if (m < 60) return m + ' dk sonra';
+    if (m < 1440) return Math.floor(m / 60) + ' sa ' + (m % 60) + ' dk sonra';
+    return Math.round(m / 1440) + ' gün sonra';
+  }
+
+  function renderCalendar() {
+    if (!news) return;
+    const box = $('cal');
+    box.textContent = '';
+    const events = news.calendar || [];
+    if (!events.length) { box.appendChild(el('li', 'empty', 'Bu hafta için kayıtlı önemli veri yok.')); return; }
+    const now = Date.now() / 1000;
+    const nextTs = (events.find((e) => e.ts > now) || {}).ts;
+    let lastDay = '';
+    events.forEach((e) => {
+      const d = new Date(e.ts * 1000);
+      const day = d.toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
+      if (day !== lastDay) { box.appendChild(el('li', 'day', day)); lastDay = day; }
+      const li = el('li', 'ev' + (e.ts < now ? ' past' : '') + (e.ts === nextTs ? ' next' : ''));
+      const holiday = e.impact === 'Holiday';
+      li.appendChild(el('time', '', holiday ? '—' : d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })));
+      const imp = el('span', 'imp ' + e.impact);
+      imp.title = e.impact === 'High' ? 'Yüksek etki' : e.impact === 'Medium' ? 'Orta etki' : 'Tatil';
+      li.appendChild(imp);
+      const body = el('span');
+      body.appendChild(el('span', 'ev-title', e.title_tr || e.title));
+      const sub = [];
+      if (e.title_tr) sub.push(e.title);
+      if (e.forecast) sub.push('beklenti ' + e.forecast);
+      if (e.previous) sub.push('önceki ' + e.previous);
+      if (sub.length) body.appendChild(el('span', 'ev-sub', sub.join(' · ')));
+      if (e.ts === nextTs) body.appendChild(el('span', 'ev-sub soon', untilText(e.ts)));
+      li.appendChild(body);
+      box.appendChild(li);
+    });
+  }
+
+  async function loadNews() {
+    try {
+      const r = await fetch('data/news.json?t=' + Math.floor(Date.now() / 60000), { cache: 'no-store' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      news = await r.json();
+      renderNews();
+      renderCalendar();
+      if (news.items.length) setTimeout(() => save('fp.newsSeen', String(news.items[0].ts)), 8000);
+    } catch (err) {
+      if (!news) {
+        $('news-updated').textContent = 'Haberler alınamadı, yeniden denenecek';
+        $('cal').textContent = '';
+        $('cal').appendChild(el('li', 'empty', 'Takvim alınamadı.'));
+      }
+    }
+  }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) loadNews(); });
+
   // ---------- Başlat ----------
+  buildFilters();
+  loadNews();
+  setInterval(loadNews, 120000);
+  setInterval(() => { renderNews(); renderCalendar(); }, 60000);
   buildUI();
   initChart();
   loadSnapshot().catch(() => {});

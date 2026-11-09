@@ -1,0 +1,52 @@
+name: Paneli yayınla
+
+# Haberleri toplar ve paneli GitHub Pages'e koyar.
+# Kod her değiştiğinde ve 10 dakikada bir çalışır.
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  yayinla:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    env:
+      PREV_URL: https://muratkavuncu.github.io/finans-paneli/data/news.json
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Haberleri ve takvimi topla
+        run: |
+          python3 scripts/fetch_news.py data/news.json || {
+            echo "Toplama başarısız, önceki haberler korunuyor"
+            mkdir -p data
+            curl -fsS "$PREV_URL" -o data/news.json || echo '{"updated":0,"items":[],"calendar":[],"errors":["hepsi"]}' > data/news.json
+          }
+
+      - name: Site klasörünü hazırla
+        run: |
+          mkdir -p _site/data
+          cp index.html style.css app.js _site/
+          cp data/news.json _site/data/
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4

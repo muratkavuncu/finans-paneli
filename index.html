@@ -95,6 +95,30 @@
   </section>
 
   <div class="two">
+    <section class="panel" aria-label="Gündem">
+      <div class="panel-head">
+        <h2>Gündem</h2>
+        <span class="hint" id="news-updated">Haberler yükleniyor…</span>
+      </div>
+      <div class="mood" id="mood" hidden>
+        <div class="mood-bar" aria-hidden="true"><i id="mood-pos"></i><i id="mood-neu"></i><i id="mood-neg"></i></div>
+        <p class="hint" id="mood-text"></p>
+      </div>
+      <div class="chips" id="news-filters" role="tablist" aria-label="Haber filtresi"></div>
+      <ol class="news" id="news"></ol>
+      <button type="button" class="more" id="news-more" hidden>Daha fazla göster</button>
+    </section>
+
+    <section class="panel" aria-label="Ekonomik takvim">
+      <div class="panel-head">
+        <h2>Bu haftanın takvimi</h2>
+        <span class="hint">ABD verileri · senin saatinle</span>
+      </div>
+      <ul class="cal" id="cal"><li class="empty">Takvim yükleniyor…</li></ul>
+    </section>
+  </div>
+
+  <div class="two">
     <section class="panel" aria-label="Isı haritası">
       <div class="panel-head">
         <h2>Isı haritası</h2>
@@ -120,6 +144,7 @@
 
   <footer class="foot">
     <p>Fiyatlar Binance canlı akışından, piyasa özeti CoinGecko'dan, Korku ve Açgözlülük endeksi alternative.me'den gelir.</p>
+    <p>Haber başlıkları kaynakların RSS akışlarından birkaç dakikada bir toplanır; olumlu/olumsuz etiketi başlıktaki kelimelere dayalı kaba bir tahmindir. Takvim verisi Forex Factory'den gelir.</p>
     <p>Bu panel bilgi amaçlıdır, yatırım tavsiyesi değildir.</p>
   </footer>
 </div>

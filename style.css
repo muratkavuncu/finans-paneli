@@ -194,6 +194,59 @@ h2 { font-size: 16px; font-weight: 600; }
 .legend i { width: 10px; height: 10px; border-radius: 3px; flex: none; }
 .legend em { font-style: normal; margin-left: auto; font-weight: 600; }
 
+/* Gündem */
+.mood { margin-bottom: 12px; }
+.mood-bar { display: flex; height: 8px; border-radius: 999px; overflow: hidden; background: var(--surface-2); gap: 2px; }
+.mood-bar i { display: block; min-width: 0; transition: flex-grow .6s; }
+#mood-pos { background: var(--up); }
+#mood-neu { background: var(--c6); }
+#mood-neg { background: var(--down); }
+.mood p { margin: 6px 0 0; }
+.chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 8px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chips button {
+  flex: none; border: 1px solid var(--line); background: transparent; color: var(--muted);
+  padding: 5px 12px; border-radius: 999px; cursor: pointer; font-size: 13px; font-weight: 500;
+}
+.chips button[aria-selected="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.news { list-style: none; margin: 0; padding: 0; }
+.news li { border-top: 1px solid var(--line); }
+.news li:first-child { border-top: 0; }
+.news a {
+  display: grid; grid-template-columns: 10px minmax(0, 1fr); gap: 10px; align-items: start;
+  padding: 10px 2px; color: inherit; text-decoration: none; border-radius: 8px;
+}
+.news a:hover .n-title { text-decoration: underline; }
+.n-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; background: var(--c6); }
+.n-dot.pos { background: var(--up); }
+.n-dot.neg { background: var(--down); }
+.n-meta { color: var(--muted); font-size: 12px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.n-title { display: block; font-size: 14.5px; font-weight: 500; line-height: 1.35; margin: 2px 0 5px; overflow-wrap: anywhere; }
+.n-tags { display: flex; gap: 5px; flex-wrap: wrap; }
+.n-tags span { font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 5px; background: var(--surface-2); color: var(--muted); }
+.n-tags .hot { background: var(--accent); color: var(--bg); }
+.badge-new { font-size: 10.5px; font-weight: 700; letter-spacing: .05em; color: var(--accent); }
+.empty { color: var(--muted); padding: 14px 2px; list-style: none; }
+.more {
+  width: 100%; margin-top: 8px; padding: 9px; border-radius: 9px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--surface-2); font-weight: 500;
+}
+
+/* Takvim */
+.cal { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.cal .day { color: var(--muted); font-size: 11.5px; letter-spacing: .05em; text-transform: uppercase; padding: 10px 0 4px; }
+.cal .day:first-child { padding-top: 0; }
+.cal .ev { display: grid; grid-template-columns: 44px 8px minmax(0, 1fr); gap: 8px; align-items: baseline; padding: 6px 8px; border-radius: 8px; }
+.cal .ev.past { opacity: .5; }
+.cal .ev.next { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line); }
+.cal time { font-weight: 600; font-size: 13px; }
+.cal .imp { width: 8px; height: 8px; border-radius: 50%; background: var(--c6); align-self: center; }
+.cal .imp.High { background: var(--down); }
+.cal .imp.Medium { background: var(--accent); }
+.cal .ev-title { font-size: 13.5px; font-weight: 500; }
+.cal .ev-sub { color: var(--muted); font-size: 12px; display: block; }
+.cal .soon { color: var(--accent); font-weight: 600; }
+
 .foot { color: var(--muted); font-size: 12px; text-align: center; }
 .foot p { margin: 2px 0; }
 
