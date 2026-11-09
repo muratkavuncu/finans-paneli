@@ -190,7 +190,7 @@ def clusters(items):
 def fetch_json(url, timeout=20):
     req = urllib.request.Request(url, headers={"User-Agent": UA})
     with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+        return json.loads(resp.read(5 * 1024 * 1024).decode("utf-8"))
 
 
 class Prices:

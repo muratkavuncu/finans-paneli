@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Finans Paneli</title>
+<!-- Güvenlik: sayfa yalnızca aşağıda adı geçen adreslerden kod çalıştırır ve veri çeker -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.binance.com https://data-api.binance.vision https://fapi.binance.com wss://stream.binance.com:9443 wss://data-stream.binance.vision https://api.coingecko.com https://api.alternative.me; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta name="referrer" content="no-referrer">
 <meta name="description" content="Kripto ve teknoloji piyasaları için canlı takip paneli">
 <meta name="theme-color" content="#0d131f">
 <meta name="mobile-web-app-capable" content="yes">
@@ -247,7 +250,8 @@
   </footer>
 </div>
 
-<script src="https://unpkg.com/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js"></script>
+<script src="https://unpkg.com/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js"
+        integrity="sha384-stKllnUqA9AD0gsKCuUtf5XlqAW7PwIgDagoNsTWkjkBmJ/GZ/uHTgEBxdLV2VSK" crossorigin="anonymous"></script>
 <script src="app.js"></script>
 </body>
 </html>

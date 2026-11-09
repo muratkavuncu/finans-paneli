@@ -28,7 +28,9 @@ jobs:
     env:
       SITE: https://muratkavuncu.github.io/finans-paneli/data
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       # Önce fiyatlar: haber puanlaması piyasa tepkisini bu dosyadan ölçer
       - name: Hisse ve endeks verisini topla
@@ -58,9 +60,9 @@ jobs:
           cp index.html style.css app.js _site/
           cp data/news.json data/markets.json data/events_log.json _site/data/
 
-      - uses: actions/configure-pages@v6
-      - uses: actions/upload-pages-artifact@v5
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: _site
       - id: deployment
-        uses: actions/deploy-pages@v5
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

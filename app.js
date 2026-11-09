@@ -811,17 +811,25 @@
     parts.push({ label: 'Diğer', v: rest });
     let acc = 0;
     let svg = '';
-    let legend = '';
+    const legend = $('legend');
+    legend.textContent = '';
     parts.forEach((p, i) => {
       const color = 'var(--c' + (i + 1) + ')';
       const len = Math.max(0, p.v - 0.6); // dilimler arasında ince boşluk
       svg += '<circle cx="21" cy="21" r="15.915" fill="none" stroke="' + color + '" stroke-width="5.5" ' +
         'stroke-dasharray="' + len.toFixed(2) + ' ' + (100 - len).toFixed(2) + '" stroke-dashoffset="' + (-acc).toFixed(2) + '"/>';
-      legend += '<li><i style="background:' + color + '"></i>' + p.label + '<em>%' + NF[1].format(p.v) + '</em></li>';
+      const li = document.createElement('li');
+      const dot = document.createElement('i');
+      dot.style.background = color;
+      const pct = document.createElement('em');
+      pct.textContent = '%' + NF[1].format(p.v);
+      li.appendChild(dot);
+      li.appendChild(document.createTextNode(String(p.label).slice(0, 24)));
+      li.appendChild(pct);
+      legend.appendChild(li);
       acc += p.v;
     });
     $('donut').innerHTML = svg;
-    $('legend').innerHTML = legend;
     $('donut-main').textContent = '%' + NF[1].format(pcts.btc);
   }
 

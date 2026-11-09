@@ -132,10 +132,21 @@ SKIP_RE = compile_words(SKIP)
 NEG_RE = compile_words(NEGATIVE)
 
 
+MAX_BYTES = 3 * 1024 * 1024
+
+
 def fetch(url, timeout=20):
+    """Yalnızca https; yanıt en fazla MAX_BYTES okunur."""
+    if not url.startswith("https://"):
+        raise ValueError("yalnızca https adresleri okunur")
     req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "*/*"})
     with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return resp.read()
+        if not resp.geturl().startswith("https://"):
+            raise ValueError("https dışına yönlendirme")
+        data = resp.read(MAX_BYTES + 1)
+    if len(data) > MAX_BYTES:
+        raise ValueError("yanıt çok büyük")
+    return data
 
 
 def local(tag):
@@ -165,6 +176,9 @@ def parse_date(text):
 
 
 def parse_feed(raw):
+    # Varlık tanımı içeren XML işlenmez (bellek şişirme saldırılarına karşı)
+    if b"<!ENTITY" in raw or b"<!entity" in raw:
+        raise ValueError("XML varlık tanımı reddedildi")
     root = ET.fromstring(raw)
     for node in root.iter():
         if local(node.tag) not in ("item", "entry"):
@@ -181,7 +195,7 @@ def parse_feed(raw):
                 link = (href or child.text or "").strip()
             elif name in ("pubDate", "published", "updated", "date") and date is None:
                 date = parse_date(child.text)
-        if title and link and link.startswith("http"):
+        if title and link and re.match(r"https?://[^\s\"'<>]+$", link):
             yield title, link, date
 
 
