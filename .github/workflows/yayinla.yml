@@ -1,7 +1,9 @@
 name: Paneli yayınla
 
 # Piyasa verisini ve haberleri toplar, paneli GitHub Pages'e koyar.
-# Kod her değiştiğinde ve 10 dakikada bir çalışır.
+# Kod her değiştiğinde çalışır; ayrıca "zincir" işi her turdan sonra bir sonrakini başlatır (yaklaşık 5 dakikada bir).
+# GitHub'ın kendi zamanlayıcısı güvenilir olmadığı için yalnızca yedek: zincir koparsa onu yeniden başlatır.
+# Zinciri durdurmak için depo değişkeni ZINCIR=kapali yapılır.
 on:
   push:
     branches: [main]
@@ -13,20 +15,25 @@ on:
         description: Telefona deneme bildirimi gönder
         type: boolean
         default: false
+      zincir:
+        description: Bu turdan sonra bir sonrakini kendiliğinden başlat
+        type: boolean
+        default: false
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: false
 
 jobs:
   yayinla:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -74,3 +81,22 @@ jobs:
           path: _site
       - id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+
+  # Bir sonraki turu başlatır. Aynı anda tek zincir yaşar: yeni başlayan, bekleyen eskisini iptal eder.
+  zincir:
+    needs: yayinla
+    if: ${{ always() && vars.ZINCIR != 'kapali' && (github.event_name == 'schedule' || inputs.zincir) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      actions: write
+    concurrency:
+      group: zincir
+      cancel-in-progress: true
+    steps:
+      - name: Bekle ve bir sonraki turu başlat
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sleep 240
+          gh workflow run yayinla.yml --repo "$GITHUB_REPOSITORY" --ref main -f zincir=true
