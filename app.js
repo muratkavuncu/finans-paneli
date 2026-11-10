@@ -908,7 +908,6 @@
     return n.cat === 'kripto' || n.tags.some((t) => COIN_TAGS.includes(t));
   }
   const NEWS_STEP = 20;
-  const openNews = new Set();
   let news = null, newsFilter = 'all', newsShown = NEWS_STEP;
   const seenBefore = +load('fp.newsSeen', '0');
 
@@ -959,10 +958,10 @@
     if (!items.length) list.appendChild(el('li', 'empty', 'Son 3 günde bu filtreye uyan haber yok.'));
     items.slice(0, newsShown).forEach((n) => {
       const li = el('li');
-      // Satıra dokununca kaynağın kısa özeti açılır; siteye gitmek ayrı bir bağlantıdır
-      const a = el('button', 'n-row');
-      a.type = 'button';
-      a.setAttribute('aria-expanded', String(openNews.has(n.id)));
+      const a = el('a');
+      if (/^https?:\/\//.test(n.url)) a.href = n.url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
       a.appendChild(el('span', 'n-dot' + (n.sent > 0 ? ' pos' : n.sent < 0 ? ' neg' : '')));
       const body = el('span');
       const meta = el('span', 'n-meta', ago(n.ts) + ' · ' + n.source + (n.tier === 'B' ? ' · sektör yayını' : ''));
@@ -979,23 +978,6 @@
       }
       a.appendChild(body);
       li.appendChild(a);
-      const more = el('div', 'n-more');
-      more.hidden = !openNews.has(n.id);
-      more.appendChild(el('p', '', n.desc || 'Bu kaynak haber için özet paylaşmıyor.'));
-      if (/^https?:\/\//.test(n.url)) {
-        const link = el('a', '', 'Haberin tamamını ' + n.source + ' sitesinde aç ↗');
-        link.href = n.url;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        more.appendChild(link);
-      }
-      li.appendChild(more);
-      a.addEventListener('click', () => {
-        const open = more.hidden;
-        more.hidden = !open;
-        a.setAttribute('aria-expanded', String(open));
-        if (open) openNews.add(n.id); else openNews.delete(n.id);
-      });
       list.appendChild(li);
     });
     $('news-more').hidden = items.length <= newsShown;
@@ -1043,7 +1025,6 @@
       a.target = '_blank';
       a.rel = 'noopener noreferrer';
       card.appendChild(a);
-      if (e.desc) card.appendChild(el('p', 'event-desc', e.desc));
 
       const fx = el('div', 'event-fx');
       fx.appendChild(el('span', 'fx-label', 'Tipik etki'));

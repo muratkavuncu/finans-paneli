@@ -320,7 +320,7 @@ def analyze(items, markets_path):
         if foreign:
             up, down, why = [], [], "ABD dışı veri; küresel piyasaya etkisi genelde sınırlı kalır."
         events.append({
-            "id": lead["id"], "score": score, "ts": first_ts, "title": lead["title"], "desc": lead.get("desc", ""), "url": lead["url"],
+            "id": lead["id"], "score": score, "ts": first_ts, "title": lead["title"], "url": lead["url"],
             "source": lead["source"], "n": len(sources), "sources": sources[:6], "type": best["id"], "type_label": best["label"],
             "up": [x.replace(V, label) for x in up], "down": [x.replace(V, label) for x in down],
             "why": why, "react": react, "preview": preview, "cat": "makro" if wide else lead["cat"], "tags": tags, "assets": assets,
