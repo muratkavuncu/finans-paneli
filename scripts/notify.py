@@ -7,6 +7,7 @@ Dört tür bildirim gönderir:
                 ve EMA 200 geçişi
   3) Takvim   - kritik veriden önce hatırlatma
   4) Tepki    - kritik veri açıklandıktan birkaç dakika sonra piyasanın ilk tepkisi
+  5) Özet     - günde bir kez sabah özeti
 
 Kanal adı NTFY_TOPIC ortam değişkeninden okunur ve hiçbir yere yazılmaz; yoksa hiçbir şey gönderilmez.
 NTFY_DRY=1 ise göndermek yerine ne göndereceğini yazar.
@@ -218,6 +219,43 @@ def _levels(bars, atr, w=4):
     return [x for x in out if x[1] >= LEVEL_TOUCHES]
 
 
+def _breakouts(closed, price):
+    """Kapanmış mumlara göre şu anki fiyatın kırdığı seviyeler: [(yön, seviye, sıradaki seviye)]."""
+    atr = _atr(closed)
+    if atr <= 0:
+        return []
+    margin = atr * TECH_MARGIN
+    recent = [b[4] for b in closed[-6:]]
+    levels = _levels(closed, atr)
+    out = []
+    up = [x for x in levels if max(recent) < x[0] and price > x[0] + margin]
+    if up:
+        nxt = [x for x in levels if x[0] > price]
+        out.append(("u", up[-1], nxt[0] if nxt else None))
+    down = [x for x in levels if min(recent) > x[0] and price < x[0] - margin]
+    if down:
+        nxt = [x for x in levels if x[0] < price]
+        out.append(("d", down[0], nxt[-1] if nxt else None))
+    return out
+
+
+def scorecard(bars, way, horizon=12):
+    """Aynı kuralın geçmiş karnesi: (aynı yönde kalan, toplam). Kırılımdan `horizon` mum sonraki kapanışa bakılır."""
+    wins = total = 0
+    last_dir, last_level = -99, {}
+    for cut in range(260, len(bars) - horizon):
+        price = bars[cut][4]
+        for w, level, _ in _breakouts(bars[:cut], price):
+            code = "%.5g" % level[0]
+            if w != way or cut - last_dir < 4 or cut - last_level.get(code, -99) < 24:
+                continue
+            last_dir, last_level[code] = cut, cut
+            later = bars[cut + horizon][4]
+            total += 1
+            wins += (later > price) if way == "u" else (later < price)
+    return wins, total
+
+
 def tech_alerts(prices, sent, now):
     """Saatlik grafikte destek/direnç kırılımı ve EMA 200 geçişi. sent sözlüğünü günceller."""
     fetch = getattr(prices, "candles", None)
@@ -229,45 +267,34 @@ def tech_alerts(prices, sent, now):
         if len(bars) < 250 or now - bars[-1][0] > 2 * 3600:
             continue
         closed, price = bars[:-1], bars[-1][4]
-        atr = _atr(closed)
-        if atr <= 0:
-            continue
-        margin = atr * TECH_MARGIN
-        recent = [b[4] for b in closed[-6:]]
-        levels = _levels(closed, atr)
         fired = False
-        for way, word, verb, tag in (("u", "direnci", "aştı", "chart_with_upwards_trend"),
-                                     ("d", "desteği", "kırdı", "chart_with_downwards_trend")):
-            if way == "u":
-                broken = [x for x in levels if max(recent) < x[0] and price > x[0] + margin]
-                nxt = [x for x in levels if x[0] > price]
-                level = broken[-1] if broken else None
-                ahead = nxt[0] if nxt else None
-            else:
-                broken = [x for x in levels if min(recent) > x[0] and price < x[0] - margin]
-                nxt = [x for x in levels if x[0] < price]
-                level = broken[0] if broken else None
-                ahead = nxt[-1] if nxt else None
-            if not level:
-                continue
+        for way, level, ahead in _breakouts(closed, price):
             code = "".join(ch if ch.isdigit() else "p" for ch in "%.6g" % level[0])[:12]
             dkey, lkey = "t:%s:%s" % (sym, way), "l:%s:%s" % (sym, code)
             if now - sent.get(dkey, 0) < TECH_COOLDOWN or now - sent.get(lkey, 0) < LEVEL_COOLDOWN:
                 continue
+            up = way == "u"
             lines = ["Fiyat: %s · seviye saatlik grafikte %d kez dönüş noktasıydı" % (money(price), level[1]),
-                     ("Sıradaki %s: %s" % ("direnç" if way == "u" else "destek", money(ahead[0]))) if ahead
-                     else ("Yakın geçmişte %s başka seviye görünmüyor" % ("üstte" if way == "u" else "altta")),
-                     "Kırılım geri dönebilir; saatlik kapanış seviyenin %s kalırsa güçlenir." % ("üstünde" if way == "u" else "altında")]
-            if send("%s %s %s · %s" % (sym, word, verb, money(level[0])), "\n".join(lines), priority=4, tags=[tag]):
+                     ("Sıradaki %s: %s" % ("direnç" if up else "destek", money(ahead[0]))) if ahead
+                     else ("Yakın geçmişte %s başka seviye görünmüyor" % ("üstte" if up else "altta"))]
+            wins, total = scorecard(closed, way)
+            if total >= 3:
+                lines.append("Karne: son %d günde benzer %d kırılımın %d tanesi 12 saat sonra aynı yöndeydi."
+                             % (round((len(closed) - 260) / 24), total, wins))
+            lines.append("Kırılım geri dönebilir; saatlik kapanış seviyenin %s kalırsa güçlenir." % ("üstünde" if up else "altında"))
+            if send("%s %s · %s" % (sym, "direnci aştı" if up else "desteği kırdı", money(level[0])), "\n".join(lines), priority=4,
+                    tags=["chart_with_upwards_trend" if up else "chart_with_downwards_trend"]):
                 sent[dkey] = sent[lkey] = int(now)
                 count += 1
                 fired = True
         if fired:
             continue
+        atr = _atr(closed)
         ema = _ema([b[4] for b in closed], 200)
-        last3 = [b[4] for b in closed[-12:]]  # yarım gün boyunca öbür tarafta kalmış olmalı
-        if ema:
-            way = "u" if max(last3) < ema and price > ema + margin else "d" if min(last3) > ema and price < ema - margin else ""
+        last12 = [b[4] for b in closed[-12:]]  # yarım gün boyunca öbür tarafta kalmış olmalı
+        if ema and atr > 0:
+            margin = atr * TECH_MARGIN
+            way = "u" if max(last12) < ema and price > ema + margin else "d" if min(last12) > ema and price < ema - margin else ""
             mkey = "m:%s:%s" % (sym, way)
             if way and now - sent.get(mkey, 0) >= EMA_COOLDOWN:
                 lines = ["Fiyat: %s · EMA 200: %s" % (money(price), money(ema)),
@@ -278,6 +305,39 @@ def tech_alerts(prices, sent, now):
                     sent[mkey] = int(now)
                     count += 1
     return count
+
+
+# --- Sabah özeti: günde bir kez, Türkiye saatiyle 09:00-12:00 arasındaki ilk turda
+SUMMARY_HOURS_UTC = (6, 9)
+
+
+def daily_summary(events, calendar, prices, sent, now):
+    t = time.gmtime(now)
+    key = "d:%04d%02d%02d" % (t.tm_year, t.tm_mon, t.tm_mday)
+    if not SUMMARY_HOURS_UTC[0] <= t.tm_hour < SUMMARY_HOURS_UTC[1] or key in sent:
+        return 0
+    lines = []
+    for sym in PRICE_RULES:
+        data = live(prices, sym, now)
+        if data:
+            back = data[-289][1] if len(data) >= 289 else data[0][1]
+            lines.append("%s %s · 24 sa %s" % (sym, money(data[-1][1]), pct((data[-1][1] / back - 1) * 100)))
+    top = [e for e in events if now - e["ts"] <= 12 * 3600 and not e.get("preview") and e["score"] >= 45][:3]
+    if top:
+        lines.append("Gece öne çıkanlar:")
+        lines.extend("• (etki %d) %s" % (e["score"], e["title"][:110]) for e in top)
+    else:
+        lines.append("Gece büyük bir olay kaydedilmedi.")
+    today = [ev for ev in calendar if ev.get("impact") == "High" and now <= ev["ts"] < now + 18 * 3600]
+    for ev in today[:4]:
+        tr = time.gmtime(ev["ts"] + 3 * 3600)
+        lines.append("⏰ %02d:%02d %s" % (tr.tm_hour, tr.tm_min, ev.get("title_tr") or ev["title"]))
+    if not today:
+        lines.append("Bugün takvimde kritik veri yok.")
+    if send("Sabah özeti", "\n".join(lines), priority=3, tags=["sunrise"]):
+        sent[key] = int(now)
+        return 1
+    return 0
 
 
 def run(events, calendar, prices, state):
@@ -329,6 +389,7 @@ def run(events, calendar, prices, state):
     # 2) Sert fiyat hareketi
     count += price_alerts(events, prices, sent, now)
     count += tech_alerts(prices, sent, now)
+    count += daily_summary(events, calendar, prices, sent, now)
 
     # 3) ve 4) Kritik veri: önce hatırlatma, açıklandıktan sonra ilk tepki. Aynı saatteki veriler tek bildirimde toplanır.
     slots = {}

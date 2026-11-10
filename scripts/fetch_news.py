@@ -259,6 +259,102 @@ def read_feed(feed):
     return items
 
 
+# --- AI gündemi (Teknoloji sekmesi). Piyasa puanlamasına ve bildirimlere girmez; yalnızca okumak içindir.
+# (ad, adres, tür) tür: resmi = şirketin kendi duyurusu, haber = haber odası, blog = tanınmış kişisel blog
+AI_FEEDS = [
+    ("OpenAI", "https://openai.com/news/rss.xml", "resmi"),
+    ("Google DeepMind", "https://deepmind.google/blog/rss.xml", "resmi"),
+    ("Google", "https://blog.google/technology/ai/rss/", "resmi"),
+    ("GitHub", "https://github.blog/ai-and-ml/feed/", "resmi"),
+    ("The Verge", "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml", "haber"),
+    ("TechCrunch", "https://techcrunch.com/category/artificial-intelligence/feed/", "haber"),
+    ("Ars Technica", "https://arstechnica.com/ai/feed/", "haber"),
+    ("Wired", "https://www.wired.com/feed/tag/ai/latest/rss", "haber"),
+    ("MIT Technology Review", "https://www.technologyreview.com/topic/artificial-intelligence/feed", "haber"),
+    ("IEEE Spectrum", "https://spectrum.ieee.org/feeds/topic/artificial-intelligence.rss", "haber"),
+    ("The Decoder", "https://the-decoder.com/feed/", "haber"),
+    ("Simon Willison", "https://simonwillison.net/atom/everything/", "blog"),
+]
+AI_KIND = {f[0]: f[2] for f in AI_FEEDS}
+AI_MAX_AGE = 7 * 86400
+AI_MAX = 150
+AI_RELEASE = compile_words([r"launch\w*", r"releas\w*", r"introduc\w*", r"announc\w*", r"unveil\w*", r"debut\w*", r"rolls? out",
+                            r"rolling out", r"ships?", r"shipping", r"open-?sourc\w*", r"previews?", r"now available", r"new", r"drops?"])
+AI_MODEL = compile_words([r"models?", r"gpt[\w.-]*", r"claude", r"gemini", r"llama", r"mistral", r"grok", r"deepseek", r"qwen",
+                          r"sora", r"veo", r"imagen", r"opus", r"sonnet", r"haiku", r"gemma", r"phi-?\d\w*", r"nemotron", r"llms?",
+                          r"weights", r"o\d(?:-\w+)?"])
+AI_RESEARCH = compile_words([r"research\w*", r"papers?", r"stud(?:y|ies)", r"benchmarks?", r"breakthrough", r"interpretab\w+",
+                             r"alignment", r"safety", r"datasets?", r"arxiv", r"scientists?", r"proofs?", r"evals?", r"evaluation"])
+AI_APP = compile_words([r"apps?", r"tools?", r"agents?", r"agentic", r"assistants?", r"copilot", r"features?", r"plugins?", r"built with",
+                        r"demos?", r"workflows?", r"browser", r"coding", r"code", r"robots?", r"robotics", r"games?", r"video", r"images?",
+                        r"voice", r"music", r"search", r"glasses", r"devices?", r"api", r"sdk", r"how to", r"using", r"build\w*"])
+
+
+AI_NAMED = compile_words([r"gpt[\w.-]*", r"claude", r"gemini", r"llama", r"mistral", r"grok", r"deepseek", r"qwen", r"sora", r"veo",
+                          r"imagen", r"opus", r"sonnet", r"haiku", r"fable", r"gemma", r"nemotron", r"o\d(?:-\w+)?"])
+AI_VERSION = re.compile(r"\d+(?:\.\d+)+|\b\d+(?:b|k)\b|-\d\b", re.I)
+AI_BUSINESS = compile_words([r"ipo", r"raises?", r"raised", r"funding", r"valuation", r"lawsuits?", r"sues?", r"sued", r"acquir\w+",
+                             r"acquisition", r"deals?", r"billion", r"million", r"trillion", r"stake", r"layoffs?", r"regulat\w+",
+                             r"policy", r"pledge", r"court", r"antitrust", r"shares?", r"investors?", r"ceo", r"revenue"])
+AI_APP2 = compile_words([r"hands-on", r"camera", r"drones?", r"dj", r"operating system", r"desktop", r"phones?", r"wearables?",
+                         r"chatbots?", r"creative", r"photoshop", r"editor", r"review", r"tested", r"i tried", r"gets new", r"built for",
+                         r"powered", r"playlist", r"shopping", r"translate\w*", r"notebook\w*"])
+AI_RESEARCH2 = compile_words([r"percent", r"outperform\w*", r"scores?", r"completes", r"solves?", r"discover\w*", r"findings?"])
+
+
+def ai_topic(title):
+    if AI_BUSINESS.search(title):
+        return "sektor"
+    if (AI_NAMED.search(title) and (AI_RELEASE.search(title) or AI_VERSION.search(title))) or \
+            (AI_MODEL.search(title) and AI_RELEASE.search(title)):
+        return "model"
+    if AI_RESEARCH.search(title) or AI_RESEARCH2.search(title):
+        return "arastirma"
+    if AI_APP.search(title) or AI_APP2.search(title):
+        return "uygulama"
+    return "sektor"
+
+
+def read_ai_feed(feed):
+    name, url, kind = feed
+    now = time.time()
+    items = []
+    for title, link, ts in parse_feed(fetch(url)):
+        ts = min(ts or now, now)
+        if now - ts > AI_MAX_AGE or SKIP_RE.search(title):
+            continue
+        items.append({"id": hashlib.sha1(link.encode("utf-8")).hexdigest()[:12], "title": title[:240], "url": link,
+                      "source": name, "kind": kind, "official": kind == "resmi", "ts": int(ts), "topic": ai_topic(title), "n": 1})
+    return items
+
+
+def merge_ai(fresh, previous):
+    """Aynı haberi yazan yayınları tek satırda toplar; resmi duyuru varsa o öne alınır."""
+    cutoff = time.time() - AI_MAX_AGE
+    seen, pool = {}, []
+    for item in fresh + [dict(i) for i in previous]:
+        if item.get("ts", 0) < cutoff or item["id"] in seen or item.get("source") not in AI_KIND:
+            continue
+        item["topic"] = ai_topic(item["title"])
+        seen[item["id"]] = item
+        pool.append(item)
+    old_n = {i["id"]: i.get("n", 1) for i in previous}
+    out = []
+    for group in impact.clusters(pool):
+        group.sort(key=lambda i: i["ts"])
+        lead = ([i for i in group if i.get("official")] or group)[0]
+        names = []
+        for i in group:
+            for name in [i["source"]] + i.get("also", []):
+                if name not in names:
+                    names.append(name)
+        lead["n"] = max(len(names), old_n.get(lead["id"], 1))
+        lead["also"] = [x for x in names if x != lead["source"]][:4]
+        out.append(lead)
+    out.sort(key=lambda i: i["ts"], reverse=True)
+    return out[:AI_MAX]
+
+
 def load_previous():
     try:
         if PREV_URL:
@@ -338,6 +434,17 @@ def main():
                 errors.append(feed[0])
                 print("HATA", feed[0], repr(exc)[:160], file=sys.stderr)
 
+    ai_fresh = []
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        for feed, fut in [(f, pool.submit(read_ai_feed, f)) for f in AI_FEEDS]:
+            try:
+                ai_fresh.extend(fut.result())
+            except Exception as exc:
+                errors.append("AI: " + feed[0])
+                print("HATA AI", feed[0], repr(exc)[:160], file=sys.stderr)
+    ai = merge_ai(ai_fresh, prev.get("ai", []))
+    print("ai gündemi:", len(ai), "yeni çekilen:", len(ai_fresh))
+
     cutoff = time.time() - MAX_AGE_HOURS * 3600
     merged = {}
     seen_titles = set()
@@ -376,7 +483,7 @@ def main():
         print("HATA takvim", repr(exc)[:160], file=sys.stderr)
         calendar = prev.get("calendar", [])
 
-    out = {"updated": int(time.time()), "items": items, "events": top, "calendar": calendar, "errors": errors}
+    out = {"updated": int(time.time()), "items": items, "events": top, "calendar": calendar, "ai": ai, "errors": errors}
     os.makedirs(os.path.dirname(OUT) or ".", exist_ok=True)
     with open(OUT, "w", encoding="utf-8") as fh:
         json.dump(out, fh, ensure_ascii=False, separators=(",", ":"))

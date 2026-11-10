@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Finans Paneli</title>
 <!-- Güvenlik: sayfa yalnızca aşağıda adı geçen adreslerden kod çalıştırır ve veri çeker -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.binance.com https://data-api.binance.vision https://fapi.binance.com wss://stream.binance.com:9443 wss://data-stream.binance.vision https://api.coingecko.com https://api.alternative.me; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.binance.com https://data-api.binance.vision https://fapi.binance.com wss://stream.binance.com:9443 wss://data-stream.binance.vision wss://ws-feed-pro.btcturk.com https://api.coingecko.com https://api.alternative.me; base-uri 'none'; form-action 'none'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="description" content="Kripto ve teknoloji piyasaları için canlı takip paneli">
 <meta name="theme-color" content="#0d131f">
@@ -94,6 +94,17 @@
       <div class="value" id="g-try">—</div>
       <div class="sub" id="g-try-chg">&nbsp;</div>
     </div>
+  </section>
+
+  <section class="panel" data-tab="tek" aria-label="AI gündemi" hidden>
+    <div class="panel-head">
+      <h2>AI gündemi</h2>
+      <span class="hint" id="ai-updated">yükleniyor…</span>
+    </div>
+    <div class="chips" id="ai-filters" role="tablist" aria-label="AI haber filtresi"></div>
+    <ol class="news" id="ai-list"></ol>
+    <button type="button" class="more" id="ai-more" hidden>Daha fazla göster</button>
+    <p class="hint events-note">Yapay zekâ laboratuvarlarının kendi duyuruları ve büyük teknoloji yayınlarının AI haberleri; başlıklar orijinal dilinde ve değiştirilmeden gösterilir. Konu etiketleri (yeni model, uygulama, araştırma) başlıktaki kelimelere göre otomatik verilir, yanılabilir. "N kaynak" aynı haberi kaç yayının yazdığını gösterir.</p>
   </section>
 
   <section class="summary" data-tab="tek" aria-label="Teknoloji özeti" hidden>
@@ -195,6 +206,47 @@
     <p class="hint events-note">Bu göstergeler geçmiş fiyattan türetilir ve geleceği garanti etmez; "yukarı ağırlıklı" gibi özetler işaretlerin sayımıdır, al-sat tavsiyesi değildir. Zaman dilimini değiştirince tablo da değişir.</p>
   </section>
 
+  <section class="panel" data-tab="kripto" aria-label="BtcTurk RENDER/TL">
+    <div class="panel-head">
+      <h2>BtcTurk · RENDER/TL</h2>
+      <span class="hint" id="btk-state">bağlanıyor…</span>
+    </div>
+    <div class="inds">
+      <div class="ind">
+        <div class="label">Son işlem</div>
+        <div class="value" id="btk-last">—</div>
+        <div class="verdict" id="btk-last-v">&nbsp;</div>
+      </div>
+      <div class="ind">
+        <div class="label">Alış / satış</div>
+        <div class="value" id="btk-ba">—</div>
+        <div class="verdict" id="btk-ba-v">&nbsp;</div>
+      </div>
+      <div class="ind">
+        <div class="label">Global fiyata göre</div>
+        <div class="value" id="btk-prem">—</div>
+        <div class="verdict" id="btk-prem-v">&nbsp;</div>
+      </div>
+      <div class="ind">
+        <div class="label">24 saatlik hacim</div>
+        <div class="value" id="btk-vol">—</div>
+        <div class="verdict" id="btk-vol-v">&nbsp;</div>
+      </div>
+    </div>
+    <div class="calc">
+      <div class="label">Emir maliyeti hesaplayıcı</div>
+      <div class="calc-row">
+        <div class="tabs" id="btk-side" role="tablist" aria-label="Emir yönü">
+          <button type="button" role="tab" data-id="buy" aria-selected="true">Alış</button>
+          <button type="button" role="tab" data-id="sell" aria-selected="false">Satış</button>
+        </div>
+        <label class="calc-amt">Tutar (TL)<input id="btk-amt" type="number" inputmode="numeric" min="0" step="1000" value="250000"></label>
+      </div>
+      <p class="calc-out" id="btk-calc">Emir defteri bekleniyor…</p>
+    </div>
+    <p class="hint events-note">Yalnızca BtcTurk'ün herkese açık piyasa verisini okur; hesabına bağlanmaz, emir vermez. "Global fiyata göre" Binance fiyatı × dolar kuru ile karşılaştırmadır. Hesaplayıcı, tutarın o anki emir defterinde piyasa emriyle hangi ortalama fiyattan dolacağını gösterir; komisyon dahil değildir ve defter sen emri girene kadar değişebilir.</p>
+  </section>
+
   <section class="panel" data-tab="kripto" aria-label="Kripto göstergeleri">
     <div class="panel-head">
       <h2>Göstergeler · <span id="ind-sym">BTC</span></h2>
@@ -230,7 +282,7 @@
         <div class="label" id="ind-vs-label">BTC'ye göre performans</div>
         <div class="value" id="ind-vs">—</div>
         <div class="verdict" id="ind-vs-v">&nbsp;</div>
-        <p>Varlığın BTC karşısındaki değer değişimi. Artıysa BTC'den iyi, eksiyse BTC'den zayıf gidiyor. Grafikte "BTC'ye göre" düğmesiyle çizdirebilirsin; rakamlar okunaklı olsun diye satoshi (BTC'nin 100 milyonda biri) cinsinden gösterilir.</p>
+        <p>Varlığın BTC karşısındaki değer değişimi. Artıysa BTC'den iyi, eksiyse BTC'den zayıf gidiyor. Grafikte "BTC'ye göre" düğmesiyle çizdirebilirsin; rakamlar okunaklı olsun diye satoshi (BTC'nin 100 milyonda biri) cinsinden gösterilir. Oran, varlığın dolar fiyatının BTC'nin dolar fiyatına bölümüdür.</p>
       </div>
       <div class="ind">
         <div class="label">Altcoin gücü (30 gün)</div>
@@ -247,7 +299,8 @@
       <h2>Strateji testi · <span id="bt-sym">BTC</span></h2>
       <div class="tabs" id="bt-intervals" role="tablist" aria-label="Test zaman dilimi"></div>
     </div>
-    <p class="hint">Basit kurallar geçmişte uygulansaydı ne olurdu? Grafikte seçili varlığı dolar (USDT) karşısında dener.</p>
+    <p class="hint">Basit kurallar geçmişte uygulansaydı ne olurdu? Grafikte seçili varlığı dener; grafikte "BTC'ye göre" açıksa BTC karşısında, değilse dolar karşısında.</p>
+    <div class="chips" id="bt-stops" role="tablist" aria-label="Zarar durdurma"></div>
     <p class="empty" id="bt-msg">Panel görününce hesaplanır…</p>
     <div id="bt-body" hidden>
       <div class="bt-top">
@@ -262,6 +315,7 @@
         </div>
       </div>
       <p class="hint" id="bt-period"></p>
+      <div class="bt-parts" id="bt-parts"></div>
       <div class="bt-list" id="bt-list"></div>
     </div>
     <p class="hint events-note">Her alım ve satımda %0,15 maliyet (komisyon + kayma) düşülür; karar mum kapanışında verilir, işlem sonraki mumun açılışında yapılır. Geçmişte işe yarayan kural gelecekte yaramayabilir: piyasa koşulu değişir ve az sayıda işleme dayanan sonuç şans olabilir. Bu bir tavsiye değil, karşılaştırma aracıdır.</p>

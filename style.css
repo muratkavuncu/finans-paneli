@@ -393,3 +393,34 @@ h2 { font-size: 16px; font-weight: 600; }
 .bt-ret { font-family: var(--font-display); font-size: 18px; font-weight: 600; white-space: nowrap; }
 .bt-vs { font-size: 11.5px; font-weight: 600; white-space: nowrap; }
 @media (max-width: 520px) { .bt-top { grid-template-columns: 1fr; } }
+
+/* BtcTurk kartı */
+.calc { background: var(--surface-2); border-radius: 12px; padding: 12px; margin-top: 10px; display: grid; gap: 10px; }
+.calc-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+.calc .tabs { background: var(--surface); }
+.calc-amt { display: grid; gap: 4px; color: var(--muted); font-size: 12px; flex: 1 1 160px; }
+.calc-amt input {
+  font: inherit; font-size: 16px; font-weight: 600; color: var(--fg); background: var(--surface);
+  border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px; width: 100%; min-width: 0;
+}
+.calc-out { margin: 0; font-size: 13.5px; line-height: 1.5; font-weight: 500; }
+.calc-out.warn { color: var(--accent); }
+
+/* AI gündemi */
+.n-dot.ai-model { background: var(--accent); }
+.n-dot.ai-uygulama { background: var(--up); }
+.n-dot.ai-arastirma { background: var(--ma2); }
+.n-dot.ai-sektor { background: var(--muted); }
+
+/* Strateji testi: dönemler */
+.bt-parts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+.bt-part { background: var(--surface-2); border-radius: 10px; padding: 8px 10px; display: grid; gap: 2px; min-width: 0; }
+.bt-part strong { font-family: var(--font-display); font-size: 15px; }
+
+/* Katlanır bölümler */
+.panel-head h2[role="button"] { cursor: pointer; user-select: none; }
+.panel-head h2[role="button"]::after { content: "▾"; margin-left: 8px; color: var(--muted); font-size: .8em; }
+.panel.folded .panel-head h2[role="button"]::after { content: "▸"; }
+.panel.folded > :not(.panel-head) { display: none !important; }
+.panel.folded .panel-head { margin-bottom: 0; }
+.panel.folded .panel-head > :not(h2) { display: none; }

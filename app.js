@@ -53,7 +53,7 @@
   // BTC cinsinden fiyatlar çok küçük olduğu için grafik 10'un katıyla çarpılır (çoğu varlıkta satoshi: 1 BTC = 100 milyon sat)
   let qPow = 8;
   const fmtBtc = (p) => NF[Math.max(0, 8 - qPow)].format(p) + (qPow === 8 ? ' sat' : '');
-  const qNote = () => (qPow === 8 ? 'satoshi' : '×' + NF[0].format(Math.pow(10, qPow)));
+  const qNote = () => (qPow === 8 ? 'satoshi' : '×' + NF[0].format(Math.pow(10, qPow))) + ' · hesaplanan oran';
   if (!INTERVALS.some((i) => i.id === interval)) interval = '1h';
 
   // Hisseler: veri GitHub zamanlayıcısının hazırladığı data/markets.json dosyasından gelir
@@ -235,6 +235,7 @@
     if (tab === 'kripto') { state[selected].shown = null; markDirty(selected); } else renderStocks();
     buildFilters();
     renderNews();
+    renderAi();
     loadChart();
   }
 
@@ -330,6 +331,7 @@
   }
 
   function renderTry(price, pct) {
+    usdtTry = price;
     $('g-try').textContent = '₺' + NF[2].format(price);
     const el = $('g-try-chg');
     el.textContent = '24s ' + fmtPct(pct);
@@ -472,6 +474,25 @@
     msg.hidden = true;
   }
 
+  // SEMBOL/BTC oranı iki dolar paritesinden hesaplanır (Binance'te bazı BTC pariteleri artık işlem görmüyor).
+  // Mumun yüksek/düşük değeri açılış ve kapanıştan türetilir; fitiller bu yüzden gerçekten kısadır.
+  function ratioRows(a, b) {
+    const byTime = new Map(b.map((r) => [r[0], r]));
+    const out = [];
+    a.forEach((r) => {
+      const x = byTime.get(r[0]);
+      if (!x) return;
+      const o = r[1] / x[1], c = r[4] / x[4];
+      out.push([r[0], o, Math.max(o, c), Math.min(o, c), c, r[5]]);
+    });
+    return out;
+  }
+  async function klinesFor(sym, quote, iv, extra) {
+    const a = await binance('/api/v3/klines?symbol=' + sym + 'USDT&interval=' + iv + extra);
+    if (quote !== 'BTC') return a;
+    return ratioRows(a, await binance('/api/v3/klines?symbol=BTCUSDT&interval=' + iv + extra));
+  }
+
   async function loadChart() {
     if (!chart) return;
     if (tab === 'tek') { loadStockChart(); return; }
@@ -480,7 +501,7 @@
     const msg = $('chart-msg');
     haveData = false;
     try {
-      const rows = await binance('/api/v3/klines?symbol=' + sym + q() + '&interval=' + interval + '&limit=500');
+      const rows = await klinesFor(sym, q(), interval, '&limit=500');
       if (token !== chartToken) return;
       const last = +rows[rows.length - 1][4];
       const btcQ = q() === 'BTC';
@@ -507,9 +528,19 @@
 
   function onKline(d) {
     const k = d.k;
-    if (tab !== 'kripto' || !haveData || d.s !== selected + q() || k.i !== interval) return;
+    if (tab !== 'kripto' || !haveData || d.s !== selected + 'USDT' || k.i !== interval) return;
     const m = chartMul;
-    const c = toCandle(k.t, k.o * m, k.h * m, k.l * m, k.c * m);
+    let c;
+    if (q() === 'BTC') {
+      // Canlı oran: iki canlı dolar fiyatının bölümü
+      const r = state[selected].price / state.BTC.price * m;
+      if (!isFinite(r) || r <= 0) return;
+      const t = k.t / 1000 + tzShift, last = taBars[taBars.length - 1];
+      if (last && t < last.time) return;
+      c = last && last.time === t
+        ? { time: t, open: last.open, high: Math.max(last.high, r), low: Math.min(last.low, r), close: r }
+        : { time: t, open: r, high: r, low: r, close: r };
+    } else c = toCandle(k.t, k.o * m, k.h * m, k.l * m, k.c * m);
     candles.update(c);
     volume.update(toVolume(k.t, k.o, k.c, k.v));
     taUpdate(c);
@@ -785,13 +816,14 @@
       markSelection();
       swapKline();
       loadChart();
+      btMark();
     });
     $('ma-legend').hidden = !showMA;
   }
 
   // ---------- Canlı akış ----------
   let ws = null, wsHost = 0, retry = 0, lastMsg = 0, reqId = 1, everOpen = false, reconnectTimer = 0;
-  const klineStream = () => (selected + q()).toLowerCase() + '@kline_' + interval;
+  const klineStream = () => (selected + 'USDT').toLowerCase() + '@kline_' + interval;
   let activeKline = klineStream();
 
   function baseStreams() {
@@ -1003,7 +1035,7 @@
     $('ind-vs-label').textContent = sym === 'BTC' ? 'BTC\'ye göre performans' : sym + ' / BTC performansı (30 gün)';
     if (sym === 'BTC') { $('ind-vs').textContent = '—'; setVerdict('ind-vs-v', 'bir altcoin seçince görünür'); return; }
     try {
-      const rows = await binance('/api/v3/klines?symbol=' + sym + 'BTC&interval=1d&limit=31');
+      const rows = await klinesFor(sym, 'BTC', '1d', '&limit=31');
       if (sym !== selected) return;
       const c = rows.map((r) => +r[4]);
       const n = c.length - 1;
@@ -1069,16 +1101,19 @@
   let btInterval = load('fp.bti', '4h');
   if (!BT_INTERVALS.some((x) => x.id === btInterval)) btInterval = '4h';
   let btSel = load('fp.bts', 'ema');
+  const BT_STOPS = [{ v: 0, label: 'Zarar durdurma yok' }, { v: 0.05, label: '%5 zarar durdurma' }, { v: 0.1, label: '%10 zarar durdurma' }];
+  let btSl = +load('fp.btsl', '0') || 0;
+  if (!BT_STOPS.some((x) => x.v === btSl)) btSl = 0;
   let btToken = 0, btDirty = true, btVisible = false, btRes = null;
 
-  async function btFetch(sym, iv) {
+  async function btFetch(sym, quote, iv) {
     let rows = [];
     let end = '';
     for (let page = 0; page < 3; page++) {
-      const part = await binance('/api/v3/klines?symbol=' + sym + 'USDT&interval=' + iv + '&limit=1000' + end);
+      const part = await klinesFor(sym, quote, iv, '&limit=1000' + end);
       if (!part.length) break;
       rows = part.concat(rows);
-      if (part.length < 1000) break;
+      if (part.length < 990) break;
       end = '&endTime=' + (part[0][0] - 1);
     }
     return rows.slice(0, -1); // son mum henüz kapanmadı
@@ -1097,7 +1132,7 @@
       for (let j = i - 10; j < i; j++) lo = Math.min(lo, l[j]);
       hi20[i] = hi; lo10[i] = lo;
     }
-    return { t: rows.map((r) => r[0]), o, c, n, e20: emaArr(c, 20), e50: emaArr(c, 50), e200: emaArr(c, 200), rsi: rsiArr(c, 14), hist, hi20, lo10 };
+    return { t: rows.map((r) => r[0]), o, l, c, n, e20: emaArr(c, 20), e50: emaArr(c, 50), e200: emaArr(c, 200), rsi: rsiArr(c, 14), hist, hi20, lo10 };
   }
 
   function maxDrawdown(curve) {
@@ -1106,12 +1141,15 @@
     return dd * 100;
   }
 
-  function btRun(d, strat) {
-    let cash = 1, units = 0, entry = 0, inPos = false, bars = 0;
+  // sl: zarar durdurma oranı (0 = yok). Durdurulunca kural "dışarıda" demeden yeniden girilmez.
+  function btRun(d, strat, sl) {
+    let cash = 1, units = 0, entry = 0, raw = 0, inPos = false, bars = 0, stopped = false;
     const trades = [], curve = [];
     for (let i = BT_WARM; i < d.n; i++) {
       const want = strat.step(d, i - 1, inPos);
-      if (want && !inPos) {
+      if (!want) stopped = false;
+      if (want && !inPos && !stopped) {
+        raw = d.o[i];
         entry = d.o[i] * (1 + BT_COST);
         units = cash / entry;
         inPos = true;
@@ -1120,6 +1158,13 @@
         cash = units * exit;
         trades.push(exit / entry - 1);
         inPos = false;
+      }
+      if (inPos && sl && d.l[i] <= raw * (1 - sl)) {
+        const exit = Math.min(d.o[i], raw * (1 - sl)) * (1 - BT_COST);
+        cash = units * exit;
+        trades.push(exit / entry - 1);
+        inPos = false;
+        stopped = true;
       }
       if (inPos) bars++;
       curve.push(inPos ? units * d.c[i] : cash);
@@ -1171,6 +1216,20 @@
     add(btPath(btRes.hold.curve, lo, hi, 300, 100), 'bt-hold');
     add(btPath(r.res.curve, lo, hi, 300, 100), 'bt-strat');
     $('bt-curve-name').textContent = r.s.name;
+    // Tek dönem yanıltabilir: aynı sonucu üç eşit döneme bölerek göster
+    const parts = $('bt-parts');
+    parts.textContent = '';
+    const n = r.res.curve.length;
+    const chg = (c, a, b) => (c[b] / (a ? c[a - 1] : 1) - 1) * 100;
+    for (let k = 0; k < 3; k++) {
+      const a = Math.floor(n * k / 3), b = Math.floor(n * (k + 1) / 3) - 1;
+      const sv = chg(r.res.curve, a, b), hv = chg(btRes.hold.curve, a, b);
+      const cell = el('div', 'bt-part');
+      cell.appendChild(el('span', 'label', (k + 1) + '. dönem'));
+      cell.appendChild(el('strong', signClass(sv), fmtPct(sv)));
+      cell.appendChild(el('span', 'bt-desc', 'tut ' + fmtPct(hv)));
+      parts.appendChild(cell);
+    }
   }
 
   function btRender() {
@@ -1212,12 +1271,12 @@
     if (!btVisible || !btDirty) return;
     btDirty = false;
     const token = ++btToken;
-    const sym = selected, iv = btInterval;
-    $('bt-sym').textContent = sym + ' · ' + BT_INTERVALS.find((x) => x.id === iv).label;
+    const sym = selected, iv = btInterval, quote = q();
+    $('bt-sym').textContent = sym + (quote === 'BTC' ? '/BTC' : '') + ' · ' + BT_INTERVALS.find((x) => x.id === iv).label;
     $('bt-msg').hidden = false;
     $('bt-msg').textContent = 'Geçmiş veri yükleniyor…';
     try {
-      const rows = await btFetch(sym, iv);
+      const rows = await btFetch(sym, quote, iv);
       if (token !== btToken) return;
       if (rows.length < BT_WARM + 100) {
         btRes = null;
@@ -1229,7 +1288,7 @@
       const d = btPrepare(rows);
       btRes = {
         from: d.t[BT_WARM], to: d.t[d.n - 1], bars: d.n - BT_WARM, hold: btHold(d),
-        rows: BT_STRATS.map((s) => ({ s, res: btRun(d, s) })).sort((a, b) => b.res.ret - a.res.ret),
+        rows: BT_STRATS.map((s) => ({ s, res: btRun(d, s, btSl) })).sort((a, b) => b.res.ret - a.res.ret),
       };
       $('bt-msg').hidden = true;
       $('bt-body').hidden = false;
@@ -1259,6 +1318,21 @@
       });
       box.appendChild(b);
     });
+    const stops = $('bt-stops');
+    BT_STOPS.forEach((x) => {
+      const b = el('button', '', x.label);
+      b.type = 'button';
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-selected', String(x.v === btSl));
+      b.addEventListener('click', () => {
+        if (x.v === btSl) return;
+        btSl = x.v;
+        save('fp.btsl', String(x.v));
+        stops.querySelectorAll('button').forEach((y) => y.setAttribute('aria-selected', String(y === b)));
+        btMark();
+      });
+      stops.appendChild(b);
+    });
     // Panel ekrana gelene kadar veri çekilmez (telefon verisini boşa harcamamak için)
     if ('IntersectionObserver' in window) {
       new IntersectionObserver((entries) => {
@@ -1266,6 +1340,187 @@
         btLoad();
       }, { rootMargin: '200px' }).observe($('bt-panel'));
     } else { btVisible = true; btLoad(); }
+  }
+
+  // ---------- BtcTurk: RENDER/TL (canlı, yalnızca okuma) ----------
+  // Herkese açık piyasa verisi akışı; hesap, anahtar ya da emir yoktur.
+  const BTK_WS = 'wss://ws-feed-pro.btcturk.com/';
+  const BTK_PAIR = 'RENDERTRY';
+  let usdtTry = null, btk = null, btkTick = null, btkBook = null, btkSide = 'buy', btkTimer = 0, btkLast = 0;
+  const tl = (v, d) => '₺' + NF[d == null ? 2 : d].format(v);
+  const bookSide = (rows, dir) => (Array.isArray(rows) ? rows : []).map((r) => ({ p: +r.P, a: +r.A }))
+    .filter((r) => r.p > 0 && r.a > 0).sort((x, y) => dir * (x.p - y.p));
+
+  function btkConnect() {
+    if (btk || document.hidden) return;
+    let sock;
+    try { sock = new WebSocket(BTK_WS); } catch (err) { return; }
+    btk = sock;
+    sock.onopen = () => {
+      ['ticker', 'orderbook'].forEach((ch) => sock.send(JSON.stringify([151, { type: 151, channel: ch, event: BTK_PAIR, join: true }])));
+    };
+    sock.onmessage = (ev) => {
+      let d;
+      try { d = JSON.parse(ev.data); } catch (err) { return; }
+      if (!Array.isArray(d) || !d[1] || d[1].PS !== BTK_PAIR) return;
+      if (d[0] === 402) btkTick = d[1];
+      else if (d[0] === 431) btkBook = { asks: bookSide(d[1].AO, 1), bids: bookSide(d[1].BO, -1) };
+      else return;
+      btkLast = Date.now();
+      if (!btkTimer) btkTimer = setTimeout(() => { btkTimer = 0; btkRender(); }, 500);
+    };
+    sock.onclose = () => { if (btk === sock) { btk = null; setTimeout(btkConnect, 5000); } btkRender(); };
+    sock.onerror = () => { try { sock.close(); } catch (err) { /* zaten kapalı */ } };
+  }
+
+  function btkRender() {
+    const live = btk && btk.readyState === 1 && Date.now() - btkLast < 20000;
+    $('btk-state').textContent = live ? 'canlı · yalnızca okuma' : 'bağlanıyor…';
+    const t = btkTick;
+    if (t) {
+      const last = +t.LA, bid = +t.B, ask = +t.A, dp = (last / +t.O - 1) * 100;
+      $('btk-last').textContent = tl(last);
+      setVerdict('btk-last-v', '24 sa ' + fmtPct(dp), dp >= 0 ? 'pos' : 'neg');
+      $('btk-ba').textContent = tl(bid) + ' / ' + tl(ask);
+      setVerdict('btk-ba-v', 'fark %' + NF[2].format((ask / bid - 1) * 100) + ' · en iyi fiyatta ' + NF[0].format(+t.BA) + ' / ' + NF[0].format(+t.AA) + ' RENDER');
+      const g = state.RENDER.price * usdtTry;
+      if (isFinite(g) && g > 0) {
+        const prem = ((bid + ask) / 2 / g - 1) * 100;
+        $('btk-prem').textContent = fmtPct(prem);
+        setVerdict('btk-prem-v', 'global ' + tl(g) + ' · ' + (Math.abs(prem) < 0.3 ? 'uyumlu' : prem > 0 ? 'BtcTurk pahalı' : 'BtcTurk ucuz'),
+          Math.abs(prem) >= 0.5 ? 'warn' : '');
+      }
+      $('btk-vol').textContent = NF[0].format(+t.V) + ' RENDER';
+      setVerdict('btk-vol-v', '≈ ' + tl(+t.V * +t.AV, 0));
+    }
+    btkCalc();
+  }
+
+  // Yazılan tutar canlı emir defterinde yürütülseydi ortalama hangi fiyattan dolardı
+  function btkCalc() {
+    const out = $('btk-calc');
+    const amt = parseFloat($('btk-amt').value);
+    out.className = 'calc-out';
+    if (!btkBook) { out.textContent = 'Emir defteri bekleniyor…'; return; }
+    if (!(amt > 0)) { out.textContent = 'Bir tutar yaz.'; return; }
+    const rows = btkSide === 'buy' ? btkBook.asks : btkBook.bids;
+    if (!rows.length) { out.textContent = 'Defterin bu tarafı boş.'; return; }
+    let left = amt, qty = 0, spent = 0, steps = 0;
+    for (const r of rows) {
+      const take = Math.min(left, r.p * r.a);
+      qty += take / r.p;
+      spent += take;
+      left -= take;
+      steps++;
+      if (left <= 0.01) break;
+    }
+    const best = rows[0].p, avg = spent / qty;
+    const slip = Math.abs(avg / best - 1) * 100;
+    let text = 'Ortalama fiyat ' + tl(avg, 3) + ' (en iyi ' + tl(best) + ') · kayma %' + NF[2].format(slip)
+      + ' ≈ ' + tl(spent * slip / 100, 0) + ' · ' + NF[0].format(qty) + ' RENDER · ' + steps + ' kademe';
+    if (left > 0.01) {
+      text = 'Görünen defter yetmiyor: en fazla ' + tl(spent, 0) + ' doluyor (' + steps + ' kademe, ortalama ' + tl(avg, 3) + ', kayma %'
+        + NF[2].format(slip) + '). Kalan ' + tl(left, 0) + ' için fiyat daha da kayar.';
+      out.className = 'calc-out warn';
+    } else if (slip >= 0.5) out.className = 'calc-out warn';
+    out.textContent = text;
+  }
+
+  function initBtk() {
+    $('btk-side').querySelectorAll('button').forEach((b) => {
+      b.addEventListener('click', () => {
+        btkSide = b.dataset.id;
+        $('btk-side').querySelectorAll('button').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
+        btkCalc();
+      });
+    });
+    $('btk-amt').addEventListener('input', btkCalc);
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) btkConnect();
+      else if (btk) { const s = btk; btk = null; s.close(); }
+    });
+    btkConnect();
+  }
+
+  // ---------- AI gündemi (Teknoloji sekmesi) ----------
+  const AI_TOPICS = { model: 'Yeni model', uygulama: 'Uygulama', arastirma: 'Araştırma', sektor: 'Şirket ve sektör' };
+  const AI_FILTERS = [
+    { id: 'all', label: 'Tümü', test: () => true },
+    { id: 'model', label: 'Yeni modeller', test: (n) => n.topic === 'model' },
+    { id: 'uygulama', label: 'Uygulamalar', test: (n) => n.topic === 'uygulama' },
+    { id: 'arastirma', label: 'Araştırma', test: (n) => n.topic === 'arastirma' },
+    { id: 'official', label: 'Resmi duyurular', test: (n) => n.official },
+    { id: 'top', label: 'Çok konuşulan', test: (n) => n.n >= 2 },
+    { id: 'sektor', label: 'Şirket ve sektör', test: (n) => n.topic === 'sektor' },
+  ];
+  let aiFilter = load('fp.aif', 'all');
+  if (!AI_FILTERS.some((f) => f.id === aiFilter)) aiFilter = 'all';
+  let aiShown = 25;
+  const aiSeen = +load('fp.aiSeen', '0') || 0;
+
+  function initAi() {
+    const box = $('ai-filters');
+    AI_FILTERS.forEach((f) => {
+      const b = el('button', '', f.label);
+      b.type = 'button';
+      b.setAttribute('role', 'tab');
+      b.dataset.id = f.id;
+      b.addEventListener('click', () => { aiFilter = f.id; aiShown = 25; save('fp.aif', f.id); renderAi(); });
+      box.appendChild(b);
+    });
+    $('ai-more').addEventListener('click', () => { aiShown += 25; renderAi(); });
+  }
+
+  function renderAi() {
+    if (!news) return;
+    const all = Array.isArray(news.ai) ? news.ai : [];
+    document.querySelectorAll('#ai-filters button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.id === aiFilter)));
+    const items = all.filter(AI_FILTERS.find((f) => f.id === aiFilter).test);
+    const list = $('ai-list');
+    list.textContent = '';
+    if (!items.length) list.appendChild(el('li', 'empty', all.length ? 'Son 7 günde bu filtreye uyan haber yok.' : 'AI gündemi henüz yüklenmedi.'));
+    items.slice(0, aiShown).forEach((n) => {
+      const li = el('li');
+      const a = el('a');
+      if (/^https?:\/\//.test(n.url)) a.href = n.url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.appendChild(el('span', 'n-dot ai-' + n.topic));
+      const body = el('span');
+      const meta = el('span', 'n-meta', ago(n.ts) + ' · ' + n.source + (n.official ? ' · resmi duyuru' : n.kind === 'blog' ? ' · kişisel blog' : ''));
+      if (n.n >= 2) meta.appendChild(el('span', 'badge-conf', n.n + ' kaynak'));
+      if (aiSeen && n.ts > aiSeen) meta.appendChild(el('span', 'badge-new', 'YENİ'));
+      body.appendChild(meta);
+      body.appendChild(el('span', 'n-title', n.title));
+      const tags = el('span', 'n-tags');
+      tags.appendChild(el('span', n.topic === 'model' ? 'hot' : '', AI_TOPICS[n.topic] || 'AI'));
+      (n.also || []).slice(0, 3).forEach((s) => tags.appendChild(el('span', '', 'ayrıca ' + s)));
+      body.appendChild(tags);
+      a.appendChild(body);
+      li.appendChild(a);
+      list.appendChild(li);
+    });
+    $('ai-more').hidden = items.length <= aiShown;
+    $('ai-updated').textContent = all.length + ' haber · son 7 gün · güncellendi: ' + ago(news.updated);
+    if (tab === 'tek' && all.length) setTimeout(() => save('fp.aiSeen', String(all[0].ts)), 8000);
+  }
+
+  // ---------- Katlanır bölümler ----------
+  function initFold() {
+    document.querySelectorAll('.panel > .panel-head > h2').forEach((h) => {
+      const panel = h.closest('.panel');
+      const key = 'fp.fold.' + (panel.getAttribute('aria-label') || h.textContent);
+      const set = (folded) => {
+        panel.classList.toggle('folded', folded);
+        h.setAttribute('aria-expanded', String(!folded));
+      };
+      h.setAttribute('role', 'button');
+      h.tabIndex = 0;
+      set(load(key, '0') === '1');
+      const toggle = () => { const f = !panel.classList.contains('folded'); set(f); save(key, f ? '1' : '0'); };
+      h.addEventListener('click', toggle);
+      h.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+    });
   }
 
   // ---------- Hisseler, endeksler ve piyasa nabzı ----------
@@ -1667,6 +1922,7 @@
       if (!r.ok) throw new Error('HTTP ' + r.status);
       news = await r.json();
       renderNews();
+      renderAi();
       renderCalendar();
       renderNextEvent();
       if (news.items.length) setTimeout(() => save('fp.newsSeen', String(news.items[0].ts)), 8000);
@@ -1700,6 +1956,9 @@
   loadVsBtc();
   setInterval(loadVsBtc, 600000);
   initBt();
+  initBtk();
+  initAi();
+  initFold();
   setInterval(loadAltStrength, 3600000);
   connect();
   loadGlobal();

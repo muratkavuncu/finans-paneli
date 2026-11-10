@@ -226,7 +226,7 @@ class Prices:
                 self.cache[key] = []
         return self.cache[key]
 
-    def candles(self, key, interval="1h", limit=500):
+    def candles(self, key, interval="1h", limit=1000):
         """Kripto için mum listesi: (zaman, açılış, yüksek, düşük, kapanış). Alınamazsa boş."""
         ckey = key + ":" + interval
         if ckey not in self.cache:
