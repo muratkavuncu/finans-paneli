@@ -86,7 +86,10 @@ h1 { font-size: 20px; font-weight: 700; letter-spacing: -.01em; }
 }
 .status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warn); }
 .status[data-state="live"] .dot { background: var(--up); animation: pulse 1.6s ease-out infinite; }
-.status[data-state="down"] .dot { background: var(--down); }
+.status[data-state="down"] .dot { background: var(--down); animation: alarm 1s steps(2, start) infinite; }
+.status[data-state="down"] { border-color: var(--down); background: var(--down-soft); }
+.status[data-state="late"] { border-color: var(--warn); }
+@keyframes alarm { to { opacity: .25; } }
 .status-time { color: var(--muted); }
 @keyframes pulse {
   0% { box-shadow: 0 0 0 0 var(--up-soft); }
@@ -328,7 +331,7 @@ h2 { font-size: 16px; font-weight: 600; }
   .name { display: none; }
   .chart { height: 320px; }
   .range { gap: 14px; }
-  .status-time { display: none; }
+  .status { font-size: 12px; padding: 5px 10px; }
 }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }

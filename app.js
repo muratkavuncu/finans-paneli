@@ -482,9 +482,43 @@
     return list;
   }
 
+  // Durum göstergesi iki şeyi birlikte izler: canlı fiyat bağlantısı ve 5 dakikalık veri zinciri.
+  // Zincir verisi 8 dakikadan eskiyse sarı, 15 dakikadan eskiyse kırmızı olur.
+  const DATA_LATE = 8 * 60, DATA_DEAD = 15 * 60;
+  let wsState = 'connecting';
+  const pageStart = Date.now();
   function setStatus(s) {
-    $('status').dataset.state = s;
-    $('status-text').textContent = s === 'live' ? 'Canlı' : s === 'down' ? 'Bağlantı koptu, yeniden deneniyor' : 'Bağlanıyor…';
+    wsState = s;
+    refreshStatus();
+  }
+  function refreshStatus() {
+    const age = news && news.updated ? Date.now() / 1000 - news.updated : null;
+    const mins = age == null ? null : Math.floor(age / 60);
+    let state = wsState, text, detail = '';
+    if (wsState === 'down') {
+      text = 'Fiyat bağlantısı koptu';
+      detail = 'yeniden deneniyor';
+    } else if (age == null && Date.now() - pageStart > 20000) {
+      state = 'down';
+      text = 'Veri alınamıyor';
+      detail = 'haber ve hisse verisi yüklenemedi';
+    } else if (age != null && age > DATA_DEAD) {
+      state = 'down';
+      text = 'Veri zinciri durdu';
+      detail = 'son güncelleme ' + (mins >= 120 ? Math.floor(mins / 60) + ' sa' : mins + ' dk') + ' önce';
+    } else if (age != null && age > DATA_LATE) {
+      state = 'late';
+      text = 'Veri gecikiyor';
+      detail = 'son güncelleme ' + mins + ' dk önce';
+    } else if (wsState === 'live') {
+      text = 'Canlı';
+      detail = age == null ? '' : 'veri ' + (mins < 1 ? 'az önce' : mins + ' dk önce');
+    } else {
+      text = 'Bağlanıyor…';
+    }
+    $('status').dataset.state = state;
+    $('status-text').textContent = text;
+    $('status-time').textContent = detail;
   }
 
   function connect() {
@@ -543,7 +577,7 @@
   // Sessiz kalan bağlantıyı yakala
   setInterval(() => {
     if (ws && ws.readyState === 1 && Date.now() - lastMsg > 15000) ws.close();
-    if (lastMsg) $('status-time').textContent = 'son veri ' + new Date(lastMsg).toLocaleTimeString('tr-TR');
+    refreshStatus();
   }, 1000);
 
   // Telefon sayfayı arka plana alınca bağlantı uyur; geri dönünce tazele
