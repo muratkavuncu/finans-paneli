@@ -21,7 +21,7 @@ on:
         type: boolean
         default: false
       fiyat:
-        description: Zincirin kendi kullandığı alan (son fiyat bildirimlerinin zamanı); boş bırakın
+        description: Zincirin kendi kullandığı alan (son fiyat ve seviye bildirimlerinin zamanı); boş bırakın
         type: string
         default: ""
 
@@ -79,6 +79,8 @@ jobs:
         run: |
           mkdir -p _site/data
           cp index.html style.css app.js _site/
+          test -s data/daily.json || curl -fsS "$SITE/daily.json" -o data/daily.json || echo '{"updated":0,"symbols":{}}' > data/daily.json
+          cp data/daily.json _site/data/
           cp data/news.json data/markets.json data/events_log.json data/notify_state.json _site/data/
 
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
@@ -117,5 +119,5 @@ jobs:
           # İzleyici erken biterse zincir hızlanmasın: kalan süreyi bekle
           KALAN=$(( BEKLE - $(date +%s) + BASLA ))
           if [ "$KALAN" -gt 0 ]; then sleep "$KALAN"; fi
-          case "$FIYAT" in *[!A-Z0-9:,]*) FIYAT="" ;; esac
+          case "$FIYAT" in *[!A-Za-z0-9:,=]*) FIYAT="" ;; esac
           gh workflow run yayinla.yml --repo "$GITHUB_REPOSITORY" --ref main -f zincir=true -f fiyat="$FIYAT"

@@ -3,7 +3,8 @@
 Dört tür bildirim gönderir:
   1) Haber    - erken uyarı (tek büyük küresel kaynak + fiyat tepki veriyor), resmi açıklama,
                 teyitli (en az iki ayrı yayın kuruluşu) yüksek etkili olay
-  2) Fiyat    - BTC / RENDER'da 5 ya da 15 dakikada sert hareket
+  2) Fiyat    - BTC / RENDER'da 5 ya da 15 dakikada sert hareket; saatlik grafikte destek/direnç kırılımı
+                ve EMA 200 geçişi
   3) Takvim   - kritik veriden önce hatırlatma
   4) Tepki    - kritik veri açıklandıktan birkaç dakika sonra piyasanın ilk tepkisi
 
@@ -174,6 +175,111 @@ def price_alerts(events, prices, sent, now):
     return count
 
 
+# --- Teknik seviye (saatlik grafik)
+LEVEL_TOUCHES = 3           # seviye sayılması için en az kaç kez dönülmüş olmalı
+TECH_MARGIN = 0.75           # kırılım sayılması için seviyenin ötesine geçilmesi gereken pay (ATR'nin katı)
+TECH_COOLDOWN = 4 * 3600     # aynı varlık + aynı yön için tekrar aralığı
+LEVEL_COOLDOWN = 24 * 3600   # aynı seviye için tekrar aralığı
+EMA_COOLDOWN = 12 * 3600     # EMA 200 geçişi için tekrar aralığı
+
+
+def _ema(vals, n):
+    if len(vals) < n:
+        return None
+    e = sum(vals[:n]) / n
+    k = 2.0 / (n + 1)
+    for v in vals[n:]:
+        e = v * k + e * (1 - k)
+    return e
+
+
+def _atr(bars, n=14):
+    tr = [max(b[2] - b[3], abs(b[2] - a[4]), abs(b[3] - a[4])) for a, b in zip(bars[-n - 1:-1], bars[-n:])]
+    return sum(tr) / len(tr) if tr else 0
+
+
+def _levels(bars, atr, w=4):
+    """Fiyatın en az LEVEL_TOUCHES kez döndüğü seviyeler: [(fiyat, dönüş sayısı)], küçükten büyüğe."""
+    pivots = []
+    for i in range(max(w, len(bars) - 300), len(bars) - w):
+        win = bars[i - w:i + w + 1]
+        if bars[i][2] >= max(b[2] for b in win):
+            pivots.append(bars[i][2])
+        if bars[i][3] <= min(b[3] for b in win):
+            pivots.append(bars[i][3])
+    pivots.sort()
+    out = []
+    for p in pivots:
+        if out and p - out[-1][0] <= atr * 0.6:
+            price, n = out[-1]
+            out[-1] = ((price * n + p) / (n + 1), n + 1)
+        else:
+            out.append((p, 1))
+    return [x for x in out if x[1] >= LEVEL_TOUCHES]
+
+
+def tech_alerts(prices, sent, now):
+    """Saatlik grafikte destek/direnç kırılımı ve EMA 200 geçişi. sent sözlüğünü günceller."""
+    fetch = getattr(prices, "candles", None)
+    if not fetch:
+        return 0
+    count = 0
+    for sym in PRICE_RULES:
+        bars = fetch(sym, "1h")
+        if len(bars) < 250 or now - bars[-1][0] > 2 * 3600:
+            continue
+        closed, price = bars[:-1], bars[-1][4]
+        atr = _atr(closed)
+        if atr <= 0:
+            continue
+        margin = atr * TECH_MARGIN
+        recent = [b[4] for b in closed[-6:]]
+        levels = _levels(closed, atr)
+        fired = False
+        for way, word, verb, tag in (("u", "direnci", "aştı", "chart_with_upwards_trend"),
+                                     ("d", "desteği", "kırdı", "chart_with_downwards_trend")):
+            if way == "u":
+                broken = [x for x in levels if max(recent) < x[0] and price > x[0] + margin]
+                nxt = [x for x in levels if x[0] > price]
+                level = broken[-1] if broken else None
+                ahead = nxt[0] if nxt else None
+            else:
+                broken = [x for x in levels if min(recent) > x[0] and price < x[0] - margin]
+                nxt = [x for x in levels if x[0] < price]
+                level = broken[0] if broken else None
+                ahead = nxt[-1] if nxt else None
+            if not level:
+                continue
+            code = "".join(ch if ch.isdigit() else "p" for ch in "%.6g" % level[0])[:12]
+            dkey, lkey = "t:%s:%s" % (sym, way), "l:%s:%s" % (sym, code)
+            if now - sent.get(dkey, 0) < TECH_COOLDOWN or now - sent.get(lkey, 0) < LEVEL_COOLDOWN:
+                continue
+            lines = ["Fiyat: %s · seviye saatlik grafikte %d kez dönüş noktasıydı" % (money(price), level[1]),
+                     ("Sıradaki %s: %s" % ("direnç" if way == "u" else "destek", money(ahead[0]))) if ahead
+                     else ("Yakın geçmişte %s başka seviye görünmüyor" % ("üstte" if way == "u" else "altta")),
+                     "Kırılım geri dönebilir; saatlik kapanış seviyenin %s kalırsa güçlenir." % ("üstünde" if way == "u" else "altında")]
+            if send("%s %s %s · %s" % (sym, word, verb, money(level[0])), "\n".join(lines), priority=4, tags=[tag]):
+                sent[dkey] = sent[lkey] = int(now)
+                count += 1
+                fired = True
+        if fired:
+            continue
+        ema = _ema([b[4] for b in closed], 200)
+        last3 = [b[4] for b in closed[-12:]]  # yarım gün boyunca öbür tarafta kalmış olmalı
+        if ema:
+            way = "u" if max(last3) < ema and price > ema + margin else "d" if min(last3) > ema and price < ema - margin else ""
+            mkey = "m:%s:%s" % (sym, way)
+            if way and now - sent.get(mkey, 0) >= EMA_COOLDOWN:
+                lines = ["Fiyat: %s · EMA 200: %s" % (money(price), money(ema)),
+                         "Uzun ortalamanın %s. Tek başına işaret değildir; panelden teknik görünüme bak."
+                         % ("üstü genelde yükseliş eğilimi sayılır" if way == "u" else "altı genelde düşüş eğilimi sayılır")]
+                if send("%s saatlik EMA 200'ün %s" % (sym, "üstüne çıktı" if way == "u" else "altına indi"), "\n".join(lines),
+                        priority=3, tags=["chart_with_upwards_trend" if way == "u" else "chart_with_downwards_trend"]):
+                    sent[mkey] = int(now)
+                    count += 1
+    return count
+
+
 def run(events, calendar, prices, state):
     """state: {"sent": {anahtar: zaman}}; gönderilenleri işaretler ve güncel state'i döndürür."""
     sent = dict(state.get("sent", {}))
@@ -222,6 +328,7 @@ def run(events, calendar, prices, state):
 
     # 2) Sert fiyat hareketi
     count += price_alerts(events, prices, sent, now)
+    count += tech_alerts(prices, sent, now)
 
     # 3) ve 4) Kritik veri: önce hatırlatma, açıklandıktan sonra ilk tepki. Aynı saatteki veriler tek bildirimde toplanır.
     slots = {}

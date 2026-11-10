@@ -226,6 +226,17 @@ class Prices:
                 self.cache[key] = []
         return self.cache[key]
 
+    def candles(self, key, interval="1h", limit=500):
+        """Kripto için mum listesi: (zaman, açılış, yüksek, düşük, kapanış). Alınamazsa boş."""
+        ckey = key + ":" + interval
+        if ckey not in self.cache:
+            try:
+                url = BINANCE.replace("interval=5m&limit=1000", "interval=%s&limit=%d" % (interval, limit)) % key
+                self.cache[ckey] = [(int(r[0] / 1000), float(r[1]), float(r[2]), float(r[3]), float(r[4])) for r in fetch_json(url)]
+            except Exception:
+                self.cache[ckey] = []
+        return self.cache[ckey]
+
     def move(self, key, ts):
         """Olaydan sonraki ilk REACT_HOURS saatteki yüzde değişim: (yüzde, pencere doldu mu) ya da None.
 

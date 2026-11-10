@@ -434,7 +434,21 @@
       msg.textContent = markets ? 'Bu hisse için veri alınamadı.' : 'Hisse verisi yükleniyor…';
       return;
     }
-    const rows = stockInterval === '1d' ? dailyBars(m.bars) : m.bars;
+    let rows = m.bars;
+    if (stockInterval === '1d') {
+      // Geçmiş günler 1 yıllık günlük dosyadan, bugünün mumu 30 dakikalık veriden gelir
+      rows = dailyBars(m.bars);
+      const hist = daily && daily.symbols && daily.symbols[stock];
+      if (hist && hist.length && rows.length) {
+        const today = rows[rows.length - 1];
+        const byDay = new Map();
+        hist.forEach((r) => {
+          const d = Math.floor(r[0] / 86400) * 86400;
+          if (d < today[0]) byDay.set(d, [d, r[1], r[2], r[3], r[4], r[5]]);
+        });
+        rows = Array.from(byDay.values()).concat([today]);
+      } else if (!daily) loadDaily();
+    }
     candles.applyOptions({ priceFormat: { type: 'price', precision: 2, minMove: 0.01 } });
     const list = rows.map((r) => toCandle(r[0] * 1000, r[1], r[2], r[3], r[4]));
     candles.setData(list);
@@ -1069,6 +1083,19 @@
     $('chart-low').textContent = usd(Math.min.apply(null, session.map((r) => r[3])));
     const vol = session.reduce((s, r) => s + r[5], 0);
     $('chart-vol').textContent = vol >= 1e6 ? NF[1].format(vol / 1e6) + ' Mn' : NF[0].format(vol);
+  }
+
+  // 1 yıllık günlük hisse mumları: yalnızca günlük grafik açılınca bir kez yüklenir
+  let daily = null, dailyBusy = false;
+  async function loadDaily() {
+    if (dailyBusy) return;
+    dailyBusy = true;
+    try {
+      const r = await fetch('data/daily.json?t=' + Math.floor(Date.now() / 3600000), { cache: 'no-store' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      daily = await r.json();
+      if (tab === 'tek' && stockInterval === '1d') loadChart();
+    } catch (err) { setTimeout(() => { dailyBusy = false; }, 60000); }
   }
 
   async function loadMarkets() {

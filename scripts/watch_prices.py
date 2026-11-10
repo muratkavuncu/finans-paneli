@@ -1,7 +1,7 @@
 """Zincirin bekleme süresinde fiyatı sık aralıkla izler; sert harekette hemen bildirim gönderir.
 
 Kullanım: python scripts/watch_prices.py <toplam_saniye> [aralık_saniye]
-Standart çıktıya yalnızca gönderilen fiyat bildirimlerinin zamanını yazar ("BTC:1731230000,RENDER:...").
+Standart çıktıya yalnızca gönderilen bildirimlerin anahtarını ve zamanını yazar ("p:BTC=1731230000,t:BTC:u=...").
 Bu değer bir sonraki tura aktarılır ki aynı hareket için ikinci bildirim gitmesin. Her şey standart hataya yazılır.
 """
 import contextlib
@@ -42,11 +42,12 @@ def main():
         try:
             now = time.time()
             prices = impact.Prices("")  # her seferinde taze fiyat; hisse verisi gerekmez
-            before = {s: sent.get("p:" + s) for s in notify.PRICE_RULES}
+            before = dict(sent)
             notify.price_alerts(events, prices, sent, now)
-            for sym in notify.PRICE_RULES:
-                if sent.get("p:" + sym) != before[sym]:
-                    mine[sym] = sent["p:" + sym]
+            notify.tech_alerts(prices, sent, now)
+            for key, stamp in sent.items():
+                if before.get(key) != stamp:
+                    mine[key] = stamp
             checks += 1
         except Exception as exc:  # izleyici hata verse de zincir sürmeli
             print("izleme hatası:", type(exc).__name__)
@@ -55,7 +56,7 @@ def main():
             break
         time.sleep(min(STEP, left))
     print("fiyat kontrolü:", checks, "bildirim:", len(mine))
-    return ",".join("%s:%d" % (s, t) for s, t in sorted(mine.items()))
+    return ",".join("%s=%d" % (k, t) for k, t in sorted(mine.items()))
 
 
 if __name__ == "__main__":
