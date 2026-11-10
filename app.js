@@ -382,6 +382,10 @@
     volume = chart.addHistogramSeries({ priceFormat: { type: 'volume' }, priceScaleId: 'vol', lastValueVisible: false, priceLineVisible: false });
     chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.84, bottom: 0 } });
     candles.priceScale().applyOptions({ scaleMargins: { top: 0.08, bottom: 0.2 } });
+    maSeries = MA_DEFS.map(() => chart.addLineSeries({
+      lineWidth: 1.5, lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false,
+    }));
+    initLayers();
     themeChart();
     matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { themeChart(); loadChart(); });
   }
@@ -395,6 +399,8 @@
       grid: { vertLines: { color: line }, horzLines: { color: line } },
     });
     candles.applyOptions({ upColor: up, downColor: down, wickUpColor: up, wickDownColor: down });
+    maSeries.forEach((s, i) => s.applyOptions({ color: cssVar(MA_DEFS[i].v) }));
+    levelKey = '';
   }
 
   const toCandle = (t, o, h, l, c) => ({ time: t / 1000 + tzShift, open: +o, high: +h, low: +l, close: +c });
@@ -423,14 +429,17 @@
     if (!m) {
       candles.setData([]);
       volume.setData([]);
+      setTaBars([]);
       msg.hidden = false;
       msg.textContent = markets ? 'Bu hisse için veri alınamadı.' : 'Hisse verisi yükleniyor…';
       return;
     }
     const rows = stockInterval === '1d' ? dailyBars(m.bars) : m.bars;
     candles.applyOptions({ priceFormat: { type: 'price', precision: 2, minMove: 0.01 } });
-    candles.setData(rows.map((r) => toCandle(r[0] * 1000, r[1], r[2], r[3], r[4])));
+    const list = rows.map((r) => toCandle(r[0] * 1000, r[1], r[2], r[3], r[4]));
+    candles.setData(list);
     volume.setData(rows.map((r) => toVolume(r[0] * 1000, r[1], r[4], r[5])));
+    setTaBars(list);
     const bars = $('chart').clientWidth < 520 ? 60 : 130;
     if (rows.length <= bars) chart.timeScale().fitContent();
     else chart.timeScale().setVisibleLogicalRange({ from: rows.length - bars, to: rows.length + 2 });
@@ -450,8 +459,10 @@
       const last = +rows[rows.length - 1][4];
       const d = decimalsFor(last);
       candles.applyOptions({ priceFormat: { type: 'price', precision: d, minMove: 1 / Math.pow(10, d) } });
-      candles.setData(rows.map((r) => toCandle(r[0], r[1], r[2], r[3], r[4])));
+      const list = rows.map((r) => toCandle(r[0], r[1], r[2], r[3], r[4]));
+      candles.setData(list);
       volume.setData(rows.map((r) => toVolume(r[0], r[1], r[4], r[5])));
+      setTaBars(list);
       const bars = $('chart').clientWidth < 520 ? 60 : 130;
       chart.timeScale().setVisibleLogicalRange({ from: rows.length - bars, to: rows.length + 2 });
       haveData = true;
@@ -466,8 +477,272 @@
   function onKline(d) {
     const k = d.k;
     if (tab !== 'kripto' || !haveData || d.s !== selected + 'USDT' || k.i !== interval) return;
-    candles.update(toCandle(k.t, k.o, k.h, k.l, k.c));
+    const c = toCandle(k.t, k.o, k.h, k.l, k.c);
+    candles.update(c);
     volume.update(toVolume(k.t, k.o, k.c, k.v));
+    taUpdate(c);
+  }
+
+  // ---------- Teknik analiz ----------
+  // Hepsi grafikteki mumlardan tarayıcıda hesaplanır; yeni veri kaynağı yoktur.
+  const MA_DEFS = [{ n: 20, v: '--ma1' }, { n: 50, v: '--ma2' }, { n: 200, v: '--ma3' }];
+  let taBars = [], maSeries = [], levelLines = [], levelKey = '', taTimer = 0;
+  let showMA = load('fp.ma', '1') !== '0';
+  let showLevels = load('fp.lv', '1') !== '0';
+
+  function emaArr(vals, n) {
+    const out = new Array(vals.length).fill(null);
+    if (vals.length < n) return out;
+    let e = 0;
+    for (let i = 0; i < n; i++) e += vals[i];
+    e /= n;
+    out[n - 1] = e;
+    const k = 2 / (n + 1);
+    for (let i = n; i < vals.length; i++) { e = vals[i] * k + e * (1 - k); out[i] = e; }
+    return out;
+  }
+
+  function rsiArr(vals, n) {
+    const out = new Array(vals.length).fill(null);
+    if (vals.length <= n) return out;
+    let g = 0, l = 0;
+    for (let i = 1; i <= n; i++) { const d = vals[i] - vals[i - 1]; if (d > 0) g += d; else l -= d; }
+    g /= n; l /= n;
+    out[n] = l === 0 ? 100 : 100 - 100 / (1 + g / l);
+    for (let i = n + 1; i < vals.length; i++) {
+      const d = vals[i] - vals[i - 1];
+      g = (g * (n - 1) + Math.max(d, 0)) / n;
+      l = (l * (n - 1) + Math.max(-d, 0)) / n;
+      out[i] = l === 0 ? 100 : 100 - 100 / (1 + g / l);
+    }
+    return out;
+  }
+
+  // MACD histogramı (12, 26, 9); yeterli mum yoksa boş dizi
+  function macdHist(vals) {
+    const fast = emaArr(vals, 12), slow = emaArr(vals, 26);
+    const line = [];
+    for (let i = 0; i < vals.length; i++) if (slow[i] != null) line.push(fast[i] - slow[i]);
+    const sig = emaArr(line, 9);
+    const hist = [];
+    for (let i = 0; i < line.length; i++) if (sig[i] != null) hist.push(line[i] - sig[i]);
+    return hist;
+  }
+
+  // Ortalama gerçek aralık: mum başına tipik hareket
+  function atrArr(bars, n) {
+    const tr = [];
+    for (let i = 1; i < bars.length; i++) {
+      const b = bars[i], pc = bars[i - 1].close;
+      tr.push(Math.max(b.high - b.low, Math.abs(b.high - pc), Math.abs(b.low - pc)));
+    }
+    const out = [];
+    for (let i = n; i <= tr.length; i++) {
+      let s = 0;
+      for (let j = i - n; j < i; j++) s += tr[j];
+      out.push(s / n);
+    }
+    return out;
+  }
+
+  // Destek / direnç: fiyatın döndüğü tepe ve dipler, birbirine yakın olanlar tek seviyede toplanır
+  function findLevels(bars, atr) {
+    const n = bars.length;
+    const w = n >= 120 ? 4 : 2;
+    const pivots = [];
+    for (let i = Math.max(w, n - 300); i < n - w; i++) {
+      let hi = true, lo = true;
+      for (let j = i - w; j <= i + w; j++) {
+        if (bars[j].high > bars[i].high) hi = false;
+        if (bars[j].low < bars[i].low) lo = false;
+      }
+      if (hi) pivots.push(bars[i].high);
+      if (lo) pivots.push(bars[i].low);
+    }
+    pivots.sort((a, b) => a - b);
+    const price = bars[n - 1].close;
+    const tol = atr ? atr * 0.6 : price * 0.003;
+    const out = [];
+    pivots.forEach((p) => {
+      const last = out[out.length - 1];
+      if (last && p - last.p <= tol) { last.p = (last.p * last.n + p) / (last.n + 1); last.n++; } else out.push({ p, n: 1 });
+    });
+    const pick = (list) => {
+      const strong = list.filter((x) => x.n >= 2);
+      return (strong.length ? strong : list).slice(0, 2);
+    };
+    return {
+      res: pick(out.filter((x) => x.p > price * 1.0015)),
+      sup: pick(out.filter((x) => x.p < price * 0.9985).reverse()),
+    };
+  }
+
+  function computeTA(bars) {
+    const closes = bars.map((b) => b.close);
+    const n = closes.length;
+    const price = closes[n - 1];
+    const ema = MA_DEFS.map((d) => emaArr(closes, d.n));
+    const rsi = rsiArr(closes, 14);
+    const hist = macdHist(closes);
+    const atrs = atrArr(bars, 14);
+    const atr = atrs.length ? atrs[atrs.length - 1] : null;
+    let cross = null;
+    for (let i = hist.length - 1; i > 0; i--) {
+      if ((hist[i] > 0) !== (hist[i - 1] > 0)) { cross = hist.length - 1 - i; break; }
+    }
+    const base = atrs.slice(-100).sort((a, b) => a - b);
+    return {
+      price, ema, atr,
+      e20: ema[0][n - 1], e50: ema[1][n - 1], e200: ema[2][n - 1],
+      rsi: rsi[n - 1],
+      hist: hist.length ? hist[hist.length - 1] : null,
+      histPrev: hist.length > 1 ? hist[hist.length - 2] : null,
+      cross,
+      atrMid: base.length >= 30 ? base[Math.floor(base.length / 2)] : null,
+      levels: n >= 20 ? findLevels(bars, atr) : { res: [], sup: [] },
+    };
+  }
+
+  function setTaBars(list) {
+    taBars = list;
+    refreshTA();
+  }
+  function taUpdate(c) {
+    const last = taBars[taBars.length - 1];
+    if (!last) return;
+    if (last.time === c.time) taBars[taBars.length - 1] = c;
+    else if (c.time > last.time) taBars.push(c);
+    if (!taTimer) taTimer = setTimeout(() => { taTimer = 0; refreshTA(); }, 2500);
+  }
+
+  function taCard(id, value, verdict, tone) {
+    $(id).textContent = value;
+    setVerdict(id + '-v', verdict, tone);
+  }
+
+  function refreshTA() {
+    if (!chart) return;
+    const tek = tab === 'tek';
+    const fmt = (p) => (tek ? usd(p) : fmtPrice(p));
+    const iv = (tek ? STOCK_INTERVALS : INTERVALS).find((i) => i.id === (tek ? stockInterval : interval));
+    $('ta-sym').textContent = (tek ? stock : selected) + ' · ' + (iv ? iv.label : '');
+    const pips = $('ta-pips');
+    pips.textContent = '';
+
+    if (taBars.length < 30) {
+      maSeries.forEach((s) => s.setData([]));
+      levelLines.forEach((l) => candles.removePriceLine(l));
+      levelLines = [];
+      levelKey = '';
+      $('ta-label').textContent = taBars.length ? 'Bu zaman diliminde yeterli mum yok' + (tek ? ' (hisselerde 30dk seç)' : '') : '—';
+      $('ta-label').className = '';
+      ['ta-trend', 'ta-rsi', 'ta-macd', 'ta-sup', 'ta-res', 'ta-atr'].forEach((id) => taCard(id, '—', taBars.length ? 'veri yetersiz' : ' '));
+      $('ta-rsi-dot').hidden = true;
+      return;
+    }
+    const t = computeTA(taBars);
+
+    // Grafik katmanları
+    maSeries.forEach((s, i) => {
+      const data = [];
+      if (showMA) t.ema[i].forEach((v, k) => { if (v != null) data.push({ time: taBars[k].time, value: v }); });
+      s.setData(data);
+    });
+    const want = showLevels ? t.levels.res.map((x) => ['Direnç', x.p]).concat(t.levels.sup.map((x) => ['Destek', x.p])) : [];
+    const key = want.map((x) => x[0] + x[1].toPrecision(6)).join('|');
+    if (key !== levelKey) {
+      levelLines.forEach((l) => candles.removePriceLine(l));
+      levelLines = want.map((x) => candles.createPriceLine({
+        price: x[1], color: cssVar(x[0] === 'Direnç' ? '--down' : '--up'), lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: x[0],
+      }));
+      levelKey = key;
+    }
+
+    // Kartlar
+    const signals = [];
+    if (t.e50 == null) {
+      taCard('ta-trend', '—', 'veri yetersiz');
+    } else {
+      const dir = t.price > t.e20 && t.e20 > t.e50 ? 1 : t.price < t.e20 && t.e20 < t.e50 ? -1 : 0;
+      signals.push(['Trend', dir]);
+      const d20 = (t.price / t.e20 - 1) * 100;
+      taCard('ta-trend', dir > 0 ? 'Yukarı' : dir < 0 ? 'Aşağı' : 'Kararsız',
+        'fiyat EMA 20\'nin %' + NF[2].format(Math.abs(d20)) + (d20 >= 0 ? ' üstünde' : ' altında') + ' · EMA 20, EMA 50\'nin ' + (t.e20 >= t.e50 ? 'üstünde' : 'altında'),
+        dir > 0 ? 'pos' : dir < 0 ? 'neg' : '');
+    }
+
+    const dot = $('ta-rsi-dot');
+    if (t.rsi == null) {
+      taCard('ta-rsi', '—', 'veri yetersiz');
+      dot.hidden = true;
+    } else {
+      signals.push(['RSI', t.rsi >= 55 ? 1 : t.rsi <= 45 ? -1 : 0]);
+      const v = t.rsi >= 70 ? ['aşırı alım bölgesi', 'warn'] : t.rsi <= 30 ? ['aşırı satım bölgesi', 'warn']
+        : t.rsi >= 55 ? ['alıcılar güçlü', 'pos'] : t.rsi <= 45 ? ['satıcılar güçlü', 'neg'] : ['dengeli', ''];
+      taCard('ta-rsi', NF[0].format(t.rsi), v[0], v[1]);
+      dot.hidden = false;
+      dot.style.left = Math.max(0, Math.min(100, t.rsi)).toFixed(1) + '%';
+    }
+
+    if (t.hist == null) {
+      taCard('ta-macd', '—', 'veri yetersiz');
+    } else {
+      signals.push(['MACD', t.hist > 0 ? 1 : t.hist < 0 ? -1 : 0]);
+      let note = t.histPrev == null ? '' : (t.hist > 0 ? 'yukarı' : 'aşağı') + ' ivme ' + (Math.abs(t.hist) >= Math.abs(t.histPrev) ? 'güçleniyor' : 'zayıflıyor');
+      if (t.cross != null && t.cross <= 5) {
+        note = (t.cross === 0 ? 'bu mumda ' : t.cross + ' mum önce ') + (t.hist > 0 ? 'yukarı kesti' : 'aşağı kesti');
+      }
+      taCard('ta-macd', t.hist > 0 ? 'Pozitif' : 'Negatif', note, t.hist > 0 ? 'pos' : 'neg');
+    }
+    if (t.e200 != null) signals.push(['EMA 200', t.price > t.e200 ? 1 : -1]);
+
+    const level = (id, list, word) => {
+      if (!list.length) { taCard(id, '—', 'yakın geçmişte ' + word + ' seviye yok'); return; }
+      const x = list[0];
+      const dist = (x.p / t.price - 1) * 100;
+      taCard(id, fmt(x.p), '%' + NF[2].format(Math.abs(dist)) + (dist >= 0 ? ' yukarıda · ' : ' aşağıda · ') + (x.n >= 2 ? x.n + ' kez dönüş' : 'tek dönüş, zayıf'));
+    };
+    level('ta-sup', t.levels.sup, 'altta');
+    level('ta-res', t.levels.res, 'üstte');
+
+    if (t.atr == null) {
+      taCard('ta-atr', '—', 'veri yetersiz');
+    } else {
+      const ratio = t.atrMid ? t.atr / t.atrMid : 1;
+      const v = ratio >= 1.5 ? ['normalden hareketli', 'warn'] : ratio <= 0.7 ? ['normalden sakin', ''] : ['normal', ''];
+      taCard('ta-atr', '%' + NF[2].format(t.atr / t.price * 100), 'mum başına ≈ ' + fmt(t.atr) + ' · ' + v[0], v[1]);
+    }
+
+    // Özet: kaç işaret yukarı, kaç işaret aşağı
+    const up = signals.filter((s) => s[1] > 0).length;
+    const dn = signals.filter((s) => s[1] < 0).length;
+    const lab = $('ta-label');
+    let text = up - dn >= 2 ? 'Yukarı ağırlıklı' : dn - up >= 2 ? 'Aşağı ağırlıklı' : 'Karışık';
+    lab.className = up - dn >= 2 ? 'pos' : dn - up >= 2 ? 'neg' : '';
+    if (t.rsi != null && t.rsi >= 70) text += ' · RSI aşırı alımda';
+    if (t.rsi != null && t.rsi <= 30) text += ' · RSI aşırı satımda';
+    lab.textContent = text;
+    signals.forEach((s) => {
+      const pip = el('span', 'ta-pip ' + (s[1] > 0 ? 'up' : s[1] < 0 ? 'dn' : 'flat'), (s[1] > 0 ? '▲ ' : s[1] < 0 ? '▼ ' : '• ') + s[0]);
+      pips.appendChild(pip);
+    });
+  }
+
+  function initLayers() {
+    const bind = (id, get, set, key) => {
+      const b = $(id);
+      b.setAttribute('aria-pressed', String(get()));
+      b.addEventListener('click', () => {
+        set(!get());
+        save(key, get() ? '1' : '0');
+        b.setAttribute('aria-pressed', String(get()));
+        $('ma-legend').hidden = !showMA;
+        refreshTA();
+      });
+    };
+    bind('tg-ma', () => showMA, (v) => { showMA = v; }, 'fp.ma');
+    bind('tg-lv', () => showLevels, (v) => { showLevels = v; }, 'fp.lv');
+    $('ma-legend').hidden = !showMA;
   }
 
   // ---------- Canlı akış ----------

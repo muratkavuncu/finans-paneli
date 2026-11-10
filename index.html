@@ -134,6 +134,64 @@
       </dl>
     </div>
     <div class="chart" id="chart"><p class="chart-msg" id="chart-msg">Grafik yükleniyor…</p></div>
+    <div class="layers">
+      <div class="toggles" aria-label="Grafik katmanları">
+        <button type="button" id="tg-ma" aria-pressed="true">Ortalamalar</button>
+        <button type="button" id="tg-lv" aria-pressed="true">Destek / direnç</button>
+      </div>
+      <p class="ma-legend" id="ma-legend"><span><i class="m1"></i>EMA 20</span><span><i class="m2"></i>EMA 50</span><span><i class="m3"></i>EMA 200</span></p>
+    </div>
+  </section>
+
+  <section class="panel" aria-label="Teknik görünüm">
+    <div class="panel-head">
+      <h2>Teknik görünüm · <span id="ta-sym">BTC</span></h2>
+      <span class="hint">grafikte seçili zaman dilimindeki mumlardan hesaplanır</span>
+    </div>
+    <div class="ta-sum">
+      <strong id="ta-label">—</strong>
+      <div class="ta-pips" id="ta-pips"></div>
+    </div>
+    <div class="inds">
+      <div class="ind">
+        <div class="label">Trend</div>
+        <div class="value" id="ta-trend">—</div>
+        <div class="verdict" id="ta-trend-v">&nbsp;</div>
+        <p>Fiyat kısa ortalamanın (EMA 20), o da orta ortalamanın (EMA 50) üstündeyse yukarı; tersi aşağı; arası kararsız.</p>
+      </div>
+      <div class="ind">
+        <div class="label">RSI (14)</div>
+        <div class="value" id="ta-rsi">—</div>
+        <div class="verdict" id="ta-rsi-v">&nbsp;</div>
+        <div class="rsibar" aria-hidden="true"><i id="ta-rsi-dot" hidden></i></div>
+        <p>0-100 arası hız göstergesi. 70 üstü aşırı alım, 30 altı aşırı satım sayılır; güçlü trendde uzun süre uçta kalabilir.</p>
+      </div>
+      <div class="ind">
+        <div class="label">MACD</div>
+        <div class="value" id="ta-macd">—</div>
+        <div class="verdict" id="ta-macd-v">&nbsp;</div>
+        <p>Kısa ve uzun ortalamanın farkı. Pozitife geçiş ivmenin yukarı, negatife geçiş aşağı döndüğünü gösterir.</p>
+      </div>
+      <div class="ind">
+        <div class="label">En yakın destek</div>
+        <div class="value" id="ta-sup">—</div>
+        <div class="verdict" id="ta-sup-v">&nbsp;</div>
+        <p>Fiyatın daha önce düşerken döndüğü seviye. Kırılırsa bir alttaki seviye gündeme gelir.</p>
+      </div>
+      <div class="ind">
+        <div class="label">En yakın direnç</div>
+        <div class="value" id="ta-res">—</div>
+        <div class="verdict" id="ta-res-v">&nbsp;</div>
+        <p>Fiyatın daha önce yükselirken döndüğü seviye. Aşılırsa çoğu zaman desteğe dönüşür.</p>
+      </div>
+      <div class="ind">
+        <div class="label">Oynaklık (ATR)</div>
+        <div class="value" id="ta-atr">—</div>
+        <div class="verdict" id="ta-atr-v">&nbsp;</div>
+        <p>Bir mumun ortalama hareketi. Yüksekse fiyat hızlı gidip gelir; seviyeler daha kolay delinir.</p>
+      </div>
+    </div>
+    <p class="hint events-note">Bu göstergeler geçmiş fiyattan türetilir ve geleceği garanti etmez; "yukarı ağırlıklı" gibi özetler işaretlerin sayımıdır, al-sat tavsiyesi değildir. Zaman dilimini değiştirince tablo da değişir.</p>
   </section>
 
   <section class="panel" data-tab="kripto" aria-label="Kripto göstergeleri">
