@@ -366,3 +366,30 @@ h2 { font-size: 16px; font-weight: 600; }
   position: absolute; top: -3px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%;
   background: var(--fg); border: 2px solid var(--surface-2); transition: left .6s;
 }
+
+/* Strateji testi */
+.bt-top { display: grid; grid-template-columns: minmax(150px, 220px) minmax(0, 1fr); gap: 10px; margin: 12px 0 8px; align-items: stretch; }
+.bt-chart { background: var(--surface-2); border-radius: 12px; padding: 10px 12px; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.bt-chart svg { width: 100%; height: 96px; display: block; overflow: visible; }
+.bt-chart path { fill: none; stroke-width: 1.6; stroke-linejoin: round; }
+.bt-strat { stroke: var(--accent); }
+.bt-hold { stroke: var(--muted); }
+.bt-base { stroke: var(--line); stroke-dasharray: 3 3; stroke-width: 1; }
+.ma-legend .bs { background: var(--accent); }
+.ma-legend .bh { background: var(--muted); }
+.bt-list { display: grid; gap: 8px; margin-top: 10px; }
+.bt-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; width: 100%;
+  text-align: left; font: inherit; color: inherit; cursor: pointer;
+  background: var(--surface-2); border: 1px solid transparent; border-radius: 12px; padding: 12px;
+}
+.bt-row[aria-pressed="true"] { border-color: var(--accent); }
+.bt-main { display: grid; gap: 3px; min-width: 0; }
+.bt-main strong { font-size: 14.5px; }
+.bt-desc, .bt-stats { color: var(--muted); font-size: 12px; line-height: 1.4; }
+.bt-stats { color: var(--fg); opacity: .85; }
+.bt-warn { color: var(--accent); font-size: 12px; font-weight: 600; }
+.bt-side { display: grid; justify-items: end; gap: 2px; }
+.bt-ret { font-family: var(--font-display); font-size: 18px; font-weight: 600; white-space: nowrap; }
+.bt-vs { font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+@media (max-width: 520px) { .bt-top { grid-template-columns: 1fr; } }

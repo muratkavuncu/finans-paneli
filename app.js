@@ -921,6 +921,7 @@
     loadFutures();
     loadMA();
     loadVsBtc();
+    btMark();
   }
   function selectInterval(id) {
     if (id === interval) return;
@@ -1043,6 +1044,226 @@
     save('fp.sint', id);
     markSelection();
     loadChart();
+  }
+
+  // ---------- Strateji testi (geri test) ----------
+  // Basit kuralları geçmiş mumlarda dener. Karar mum kapanışında verilir, işlem bir sonraki mumun açılışında yapılır.
+  // Her alım ve satımda komisyon + kayma payı düşülür. Yalnızca alış yönlü, tüm bakiye ile.
+  const BT_INTERVALS = [{ id: '1h', label: '1sa' }, { id: '4h', label: '4sa' }, { id: '1d', label: '1G' }];
+  const BT_COST = 0.0015;   // işlem başına %0,15 (komisyon %0,10 + kayma %0,05)
+  const BT_WARM = 200;      // göstergelerin oturması için atlanan ilk mumlar
+  const BT_STRATS = [
+    { id: 'ema', name: 'EMA 20 / 50 kesişimi', desc: 'Kısa ortalama uzunun üstündeyken içeride, altına inince dışarıda.',
+      step: (d, i) => d.e20[i] > d.e50[i] },
+    { id: 'trend', name: 'EMA 200 trend filtresi', desc: 'Kapanış EMA 200\'ün üstündeyken içeride, altındayken dışarıda.',
+      step: (d, i) => d.c[i] > d.e200[i] },
+    { id: 'macd', name: 'MACD kesişimi', desc: 'MACD pozitifken içeride, negatife dönünce dışarıda.',
+      step: (d, i) => d.hist[i] > 0 },
+    { id: 'rsi', name: 'RSI dipten dönüş', desc: 'RSI 30\'un altından yukarı dönünce girer, 65\'i geçince çıkar.',
+      step: (d, i, inPos) => (inPos ? d.rsi[i] < 65 : d.rsi[i - 1] < 30 && d.rsi[i] >= 30) },
+    { id: 'brk', name: '20 mumluk kırılım', desc: 'Son 20 mumun zirvesi aşılınca girer, son 10 mumun dibi kırılınca çıkar.',
+      step: (d, i, inPos) => (inPos ? d.c[i] >= d.lo10[i] : d.c[i] > d.hi20[i]) },
+  ];
+  let btInterval = load('fp.bti', '4h');
+  if (!BT_INTERVALS.some((x) => x.id === btInterval)) btInterval = '4h';
+  let btSel = load('fp.bts', 'ema');
+  let btToken = 0, btDirty = true, btVisible = false, btRes = null;
+
+  async function btFetch(sym, iv) {
+    let rows = [];
+    let end = '';
+    for (let page = 0; page < 3; page++) {
+      const part = await binance('/api/v3/klines?symbol=' + sym + 'USDT&interval=' + iv + '&limit=1000' + end);
+      if (!part.length) break;
+      rows = part.concat(rows);
+      if (part.length < 1000) break;
+      end = '&endTime=' + (part[0][0] - 1);
+    }
+    return rows.slice(0, -1); // son mum henüz kapanmadı
+  }
+
+  function btPrepare(rows) {
+    const o = rows.map((r) => +r[1]), h = rows.map((r) => +r[2]), l = rows.map((r) => +r[3]), c = rows.map((r) => +r[4]);
+    const n = c.length;
+    const raw = macdHist(c);
+    const hist = new Array(n).fill(null);
+    for (let i = 0; i < raw.length; i++) hist[n - raw.length + i] = raw[i];
+    const hi20 = new Array(n).fill(null), lo10 = new Array(n).fill(null);
+    for (let i = 20; i < n; i++) {
+      let hi = -Infinity, lo = Infinity;
+      for (let j = i - 20; j < i; j++) hi = Math.max(hi, h[j]);
+      for (let j = i - 10; j < i; j++) lo = Math.min(lo, l[j]);
+      hi20[i] = hi; lo10[i] = lo;
+    }
+    return { t: rows.map((r) => r[0]), o, c, n, e20: emaArr(c, 20), e50: emaArr(c, 50), e200: emaArr(c, 200), rsi: rsiArr(c, 14), hist, hi20, lo10 };
+  }
+
+  function maxDrawdown(curve) {
+    let peak = curve[0], dd = 0;
+    curve.forEach((v) => { if (v > peak) peak = v; dd = Math.min(dd, v / peak - 1); });
+    return dd * 100;
+  }
+
+  function btRun(d, strat) {
+    let cash = 1, units = 0, entry = 0, inPos = false, bars = 0;
+    const trades = [], curve = [];
+    for (let i = BT_WARM; i < d.n; i++) {
+      const want = strat.step(d, i - 1, inPos);
+      if (want && !inPos) {
+        entry = d.o[i] * (1 + BT_COST);
+        units = cash / entry;
+        inPos = true;
+      } else if (!want && inPos) {
+        const exit = d.o[i] * (1 - BT_COST);
+        cash = units * exit;
+        trades.push(exit / entry - 1);
+        inPos = false;
+      }
+      if (inPos) bars++;
+      curve.push(inPos ? units * d.c[i] : cash);
+    }
+    const wins = trades.filter((x) => x > 0).length;
+    return {
+      curve, trades: trades.length, wins, open: inPos,
+      ret: (curve[curve.length - 1] - 1) * 100,
+      dd: maxDrawdown(curve),
+      inMarket: bars / curve.length * 100,
+    };
+  }
+
+  function btHold(d) {
+    const entry = d.o[BT_WARM] * (1 + BT_COST);
+    const curve = [];
+    for (let i = BT_WARM; i < d.n; i++) curve.push(d.c[i] / entry);
+    return { curve, ret: (curve[curve.length - 1] - 1) * 100, dd: maxDrawdown(curve) };
+  }
+
+  function btPath(curve, lo, hi, w, hgt) {
+    const step = Math.max(1, Math.floor(curve.length / 300));
+    let dstr = '';
+    for (let i = 0; i < curve.length; i += step) {
+      const x = i / (curve.length - 1) * w;
+      const y = hgt - (curve[i] - lo) / (hi - lo || 1) * hgt;
+      dstr += (dstr ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1);
+    }
+    return dstr;
+  }
+
+  function btDrawCurve() {
+    const svg = $('bt-curve');
+    svg.textContent = '';
+    if (!btRes) return;
+    const r = btRes.rows.find((x) => x.s.id === btSel) || btRes.rows[0];
+    const all = r.res.curve.concat(btRes.hold.curve);
+    const lo = Math.min.apply(null, all), hi = Math.max.apply(null, all);
+    const NS = 'http://www.w3.org/2000/svg';
+    const add = (dstr, cls) => {
+      const p = document.createElementNS(NS, 'path');
+      p.setAttribute('d', dstr);
+      p.setAttribute('class', cls);
+      p.setAttribute('vector-effect', 'non-scaling-stroke');
+      svg.appendChild(p);
+    };
+    const base = 100 - (1 - lo) / (hi - lo || 1) * 100;
+    if (base >= 0 && base <= 100) add('M0 ' + base.toFixed(1) + 'L300 ' + base.toFixed(1), 'bt-base');
+    add(btPath(btRes.hold.curve, lo, hi, 300, 100), 'bt-hold');
+    add(btPath(r.res.curve, lo, hi, 300, 100), 'bt-strat');
+    $('bt-curve-name').textContent = r.s.name;
+  }
+
+  function btRender() {
+    const list = $('bt-list');
+    list.textContent = '';
+    if (!btRes) return;
+    const hold = btRes.hold;
+    const days = Math.round((btRes.to - btRes.from) / 86400000);
+    $('bt-period').textContent = new Date(btRes.from).toLocaleDateString('tr-TR') + ' – ' + new Date(btRes.to).toLocaleDateString('tr-TR')
+      + ' · ' + days + ' gün · ' + btRes.bars + ' mum';
+    $('bt-hold').textContent = fmtPct(hold.ret);
+    $('bt-hold').className = 'value ' + signClass(hold.ret);
+    $('bt-hold-v').textContent = 'en büyük düşüş ' + fmtPct(hold.dd);
+    btRes.rows.forEach((r) => {
+      const res = r.res;
+      const b = el('button', 'bt-row');
+      b.type = 'button';
+      b.setAttribute('aria-pressed', String(r.s.id === btSel));
+      const left = el('span', 'bt-main');
+      left.appendChild(el('strong', '', r.s.name));
+      left.appendChild(el('span', 'bt-desc', r.s.desc));
+      const few = res.trades < 10;
+      left.appendChild(el('span', 'bt-stats', res.trades + ' işlem' + (res.trades ? ' · %' + NF[0].format(res.wins / res.trades * 100) + ' kazançlı' : '')
+        + ' · en büyük düşüş ' + fmtPct(res.dd) + ' · içeride geçen süre %' + NF[0].format(res.inMarket) + (res.open ? ' · şu an içeride' : '')));
+      if (few) left.appendChild(el('span', 'bt-warn', 'İşlem sayısı az; bu sonuç şansa bağlı olabilir.'));
+      const right = el('span', 'bt-side');
+      right.appendChild(el('span', 'bt-ret ' + signClass(res.ret), fmtPct(res.ret)));
+      const diff = res.ret - hold.ret;
+      right.appendChild(el('span', 'bt-vs ' + (diff >= 0 ? 'pos' : 'neg'), diff >= 0 ? (res.ret < 0 ? 'tutmaktan az zarar' : 'tutmaktan iyi') : 'tutmaktan kötü'));
+      b.appendChild(left);
+      b.appendChild(right);
+      b.addEventListener('click', () => { btSel = r.s.id; save('fp.bts', btSel); btRender(); });
+      list.appendChild(b);
+    });
+    btDrawCurve();
+  }
+
+  async function btLoad() {
+    if (!btVisible || !btDirty) return;
+    btDirty = false;
+    const token = ++btToken;
+    const sym = selected, iv = btInterval;
+    $('bt-sym').textContent = sym + ' · ' + BT_INTERVALS.find((x) => x.id === iv).label;
+    $('bt-msg').hidden = false;
+    $('bt-msg').textContent = 'Geçmiş veri yükleniyor…';
+    try {
+      const rows = await btFetch(sym, iv);
+      if (token !== btToken) return;
+      if (rows.length < BT_WARM + 100) {
+        btRes = null;
+        btRender();
+        $('bt-body').hidden = true;
+        $('bt-msg').textContent = 'Bu varlık için bu zaman diliminde yeterli geçmiş yok. Daha kısa bir zaman dilimi seç.';
+        return;
+      }
+      const d = btPrepare(rows);
+      btRes = {
+        from: d.t[BT_WARM], to: d.t[d.n - 1], bars: d.n - BT_WARM, hold: btHold(d),
+        rows: BT_STRATS.map((s) => ({ s, res: btRun(d, s) })).sort((a, b) => b.res.ret - a.res.ret),
+      };
+      $('bt-msg').hidden = true;
+      $('bt-body').hidden = false;
+      btRender();
+    } catch (err) {
+      if (token !== btToken) return;
+      btDirty = true;
+      $('bt-msg').textContent = 'Geçmiş veri alınamadı. Birazdan yeniden denenecek.';
+      setTimeout(btLoad, 15000);
+    }
+  }
+  function btMark() { btDirty = true; btLoad(); }
+
+  function initBt() {
+    const box = $('bt-intervals');
+    BT_INTERVALS.forEach((i) => {
+      const b = el('button', '', i.label);
+      b.type = 'button';
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-selected', String(i.id === btInterval));
+      b.addEventListener('click', () => {
+        if (i.id === btInterval) return;
+        btInterval = i.id;
+        save('fp.bti', i.id);
+        box.querySelectorAll('button').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
+        btMark();
+      });
+      box.appendChild(b);
+    });
+    // Panel ekrana gelene kadar veri çekilmez (telefon verisini boşa harcamamak için)
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver((entries) => {
+        btVisible = entries.some((e) => e.isIntersecting);
+        btLoad();
+      }, { rootMargin: '200px' }).observe($('bt-panel'));
+    } else { btVisible = true; btLoad(); }
   }
 
   // ---------- Hisseler, endeksler ve piyasa nabzı ----------
@@ -1476,6 +1697,7 @@
   setInterval(loadMA, 1800000);
   loadVsBtc();
   setInterval(loadVsBtc, 600000);
+  initBt();
   setInterval(loadAltStrength, 3600000);
   connect();
   loadGlobal();

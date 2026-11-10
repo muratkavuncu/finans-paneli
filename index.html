@@ -242,6 +242,31 @@
     <p class="hint events-note">Etiketler ("nötr", "aşırı ısınmış" vb.) yaygın kullanılan eşiklere dayalı kaba yorumlardır; tek başına al-sat işareti değildir.</p>
   </section>
 
+  <section class="panel" id="bt-panel" data-tab="kripto" aria-label="Strateji testi">
+    <div class="panel-head">
+      <h2>Strateji testi · <span id="bt-sym">BTC</span></h2>
+      <div class="tabs" id="bt-intervals" role="tablist" aria-label="Test zaman dilimi"></div>
+    </div>
+    <p class="hint">Basit kurallar geçmişte uygulansaydı ne olurdu? Grafikte seçili varlığı dolar (USDT) karşısında dener.</p>
+    <p class="empty" id="bt-msg">Panel görününce hesaplanır…</p>
+    <div id="bt-body" hidden>
+      <div class="bt-top">
+        <div class="ind">
+          <div class="label">Hiçbir şey yapmadan tutsaydın</div>
+          <div class="value" id="bt-hold">—</div>
+          <div class="verdict" id="bt-hold-v">&nbsp;</div>
+        </div>
+        <div class="bt-chart">
+          <svg id="bt-curve" viewBox="0 0 300 100" preserveAspectRatio="none" role="img" aria-label="Bakiye eğrisi"></svg>
+          <p class="ma-legend"><span><i class="bs"></i><span id="bt-curve-name">Strateji</span></span><span><i class="bh"></i>Al ve tut</span></p>
+        </div>
+      </div>
+      <p class="hint" id="bt-period"></p>
+      <div class="bt-list" id="bt-list"></div>
+    </div>
+    <p class="hint events-note">Her alım ve satımda %0,15 maliyet (komisyon + kayma) düşülür; karar mum kapanışında verilir, işlem sonraki mumun açılışında yapılır. Geçmişte işe yarayan kural gelecekte yaramayabilir: piyasa koşulu değişir ve az sayıda işleme dayanan sonuç şans olabilir. Bu bir tavsiye değil, karşılaştırma aracıdır.</p>
+  </section>
+
   <div class="two" data-tab="kripto">
     <section class="panel" aria-label="Isı haritası">
       <div class="panel-head">
