@@ -19,6 +19,8 @@
     { s: 'TAO', name: 'Bittensor', ai: true },
     { s: 'FET', name: 'Fetch.ai', ai: true },
     { s: 'NEAR', name: 'NEAR', ai: true },
+    { s: 'WLD', name: 'Worldcoin', ai: true },
+    { s: 'SUI', name: 'Sui' },
   ];
   const INTERVALS = [
     { id: '1m', label: '1dk' },
