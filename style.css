@@ -339,7 +339,8 @@ h2 { font-size: 16px; font-weight: 600; }
 
 /* Teknik analiz */
 .layers { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
-.toggles { display: flex; gap: 6px; }
+.toggles { display: flex; gap: 6px; flex-wrap: wrap; }
+.toggles #tg-q[aria-pressed="true"] { background: var(--accent); color: var(--bg); border-color: var(--accent); }
 .toggles button {
   border: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer;
   font: inherit; font-size: 12.5px; font-weight: 500; padding: 6px 12px; border-radius: 999px; min-height: 32px;

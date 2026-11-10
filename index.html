@@ -138,6 +138,7 @@
       <div class="toggles" aria-label="Grafik katmanları">
         <button type="button" id="tg-ma" aria-pressed="true">Ortalamalar</button>
         <button type="button" id="tg-lv" aria-pressed="true">Destek / direnç</button>
+        <button type="button" id="tg-q" aria-pressed="false" hidden>BTC'ye göre</button>
       </div>
       <p class="ma-legend" id="ma-legend"><span><i class="m1"></i>EMA 20</span><span><i class="m2"></i>EMA 50</span><span><i class="m3"></i>EMA 200</span></p>
     </div>
@@ -224,6 +225,12 @@
         <div class="value" id="ind-ma">—</div>
         <div class="verdict" id="ind-ma-v">&nbsp;</div>
         <p>Fiyatın uzun vadeli ortalamasına uzaklığı. Üstünde olması genelde yükseliş trendi sayılır.</p>
+      </div>
+      <div class="ind">
+        <div class="label" id="ind-vs-label">BTC'ye göre performans</div>
+        <div class="value" id="ind-vs">—</div>
+        <div class="verdict" id="ind-vs-v">&nbsp;</div>
+        <p>Varlığın BTC karşısındaki değer değişimi. Artıysa BTC'den iyi, eksiyse BTC'den zayıf gidiyor. Grafikte "BTC'ye göre" düğmesiyle çizdirebilirsin.</p>
       </div>
       <div class="ind">
         <div class="label">Altcoin gücü (30 gün)</div>

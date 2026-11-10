@@ -45,6 +45,11 @@
   let selected = load('fp.symbol', 'BTC');
   if (!bySym[selected]) selected = 'BTC';
   let interval = load('fp.interval', '1h');
+  // Grafiğin karşılığı: USDT (dolar fiyatı) ya da BTC (varlığın BTC'ye göre performansı)
+  let quote = load('fp.quote', 'USDT') === 'BTC' ? 'BTC' : 'USDT';
+  const q = () => (quote === 'BTC' && selected !== 'BTC' ? 'BTC' : 'USDT');
+  const NF8 = new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 8, maximumFractionDigits: 8 });
+  const fmtBtc = (p) => '₿' + NF8.format(p);
   if (!INTERVALS.some((i) => i.id === interval)) interval = '1h';
 
   // Hisseler: veri GitHub zamanlayıcısının hazırladığı data/markets.json dosyasından gelir
@@ -206,7 +211,10 @@
       b.setAttribute('aria-selected', String(b.dataset.id === (tek ? stockInterval : interval)));
     });
     $('chart-name').textContent = tek ? stockBy[stock].name : bySym[selected].name;
-    $('chart-pair').textContent = tek ? stock + ' · ABD borsası' : selected + '/USDT';
+    $('chart-pair').textContent = tek ? stock + ' · ABD borsası' : selected + '/' + q() + (q() === 'BTC' ? ' · BTC cinsinden' : '');
+    const tq = $('tg-q');
+    tq.hidden = tek || selected === 'BTC';
+    tq.setAttribute('aria-pressed', String(quote === 'BTC'));
     $('chart-l1').textContent = tek ? 'Seans en yüksek' : '24s en yüksek';
     $('chart-l2').textContent = tek ? 'Seans en düşük' : '24s en düşük';
     $('chart-l3').textContent = tek ? 'Seans hacmi (adet)' : '24s hacim';
@@ -468,10 +476,10 @@
     const msg = $('chart-msg');
     haveData = false;
     try {
-      const rows = await binance('/api/v3/klines?symbol=' + sym + 'USDT&interval=' + interval + '&limit=500');
+      const rows = await binance('/api/v3/klines?symbol=' + sym + q() + '&interval=' + interval + '&limit=500');
       if (token !== chartToken) return;
       const last = +rows[rows.length - 1][4];
-      const d = decimalsFor(last);
+      const d = q() === 'BTC' ? 8 : decimalsFor(last);
       candles.applyOptions({ priceFormat: { type: 'price', precision: d, minMove: 1 / Math.pow(10, d) } });
       const list = rows.map((r) => toCandle(r[0], r[1], r[2], r[3], r[4]));
       candles.setData(list);
@@ -490,7 +498,7 @@
 
   function onKline(d) {
     const k = d.k;
-    if (tab !== 'kripto' || !haveData || d.s !== selected + 'USDT' || k.i !== interval) return;
+    if (tab !== 'kripto' || !haveData || d.s !== selected + q() || k.i !== interval) return;
     const c = toCandle(k.t, k.o, k.h, k.l, k.c);
     candles.update(c);
     volume.update(toVolume(k.t, k.o, k.c, k.v));
@@ -637,9 +645,10 @@
   function refreshTA() {
     if (!chart) return;
     const tek = tab === 'tek';
-    const fmt = (p) => (tek ? usd(p) : fmtPrice(p));
+    const btcQ = !tek && q() === 'BTC';
+    const fmt = (p) => (tek ? usd(p) : btcQ ? fmtBtc(p) : fmtPrice(p));
     const iv = (tek ? STOCK_INTERVALS : INTERVALS).find((i) => i.id === (tek ? stockInterval : interval));
-    $('ta-sym').textContent = (tek ? stock : selected) + ' · ' + (iv ? iv.label : '');
+    $('ta-sym').textContent = (tek ? stock : btcQ ? selected + '/BTC' : selected) + ' · ' + (iv ? iv.label : '');
     const pips = $('ta-pips');
     pips.textContent = '';
 
@@ -756,12 +765,19 @@
     };
     bind('tg-ma', () => showMA, (v) => { showMA = v; }, 'fp.ma');
     bind('tg-lv', () => showLevels, (v) => { showLevels = v; }, 'fp.lv');
+    $('tg-q').addEventListener('click', () => {
+      quote = quote === 'BTC' ? 'USDT' : 'BTC';
+      save('fp.quote', quote);
+      markSelection();
+      swapKline();
+      loadChart();
+    });
     $('ma-legend').hidden = !showMA;
   }
 
   // ---------- Canlı akış ----------
   let ws = null, wsHost = 0, retry = 0, lastMsg = 0, reqId = 1, everOpen = false, reconnectTimer = 0;
-  const klineStream = () => selected.toLowerCase() + 'usdt@kline_' + interval;
+  const klineStream = () => (selected + q()).toLowerCase() + '@kline_' + interval;
   let activeKline = klineStream();
 
   function baseStreams() {
@@ -892,6 +908,7 @@
     loadChart();
     loadFutures();
     loadMA();
+    loadVsBtc();
   }
   function selectInterval(id) {
     if (id === interval) return;
@@ -963,6 +980,24 @@
       const short = closes.length < 200 ? ' (' + closes.length + ' gün veri)' : '';
       setVerdict('ind-ma-v', 'fiyat ' + fmtPct(dist) + (dist >= 0 ? ' üstünde' : ' altında') + short, dist >= 0 ? 'pos' : 'neg');
     } catch (err) { $('ind-ma').textContent = '—'; setVerdict('ind-ma-v', 'veri alınamadı'); }
+  }
+
+  // Seçili varlığın BTC'ye göre performansı (SEMBOL/BTC paritesinin değişimi)
+  async function loadVsBtc() {
+    const sym = selected;
+    $('ind-vs-label').textContent = sym === 'BTC' ? 'BTC\'ye göre performans' : sym + ' / BTC performansı (30 gün)';
+    if (sym === 'BTC') { $('ind-vs').textContent = '—'; setVerdict('ind-vs-v', 'bir altcoin seçince görünür'); return; }
+    try {
+      const rows = await binance('/api/v3/klines?symbol=' + sym + 'BTC&interval=1d&limit=31');
+      if (sym !== selected) return;
+      const c = rows.map((r) => +r[4]);
+      const n = c.length - 1;
+      const chg = (back) => (c[n] / c[Math.max(0, n - back)] - 1) * 100;
+      const m = chg(30);
+      $('ind-vs').textContent = fmtPct(m);
+      $('ind-vs').className = 'value ' + signClass(m);
+      setVerdict('ind-vs-v', '7 gün ' + fmtPct(chg(7)) + ' · 24 sa ' + fmtPct(chg(1)) + ' · ' + (m >= 0 ? 'BTC\'den iyi' : 'BTC\'den zayıf'), m >= 0 ? 'pos' : 'neg');
+    } catch (err) { $('ind-vs').textContent = '—'; setVerdict('ind-vs-v', 'veri alınamadı'); }
   }
 
   async function loadAltStrength() {
@@ -1427,6 +1462,8 @@
   loadAltStrength();
   setInterval(() => { if (!document.hidden && tab === 'kripto') loadFutures(); }, 60000);
   setInterval(loadMA, 1800000);
+  loadVsBtc();
+  setInterval(loadVsBtc, 600000);
   setInterval(loadAltStrength, 3600000);
   connect();
   loadGlobal();
