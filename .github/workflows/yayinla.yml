@@ -75,9 +75,17 @@ jobs:
           test -s data/events_log.json || curl -fsS "$SITE/events_log.json" -o data/events_log.json || echo '[]' > data/events_log.json
           test -s data/notify_state.json || curl -fsS "$SITE/notify_state.json" -o data/notify_state.json || echo '{"sent":{}}' > data/notify_state.json
 
+      - name: AI sekmesi verisini topla
+        env:
+          PREV_AI_URL: ${{ env.SITE }}/ai.json
+        run: |
+          python3 scripts/fetch_ai.py data/ai.json || echo "AI verisi alınamadı"
+          test -s data/ai.json || curl -fsS "$PREV_AI_URL" -o data/ai.json || echo '{"updated":0}' > data/ai.json
+
       - name: Site klasörünü hazırla
         run: |
           mkdir -p _site/data
+          cp data/ai.json _site/data/
           cp index.html style.css app.js _site/
           test -s data/daily.json || curl -fsS "$SITE/daily.json" -o data/daily.json || echo '{"updated":0,"symbols":{}}' > data/daily.json
           cp data/daily.json _site/data/

@@ -408,7 +408,10 @@ h2 { font-size: 16px; font-weight: 600; }
 
 /* AI gündemi */
 .n-dot.ai-model { background: var(--accent); }
-.n-dot.ai-uygulama { background: var(--up); }
+.n-dot.ai-urun { background: var(--up); }
+.n-dot.ai-hizmet { background: var(--ma1); }
+.n-dot.ai-benchmark { background: var(--down); }
+.n-dot.ai-acik { background: var(--fg); }
 .n-dot.ai-arastirma { background: var(--ma2); }
 .n-dot.ai-sektor { background: var(--muted); }
 

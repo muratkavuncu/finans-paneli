@@ -274,10 +274,19 @@ AI_FEEDS = [
     ("IEEE Spectrum", "https://spectrum.ieee.org/feeds/topic/artificial-intelligence.rss", "haber"),
     ("The Decoder", "https://the-decoder.com/feed/", "haber"),
     ("Simon Willison", "https://simonwillison.net/atom/everything/", "blog"),
+    ("Hugging Face", "https://huggingface.co/blog/feed.xml", "resmi"),
+    ("Google Research", "https://research.google/blog/rss/", "resmi"),
+    ("Microsoft Research", "https://www.microsoft.com/en-us/research/feed/", "resmi"),
+    ("BAIR (Berkeley)", "https://bair.berkeley.edu/blog/feed.xml", "resmi"),
+    ("Latent Space", "https://www.latent.space/feed", "blog"),
+    ("Import AI", "https://jack-clark.net/feed/", "blog"),
+    ("One Useful Thing", "https://www.oneusefulthing.org/feed", "blog"),
+    ("Interconnects", "https://www.interconnects.ai/feed", "blog"),
+    ("Ahead of AI", "https://magazine.sebastianraschka.com/feed", "blog"),
 ]
 AI_KIND = {f[0]: f[2] for f in AI_FEEDS}
 AI_MAX_AGE = 7 * 86400
-AI_MAX = 150
+AI_MAX = 220
 AI_RELEASE = compile_words([r"launch\w*", r"releas\w*", r"introduc\w*", r"announc\w*", r"unveil\w*", r"debut\w*", r"rolls? out",
                             r"rolling out", r"ships?", r"shipping", r"open-?sourc\w*", r"previews?", r"now available", r"new", r"drops?"])
 AI_MODEL = compile_words([r"models?", r"gpt[\w.-]*", r"claude", r"gemini", r"llama", r"mistral", r"grok", r"deepseek", r"qwen",
@@ -302,16 +311,34 @@ AI_APP2 = compile_words([r"hands-on", r"camera", r"drones?", r"dj", r"operating 
 AI_RESEARCH2 = compile_words([r"percent", r"outperform\w*", r"scores?", r"completes", r"solves?", r"discover\w*", r"findings?"])
 
 
+AI_BENCH = compile_words([r"benchmarks?", r"leaderboards?", r"arena", r"swe-bench", r"arc-agi", r"evals?", r"evaluations?",
+                          r"outperform\w*", r"beats", r"tops", r"sota", r"state-of-the-art", r"world #?1", r"scores?", r"ranks?",
+                          r"ranking\w*", r"record"])
+AI_OPEN = compile_words([r"open-?sourc\w*", r"open[- ]weights?", r"open models?", r"github", r"repos?", r"hugging ?face", r"local\w*",
+                         r"self-hosted", r"ollama", r"llama\.cpp", r"on-device", r"fine-?tun\w+", r"quantiz\w+", r"gguf", r"library",
+                         r"framework", r"toolkit"])
+AI_SERVICE = compile_words([r"apis?", r"pricing", r"priced", r"enterprise", r"subscriptions?", r"plans?", r"tiers?", r"cloud",
+                            r"for business", r"for teams", r"workspace", r"availability", r"generally available", r"rate limits?",
+                            r"credits", r"platform", r"sdk", r"developers?", r"customers?"])
+
+
 def ai_topic(title):
+    """Başlıktaki kelimelere göre kaba konu etiketi; yanılabilir."""
     if AI_BUSINESS.search(title):
         return "sektor"
+    if AI_BENCH.search(title):
+        return "benchmark"
     if (AI_NAMED.search(title) and (AI_RELEASE.search(title) or AI_VERSION.search(title))) or \
             (AI_MODEL.search(title) and AI_RELEASE.search(title)):
         return "model"
+    if AI_OPEN.search(title):
+        return "acik"
     if AI_RESEARCH.search(title) or AI_RESEARCH2.search(title):
         return "arastirma"
+    if AI_SERVICE.search(title):
+        return "hizmet"
     if AI_APP.search(title) or AI_APP2.search(title):
-        return "uygulama"
+        return "urun"
     return "sektor"
 
 

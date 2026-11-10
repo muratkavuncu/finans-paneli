@@ -34,7 +34,7 @@
     </div>
   </header>
 
-  <section class="pulse" aria-label="Piyasa nabzı">
+  <section class="pulse" data-not="ai" aria-label="Piyasa nabzı">
     <div class="stat stat-fng">
       <div class="fng-text">
         <div class="label">Kripto korku / açgözlülük</div>
@@ -71,6 +71,7 @@
   <nav class="maintabs" id="maintabs" role="tablist" aria-label="Piyasa">
     <button type="button" role="tab" data-id="kripto">Kripto</button>
     <button type="button" role="tab" data-id="tek">Teknoloji</button>
+    <button type="button" role="tab" data-id="ai">AI</button>
   </nav>
 
   <section class="summary" data-tab="kripto" aria-label="Kripto özeti">
@@ -96,7 +97,7 @@
     </div>
   </section>
 
-  <section class="panel" data-tab="tek" aria-label="AI gündemi" hidden>
+  <section class="panel" data-tab="ai" aria-label="AI gündemi" hidden>
     <div class="panel-head">
       <h2>AI gündemi</h2>
       <span class="hint" id="ai-updated">yükleniyor…</span>
@@ -104,7 +105,60 @@
     <div class="chips" id="ai-filters" role="tablist" aria-label="AI haber filtresi"></div>
     <ol class="news" id="ai-list"></ol>
     <button type="button" class="more" id="ai-more" hidden>Daha fazla göster</button>
-    <p class="hint events-note">Yapay zekâ laboratuvarlarının kendi duyuruları ve büyük teknoloji yayınlarının AI haberleri; başlıklar orijinal dilinde ve değiştirilmeden gösterilir. Konu etiketleri (yeni model, uygulama, araştırma) başlıktaki kelimelere göre otomatik verilir, yanılabilir. "N kaynak" aynı haberi kaç yayının yazdığını gösterir.</p>
+    <p class="hint events-note">Yapay zekâ laboratuvarlarının kendi duyuruları ve büyük teknoloji yayınlarının AI haberleri; başlıklar orijinal dilinde ve değiştirilmeden gösterilir. Uzman blogları tek kişinin görüşüdür. Konu etiketleri (model, ürün, benchmark, araştırma vb.) başlıktaki kelimelere göre otomatik verilir, yanılabilir. "N kaynak" aynı haberi kaç yayının yazdığını gösterir.</p>
+  </section>
+
+  <div class="two" data-tab="ai" hidden>
+    <section class="panel" aria-label="Yeni çıkan modeller">
+      <div class="panel-head"><h2>Yeni çıkan modeller</h2><span class="hint" id="ai-data-updated"></span></div>
+      <ol class="news" id="ai-models"></ol>
+      <p class="hint events-note">OpenRouter'a en son eklenen modeller: bağlam boyutu ve 1 milyon token başına fiyat. Bir modelin burada görünmesi, API üzerinden kullanıma açıldığını gösterir.</p>
+    </section>
+    <section class="panel" aria-label="Trend modeller">
+      <div class="panel-head"><h2>Trend modeller</h2><span class="hint">Hugging Face · açık modeller</span></div>
+      <ol class="news" id="ai-hfmodels"></ol>
+      <p class="hint events-note">Hugging Face'te şu an en çok ilgi gören açık modeller; ♥ beğeni sayısıdır.</p>
+    </section>
+  </div>
+
+  <div class="two" data-tab="ai" hidden>
+    <section class="panel" aria-label="İlginç demolar">
+      <div class="panel-head"><h2>İlginç demolar</h2><span class="hint">Hugging Face Spaces · denenebilir</span></div>
+      <ol class="news" id="ai-spaces"></ol>
+      <p class="hint events-note">Tarayıcıda denenebilen, şu an trend olan AI uygulamaları ve demolar.</p>
+    </section>
+    <section class="panel" aria-label="Topluluktan projeler">
+      <div class="panel-head"><h2>Topluluktan projeler</h2><span class="hint">Hacker News · Show HN · son 7 gün</span></div>
+      <ol class="news" id="ai-showhn"></ol>
+      <p class="hint events-note">İnsanların AI ile yapıp paylaştığı projeler; bağlantı tartışma sayfasına gider.</p>
+    </section>
+  </div>
+
+  <div class="two" data-tab="ai" hidden>
+    <section class="panel" aria-label="Öne çıkan makaleler">
+      <div class="panel-head"><h2>Öne çıkan makaleler</h2><span class="hint">Hugging Face Daily Papers · son 10 gün</span></div>
+      <ol class="news" id="ai-papers"></ol>
+      <p class="hint events-note">Topluluğun en çok oy verdiği yeni araştırma makaleleri.</p>
+    </section>
+    <section class="panel" aria-label="Yükselen açık kaynak projeler">
+      <div class="panel-head"><h2>Yükselen açık kaynak</h2><span class="hint">GitHub · son 30 günde açılanlar</span></div>
+      <ol class="news" id="ai-repos"></ol>
+      <p class="hint events-note">Son 30 günde açılıp en çok yıldız alan LLM ve AI ajanı projeleri.</p>
+    </section>
+  </div>
+
+  <section class="panel" data-tab="ai" aria-label="Karşılaştırma tabloları" hidden>
+    <div class="panel-head"><h2>Benchmark tabloları</h2><span class="hint">güncel sıralamalar için kaynak siteler</span></div>
+    <ol class="news links">
+      <li><a href="https://lmarena.ai/leaderboard" target="_blank" rel="noopener noreferrer"><span class="n-dot"></span><span><span class="n-title">LMArena</span><span class="n-meta">İnsanların kör karşılaştırma oylarıyla model sıralaması (metin, görsel, kod)</span></span></a></li>
+      <li><a href="https://artificialanalysis.ai/" target="_blank" rel="noopener noreferrer"><span class="n-dot"></span><span><span class="n-title">Artificial Analysis</span><span class="n-meta">Zekâ, hız ve fiyat karşılaştırması; sağlayıcı bazında ölçümler</span></span></a></li>
+      <li><a href="https://www.swebench.com/" target="_blank" rel="noopener noreferrer"><span class="n-dot"></span><span><span class="n-title">SWE-bench</span><span class="n-meta">Gerçek yazılım hatalarını çözme başarısı (kodlama ajanları)</span></span></a></li>
+      <li><a href="https://arcprize.org/leaderboard" target="_blank" rel="noopener noreferrer"><span class="n-dot"></span><span><span class="n-title">ARC Prize</span><span class="n-meta">Daha önce görülmemiş bulmacalarda akıl yürütme (ARC-AGI)</span></span></a></li>
+      <li><a href="https://metr.org/" target="_blank" rel="noopener noreferrer"><span class="n-dot"></span><span><span class="n-title">METR</span><span class="n-meta">Modellerin kendi başına tamamlayabildiği görev süresi ölçümleri</span></span></a></li>
+      <li><a href="https://livebench.ai/" target="_blank" rel="noopener noreferrer"><span class="n-dot"></span><span><span class="n-title">LiveBench</span><span class="n-meta">Ezberi önlemek için soruları düzenli yenilenen genel test</span></span></a></li>
+      <li><a href="https://epoch.ai/benchmarks" target="_blank" rel="noopener noreferrer"><span class="n-dot"></span><span><span class="n-title">Epoch AI</span><span class="n-meta">Zor matematik ve bilim testlerinde zaman içindeki ilerleme</span></span></a></li>
+    </ol>
+    <p class="hint events-note">Bu sıralamaların ücretsiz ve güvenilir bir veri akışı olmadığı için rakamları panele taşımıyorum; güncel tablo için kaynağına git. Benchmark haberleri yukarıdaki AI gündeminde "Benchmark" filtresinde.</p>
   </section>
 
   <section class="summary" data-tab="tek" aria-label="Teknoloji özeti" hidden>
@@ -125,7 +179,7 @@
   <section class="watch" id="watch" data-tab="kripto" aria-label="Kripto takip listesi"></section>
   <section class="watch" id="watch-tek" data-tab="tek" aria-label="Teknoloji takip listesi" hidden></section>
 
-  <section class="panel chart-panel" aria-label="Fiyat grafiği">
+  <section class="panel chart-panel" data-not="ai" aria-label="Fiyat grafiği">
     <div class="chart-head">
       <div class="chart-title">
         <h2 id="chart-name">Bitcoin</h2>
@@ -155,7 +209,7 @@
     </div>
   </section>
 
-  <section class="panel" aria-label="Teknik görünüm">
+  <section class="panel" data-not="ai" aria-label="Teknik görünüm">
     <div class="panel-head">
       <h2>Teknik görünüm · <span id="ta-sym">BTC</span></h2>
       <span class="hint">grafikte seçili zaman dilimindeki mumlardan hesaplanır</span>
@@ -353,7 +407,7 @@
     <div class="heat" id="heat-tek"></div>
   </section>
 
-  <section class="panel" aria-label="Büyük olaylar">
+  <section class="panel" data-not="ai" aria-label="Büyük olaylar">
     <div class="panel-head">
       <h2>Büyük olaylar</h2>
       <span class="hint">son 48 saat · etki puanına göre</span>
@@ -362,7 +416,7 @@
     <p class="hint events-note">Etki puanı (0-100): olay türü, kaç kaynağın yazdığı, yayılma hızı, kapsam ve ölçülen fiyat tepkisinden hesaplanır. "Tipik etki" bu tür olayların geçmişte çoğunlukla nasıl fiyatlandığını gösteren genel bir beklentidir; garanti ya da tavsiye değildir.</p>
   </section>
 
-  <div class="two">
+  <div class="two" data-not="ai">
     <section class="panel" aria-label="Gündem">
       <div class="panel-head">
         <h2>Gündem</h2>

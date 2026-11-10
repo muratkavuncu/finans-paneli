@@ -72,7 +72,8 @@
   const stockBy = Object.fromEntries(STOCKS.map((c) => [c.s, c]));
   const sEls = {};
   let markets = null, marketsStamp = 0;
-  let tab = load('fp.tab', 'kripto') === 'tek' ? 'tek' : 'kripto';
+  let tab = load('fp.tab', 'kripto');
+  if (!['kripto', 'tek', 'ai'].includes(tab)) tab = 'kripto';
   let stock = load('fp.stock', 'NVDA');
   if (!stockBy[stock]) stock = 'NVDA';
   let stockInterval = load('fp.sint', '30m') === '1d' ? '1d' : '30m';
@@ -227,9 +228,12 @@
   // Sekme değişince görünür bölümleri, grafiği ve haber filtrelerini eşitle
   function applyTab() {
     document.querySelectorAll('[data-tab]').forEach((n) => { n.hidden = n.dataset.tab !== tab; });
+    // Piyasa bölümleri (nabız, grafik, olaylar, gündem) AI sekmesinde gizlenir
+    document.querySelectorAll('[data-not]').forEach((n) => { n.hidden = n.dataset.not === tab; });
     document.querySelectorAll('#maintabs button').forEach((b) => {
       b.setAttribute('aria-selected', String(b.dataset.id === tab));
     });
+    if (tab === 'ai') { renderAi(); loadAiData(); return; }
     buildIntervals();
     markSelection();
     if (tab === 'kripto') { state[selected].shown = null; markDirty(selected); } else renderStocks();
@@ -1443,12 +1447,17 @@
   }
 
   // ---------- AI gündemi (Teknoloji sekmesi) ----------
-  const AI_TOPICS = { model: 'Yeni model', uygulama: 'Uygulama', arastirma: 'Araştırma', sektor: 'Şirket ve sektör' };
+  const AI_TOPICS = { model: 'Model', urun: 'Ürün', hizmet: 'Hizmet ve API', benchmark: 'Benchmark', arastirma: 'Araştırma',
+    acik: 'Açık kaynak', sektor: 'Şirket ve sektör' };
   const AI_FILTERS = [
     { id: 'all', label: 'Tümü', test: () => true },
-    { id: 'model', label: 'Yeni modeller', test: (n) => n.topic === 'model' },
-    { id: 'uygulama', label: 'Uygulamalar', test: (n) => n.topic === 'uygulama' },
+    { id: 'model', label: 'Modeller', test: (n) => n.topic === 'model' },
+    { id: 'urun', label: 'Ürünler', test: (n) => n.topic === 'urun' },
+    { id: 'hizmet', label: 'Hizmet ve API', test: (n) => n.topic === 'hizmet' },
+    { id: 'benchmark', label: 'Benchmark', test: (n) => n.topic === 'benchmark' },
     { id: 'arastirma', label: 'Araştırma', test: (n) => n.topic === 'arastirma' },
+    { id: 'acik', label: 'Açık kaynak', test: (n) => n.topic === 'acik' },
+    { id: 'blog', label: 'Uzman blogları', test: (n) => n.kind === 'blog' },
     { id: 'official', label: 'Resmi duyurular', test: (n) => n.official },
     { id: 'top', label: 'Çok konuşulan', test: (n) => n.n >= 2 },
     { id: 'sektor', label: 'Şirket ve sektör', test: (n) => n.topic === 'sektor' },
@@ -1493,7 +1502,7 @@
       body.appendChild(meta);
       body.appendChild(el('span', 'n-title', n.title));
       const tags = el('span', 'n-tags');
-      tags.appendChild(el('span', n.topic === 'model' ? 'hot' : '', AI_TOPICS[n.topic] || 'AI'));
+      tags.appendChild(el('span', n.topic === 'model' || n.topic === 'benchmark' ? 'hot' : '', AI_TOPICS[n.topic] || 'AI'));
       (n.also || []).slice(0, 3).forEach((s) => tags.appendChild(el('span', '', 'ayrıca ' + s)));
       body.appendChild(tags);
       a.appendChild(body);
@@ -1502,7 +1511,65 @@
     });
     $('ai-more').hidden = items.length <= aiShown;
     $('ai-updated').textContent = all.length + ' haber · son 7 gün · güncellendi: ' + ago(news.updated);
-    if (tab === 'tek' && all.length) setTimeout(() => save('fp.aiSeen', String(all[0].ts)), 8000);
+    if (tab === 'ai' && all.length) setTimeout(() => save('fp.aiSeen', String(all[0].ts)), 8000);
+  }
+
+  // ---------- AI sekmesi: modeller, demolar, makaleler, projeler ----------
+  let aiData = null, aiBusy = false, aiLoaded = 0;
+  const compact = (v) => (v >= 1e6 ? NF[1].format(v / 1e6) + ' Mn' : v >= 1e3 ? NF[1].format(v / 1e3) + ' B' : String(v));
+  const safeUrl = (u, host) => (typeof u === 'string' && u.indexOf('https://' + host + '/') === 0 ? u : '');
+  const priceText = (r) => (!r.in && !r.out ? 'ücretsiz' : '$' + NF[2].format(r.in) + ' / $' + NF[2].format(r.out) + ' (1M token giriş/çıkış)');
+
+  function aiRows(id, rows, host, title, meta) {
+    const list = $(id);
+    list.textContent = '';
+    if (!Array.isArray(rows) || !rows.length) { list.appendChild(el('li', 'empty', 'Veri henüz yok.')); return; }
+    rows.forEach((r) => {
+      const url = safeUrl(r.url, host);
+      if (!url) return;
+      const li = el('li');
+      const a = el('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.appendChild(el('span', 'n-dot'));
+      const body = el('span');
+      body.appendChild(el('span', 'n-title', title(r)));
+      body.appendChild(el('span', 'n-meta', meta(r)));
+      a.appendChild(body);
+      li.appendChild(a);
+      list.appendChild(li);
+    });
+  }
+
+  function renderAiData() {
+    const d = aiData;
+    if (!d) return;
+    const when = (r) => (r.ts ? ago(r.ts) + ' · ' : '');
+    aiRows('ai-models', d.models, 'openrouter.ai', (r) => r.name || r.id,
+      (r) => when(r) + (r.ctx ? compact(r.ctx) + ' token bağlam · ' : '') + priceText(r));
+    aiRows('ai-hfmodels', d.hf_models, 'huggingface.co', (r) => r.id,
+      (r) => (r.task ? r.task + ' · ' : '') + '♥ ' + compact(r.likes) + ' · ' + compact(r.downloads) + ' indirme');
+    aiRows('ai-spaces', d.spaces, 'huggingface.co', (r) => r.id, (r) => when(r) + '♥ ' + compact(r.likes) + (r.task ? ' · ' + r.task : ''));
+    aiRows('ai-showhn', d.showhn, 'news.ycombinator.com', (r) => r.title.replace(/^Show HN:\s*/i, ''),
+      (r) => when(r) + r.points + ' puan · ' + r.comments + ' yorum');
+    aiRows('ai-papers', d.papers, 'huggingface.co', (r) => r.title, (r) => when(r) + '▲ ' + r.votes + ' oy · arXiv ' + r.id);
+    aiRows('ai-repos', d.repos, 'github.com', (r) => r.id + (r.desc ? ' — ' + r.desc : ''),
+      (r) => '★ ' + compact(r.stars) + (r.lang ? ' · ' + r.lang : '') + (r.ts ? ' · ' + ago(r.ts) + ' açıldı' : ''));
+    $('ai-data-updated').textContent = d.updated ? 'güncellendi: ' + ago(d.updated) : '';
+  }
+
+  async function loadAiData() {
+    if (aiBusy || Date.now() - aiLoaded < 600000) return;
+    aiBusy = true;
+    try {
+      const r = await fetch('data/ai.json?t=' + Math.floor(Date.now() / 600000), { cache: 'no-store' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      aiData = await r.json();
+      aiLoaded = Date.now();
+      renderAiData();
+    } catch (err) { /* bir sonraki açılışta yeniden denenir */ }
+    aiBusy = false;
   }
 
   // ---------- Katlanır bölümler ----------
@@ -1726,6 +1793,7 @@
   const TAB_FILTERS = {
     kripto: ['all', 'conf', 'hot', 'BTC', 'RENDER', 'Makro', 'Regülasyon', 'tr'],
     tek: ['all', 'conf', 'hot', 'AI', 'Teknoloji', 'Makro', 'Regülasyon', 'tr'],
+    ai: ['all'],
   };
   const COIN_TAGS = ['BTC', 'ETH', 'SOL', 'RENDER', 'XRP', 'BNB', 'DOGE'];
   // Makro haberler iki sekmede de görünür; gerisi sekmenin konusuna göre ayrılır
@@ -1944,6 +2012,7 @@
   loadNews();
   loadMarkets();
   setInterval(loadNews, 120000);
+  setInterval(() => { if (tab === 'ai' && !document.hidden) loadAiData(); }, 300000);
   setInterval(loadMarkets, 120000);
   setInterval(() => { renderNews(); renderCalendar(); renderNextEvent(); }, 60000);
   loadSnapshot().catch(() => {});
