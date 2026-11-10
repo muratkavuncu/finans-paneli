@@ -141,6 +141,39 @@ def news_body(e, prices, now, confirmed):
     return "\n".join(lines)
 
 
+def price_alerts(events, prices, sent, now):
+    """Sert fiyat hareketi (son 5 ve 15 dakika). sent sözlüğünü günceller, gönderilen sayısını döndürür.
+
+    Hem her turda hem de turlar arasındaki sık fiyat izleyicisinde (watch_prices.py) kullanılır.
+    """
+    count = 0
+    for sym, (lim15, lim5) in PRICE_RULES.items():
+        data = live(prices, sym, now)
+        if not data or now - sent.get("p:" + sym, 0) < PRICE_COOLDOWN:
+            continue
+        move15 = (data[-1][1] / data[-4][1] - 1) * 100
+        move5 = (data[-1][1] / data[-2][1] - 1) * 100
+        if abs(move15) >= lim15:
+            move, span, ratio = move15, "15 dakikada", abs(move15) / lim15
+        elif abs(move5) >= lim5:
+            move, span, ratio = move5, "5 dakikada", abs(move5) / lim5
+        else:
+            continue
+        lines = ["Fiyat: " + money(data[-1][1])]
+        cause = [e for e in events if now - e["ts"] <= 3600 and not e.get("preview") and e["score"] >= 40
+                 and (e["cat"] == "makro" or sym in e["assets"] or (e["cat"] == "kripto" and not e["assets"]))]
+        if cause:
+            lines.append("Son 1 saatin öne çıkan haberi (neden olduğu kesin değil): %s (%s)" % (cause[0]["title"], cause[0]["source"]))
+        else:
+            lines.append("Eşleşen haber henüz yok; panelden kontrol et.")
+        tag = "chart_with_upwards_trend" if move > 0 else "chart_with_downwards_trend"
+        if send("%s %s %s" % (sym, span, pct(move)), "\n".join(lines), priority=5 if ratio >= 2 else 4, tags=[tag],
+                news_url=cause[0]["url"] if cause else None):
+            sent["p:" + sym] = int(now)
+            count += 1
+    return count
+
+
 def run(events, calendar, prices, state):
     """state: {"sent": {anahtar: zaman}}; gönderilenleri işaretler ve güncel state'i döndürür."""
     sent = dict(state.get("sent", {}))
@@ -187,31 +220,8 @@ def run(events, calendar, prices, state):
                 news_sent += 1
     count += news_sent
 
-    # 2) Sert fiyat hareketi (son 5 ve 15 dakika)
-    for sym, (lim15, lim5) in PRICE_RULES.items():
-        data = live(prices, sym, now)
-        if not data or recent("p:" + sym, PRICE_COOLDOWN):
-            continue
-        move15 = (data[-1][1] / data[-4][1] - 1) * 100
-        move5 = (data[-1][1] / data[-2][1] - 1) * 100
-        if abs(move15) >= lim15:
-            move, span, ratio = move15, "15 dakikada", abs(move15) / lim15
-        elif abs(move5) >= lim5:
-            move, span, ratio = move5, "5 dakikada", abs(move5) / lim5
-        else:
-            continue
-        lines = ["Fiyat: " + money(data[-1][1])]
-        cause = [e for e in events if now - e["ts"] <= 3600 and not e.get("preview") and e["score"] >= 40
-                 and (e["cat"] == "makro" or sym in e["assets"] or (e["cat"] == "kripto" and not e["assets"]))]
-        if cause:
-            lines.append("Son 1 saatin öne çıkan haberi (neden olduğu kesin değil): %s (%s)" % (cause[0]["title"], cause[0]["source"]))
-        else:
-            lines.append("Eşleşen haber henüz yok; panelden kontrol et.")
-        tag = "chart_with_upwards_trend" if move > 0 else "chart_with_downwards_trend"
-        if send("%s %s %s" % (sym, span, pct(move)), "\n".join(lines), priority=5 if ratio >= 2 else 4, tags=[tag],
-                news_url=cause[0]["url"] if cause else None):
-            sent["p:" + sym] = int(now)
-            count += 1
+    # 2) Sert fiyat hareketi
+    count += price_alerts(events, prices, sent, now)
 
     # 3) ve 4) Kritik veri: önce hatırlatma, açıklandıktan sonra ilk tepki. Aynı saatteki veriler tek bildirimde toplanır.
     slots = {}

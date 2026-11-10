@@ -385,7 +385,14 @@ def main():
     print("olay:", len(top), "kayıt:", len(log_out))
 
     # Telefona bildirim: gönderilenler tekrar gitmesin diye küçük bir durum dosyası tutulur
-    state = notify.run(events, calendar, impact.Prices(markets_path), load_side("notify_state.json", {}))
+    state = load_side("notify_state.json", {})
+    # Turlar arasındaki fiyat izleyicisi bildirim gönderdiyse zamanı buradan gelir ("BTC:1731230000,...")
+    for part in os.environ.get("PRICE_SENT", "").split(","):
+        m = re.match(r"^([A-Z]{2,10}):(\d{10})$", part.strip())
+        if m and m.group(1) in notify.PRICE_RULES and int(m.group(2)) <= time.time():
+            sent = state.setdefault("sent", {})
+            sent["p:" + m.group(1)] = max(int(m.group(2)), sent.get("p:" + m.group(1), 0))
+    state = notify.run(events, calendar, impact.Prices(markets_path), state)
     with open(os.path.join(os.path.dirname(OUT) or ".", "notify_state.json"), "w", encoding="utf-8") as fh:
         json.dump(state, fh, separators=(",", ":"))
     print("haber:", len(items), "yeni çekilen:", len(fresh), "takvim:", len(calendar), "hata:", errors)

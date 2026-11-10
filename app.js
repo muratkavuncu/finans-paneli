@@ -482,9 +482,9 @@
     return list;
   }
 
-  // Durum göstergesi iki şeyi birlikte izler: canlı fiyat bağlantısı ve 5 dakikalık veri zinciri.
-  // Zincir verisi 8 dakikadan eskiyse sarı, 15 dakikadan eskiyse kırmızı olur.
-  const DATA_LATE = 8 * 60, DATA_DEAD = 15 * 60;
+  // Durum göstergesi iki şeyi birlikte izler: canlı fiyat bağlantısı ve 3 dakikalık veri zinciri.
+  // Zincir verisi 6 dakikadan eskiyse sarı, 12 dakikadan eskiyse kırmızı olur.
+  const DATA_LATE = 6 * 60, DATA_DEAD = 12 * 60;
   let wsState = 'connecting';
   const pageStart = Date.now();
   function setStatus(s) {

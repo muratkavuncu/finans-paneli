@@ -1,7 +1,8 @@
 name: Paneli yayınla
 
 # Piyasa verisini ve haberleri toplar, paneli GitHub Pages'e koyar.
-# Kod her değiştiğinde çalışır; ayrıca "zincir" işi her turdan sonra bir sonrakini başlatır (yaklaşık 5 dakikada bir).
+# Kod her değiştiğinde çalışır; ayrıca "zincir" işi her turdan sonra bir sonrakini başlatır (yaklaşık 3 dakikada bir).
+# Zincir beklerken fiyatı 20 saniyede bir izler ve sert harekette hemen bildirim gönderir.
 # GitHub'ın kendi zamanlayıcısı güvenilir olmadığı için yalnızca yedek: zincir koparsa onu yeniden başlatır.
 # Zinciri durdurmak için depo değişkeni ZINCIR=kapali yapılır.
 on:
@@ -19,6 +20,10 @@ on:
         description: Bu turdan sonra bir sonrakini kendiliğinden başlat
         type: boolean
         default: false
+      fiyat:
+        description: Zincirin kendi kullandığı alan (son fiyat bildirimlerinin zamanı); boş bırakın
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -60,6 +65,7 @@ jobs:
           PREV_URL: ${{ env.SITE }}/news.json
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
           NTFY_TEST: ${{ inputs.deneme }}
+          PRICE_SENT: ${{ inputs.fiyat }}
         run: |
           python3 scripts/fetch_news.py data/news.json || {
             echo "Toplama başarısız, önceki haberler korunuyor"
@@ -90,13 +96,26 @@ jobs:
     timeout-minutes: 8
     permissions:
       actions: write
+      contents: read
     concurrency:
       group: zincir
       cancel-in-progress: true
+    env:
+      BEKLE: 140
     steps:
-      - name: Bekle ve bir sonraki turu başlat
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Beklerken fiyatı izle, sonra bir sonraki turu başlat
         env:
           GH_TOKEN: ${{ github.token }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          SITE: https://muratkavuncu.github.io/finans-paneli/data
         run: |
-          sleep 240
-          gh workflow run yayinla.yml --repo "$GITHUB_REPOSITORY" --ref main -f zincir=true
+          BASLA=$(date +%s)
+          FIYAT=$(python3 scripts/watch_prices.py "$BEKLE" 20 || true)
+          # İzleyici erken biterse zincir hızlanmasın: kalan süreyi bekle
+          KALAN=$(( BEKLE - $(date +%s) + BASLA ))
+          if [ "$KALAN" -gt 0 ]; then sleep "$KALAN"; fi
+          case "$FIYAT" in *[!A-Z0-9:,]*) FIYAT="" ;; esac
+          gh workflow run yayinla.yml --repo "$GITHUB_REPOSITORY" --ref main -f zincir=true -f fiyat="$FIYAT"
