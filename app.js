@@ -635,7 +635,11 @@
 
   function setTaBars(list) {
     taBars = list;
+    clearTimeout(taTimer);
+    taTimer = 0;
     refreshTA();
+    // Veri değişince fiyat eksenini yeniden otomatik ölçeğe al: elle kaydırılmış eksen eski aralıkta kalmasın
+    if (chart) candles.priceScale().applyOptions({ autoScale: true });
   }
   function taUpdate(c) {
     const last = taBars[taBars.length - 1];
