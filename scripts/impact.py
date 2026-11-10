@@ -43,7 +43,7 @@ def both(first, second):
 
 
 INFL = [r"cpi", r"inflation", r"enflasyon\w*", r"tüfe", r"pce"]
-FED = [r"fed", r"fomc", r"federal reserve", r"powell"]
+FED = [r"fed", r"fomc", r"federal reserve", r"federal open market committee", r"powell"]
 ETF = [r"etfs?"]
 EARN = [r"earnings", r"results", r"revenue", r"profit", r"guidance", r"bilanço\w*", r"q[1-4]"]
 REGULATOR = [r"sec", r"cftc", r"doj", r"regulators?", r"justice department", r"spk", r"masak"]
@@ -76,7 +76,9 @@ PLAYBOOK = [
          rx=words(r"jobs report", r"payrolls", r"unemployment", r"jobless claims", r"istihdam", r"işsizlik"),
          up=[], down=[], why="Güçlü istihdam faiz indirimini erteleyebilir; yön beklentiye bağlı."),
     dict(id="geo", label="Jeopolitik gerilim", w=32, wide=True,
-         rx=words(r"war", r"invasion", r"invades?", r"missiles?", r"airstrikes?", r"military strikes?", r"savaş\w*", r"füze\w*", r"işgal\w*"),
+         rx=words(r"declares? war", r"war (?:in|on|with|against) (?!drugs|talent|inflation|crypto|cash)\w+", r"invasion", r"invades?",
+                  r"invaded", r"missile (?:strikes?|attacks?)", r"airstrikes?", r"military (?:strikes?|action|operation)s?",
+                  r"savaş ilan\w*", r"füze saldırı\w*", r"hava saldırı\w*", r"askeri operasyon\w*", r"işgal et\w+"),
          up=["Altın", "Petrol", "Dolar"], down=["Teknoloji", "Kripto"],
          why="Belirsizlik parayı güvenli limanlara iter."),
     dict(id="tariff", label="Gümrük vergisi / ticaret savaşı", w=30, wide=True,
@@ -151,10 +153,19 @@ OPPOSITES = {"infl_hot": ("infl_cool", "infl"), "infl_cool": ("infl_hot", "infl"
              "etf_yes": ("etf_no", "etf"), "etf_no": ("etf_yes", "etf")}
 # Kural kitabı ABD verisine göre yazıldı; başka ülke verisinde yön verilmez ve ağırlık yarıya iner
 US_ONLY = {"infl_hot", "infl_cool", "infl", "fed_cut", "fed_hike", "jobs"}
-FOREIGN = words(r"china\w*", r"chinese", r"japan\w*", r"euro(?:zone|pe\w*)?", r"ecb", r"uk", r"britain", r"german\w*", r"india\w*",
-                r"turkey", r"türkiye\w*", r"tcmb", r"korea\w*", r"canada", r"australia\w*", r"brazil\w*", r"çin\w*")
+FOREIGN = words(r"china\w*", r"chinese", r"japan\w*", r"euro(?:zone|pe\w*)?", r"ecb", r"uk", r"u\.k\.", r"brit\w+", r"german\w*",
+                r"india\w*", r"turkey", r"turkish", r"türkiye\w*", r"tcmb", r"korea\w*", r"canad\w+", r"australia\w*", r"brazil\w*",
+                r"çin\w*", r"boj", r"boe", r"bank of (?:england|japan|canada|korea|israel|russia|mexico)", r"rba", r"rbnz", r"pboc",
+                r"snb", r"riksbank", r"norges", r"norw\w+", r"swed\w+", r"swiss", r"switzerland", r"denmark", r"danish", r"franc\w+",
+                r"french", r"ital\w+", r"spain", r"spanish", r"poland", r"polish", r"russia\w*", r"mexic\w+", r"argentin\w+",
+                r"indonesia\w*", r"new zealand", r"south africa\w*", r"nigeria\w*", r"egypt\w*", r"israel\w*", r"hong kong",
+                r"singapore", r"thai\w*", r"vietnam\w*", r"philippin\w+", r"malaysia\w*", r"pakistan\w*", r"saudi", r"hungar\w+",
+                r"czech", r"romania\w*", r"chile\w*", r"colombia\w*", r"peru\w*", r"ireland", r"irish", r"dutch", r"netherlands",
+                r"belgi\w+", r"austria\w*", r"portug\w+", r"gree(?:ce|k)", r"almanya\w*", r"japonya\w*", r"ingiltere\w*",
+                r"avrupa\w*", r"rusya\w*", r"hindistan\w*", r"amb", r"lagarde")
 # Olayın kendisi değil, yorumu ya da ön izlemesi olan başlıklar
-PREVIEW = words(r"week ahead", r"what to watch", r"what to expect", r"here.s what", r"what (?:do )?we know", r"explained",
+PREVIEW = words(r"ahead of", r"await\w*", r"braces?", r"bracing", r"markets wrap", r"öncesi\w*", r"odaklan\w+",
+                r"bekleniyor", r"bekliyor", r"week ahead", r"what to watch", r"what to expect", r"here.s what", r"what (?:do )?we know", r"explained",
                 r"preview", r"things to know", r"should you", r"opinion", r"analysis", r"haftaya bakış", r"neler bekleniyor")
 REACT_HOURS = 3
 
@@ -245,7 +256,7 @@ def analyze(items, markets_path):
         first_ts = group[0]["ts"]
         sources = []
         for item in group:
-            name = item["source"].split(" ")[0]
+            name = item.get("outlet") or item["source"]
             if name not in sources:
                 sources.append(name)
         tier_a = [i for i in group if i.get("tier") == "A"]
@@ -262,7 +273,7 @@ def analyze(items, markets_path):
             other, generic = OPPOSITES[best["id"]]
             if any(PLAY[other]["rx"].search(t) for t in titles):
                 best = PLAY[generic]
-        foreign = bool(best and best["id"] in US_ONLY and FOREIGN.search(lead["title"]))
+        foreign = bool(best and best["id"] in US_ONLY and any(FOREIGN.search(t) for t in titles))
         preview = bool(PREVIEW.search(lead["title"]))
 
         # Varlıklar: başlıkların en az yarısında geçenler, en çok geçen önce
@@ -284,7 +295,7 @@ def analyze(items, markets_path):
         if foreign or preview:
             pts_type = pts_type // 2
         pts_conf = min(25, {1: 0, 2: 10, 3: 16, 4: 20}.get(len(sources), 24) + (4 if tier_a else 0))
-        early = {i["source"].split(" ")[0] for i in group if i["ts"] - first_ts <= 3600}
+        early = {i.get("outlet") or i["source"] for i in group if i["ts"] - first_ts <= 3600}
         pts_speed = 10 if len(early) >= 3 else 5 if len(early) == 2 else 0
         pts_scope = 10 if wide else 8 if "BTC" in coins else 6 if len(assets) >= 2 else 3
 
@@ -323,7 +334,8 @@ def analyze(items, markets_path):
             "id": lead["id"], "score": score, "ts": first_ts, "title": lead["title"], "url": lead["url"],
             "source": lead["source"], "n": len(sources), "sources": sources[:6], "type": best["id"], "type_label": best["label"],
             "up": [x.replace(V, label) for x in up], "down": [x.replace(V, label) for x in down],
-            "why": why, "react": react, "preview": preview, "cat": "makro" if wide else lead["cat"], "tags": tags, "assets": assets,
+            "why": why, "react": react, "preview": preview, "foreign": foreign, "tier": lead.get("tier", "B"), "lang": lead.get("lang", ""),
+            "official": any(i.get("official") for i in group), "cat": "makro" if wide else lead["cat"], "tags": tags, "assets": assets,
             "parts": {"tur": pts_type, "teyit": pts_conf, "hiz": pts_speed, "kapsam": pts_scope, "tepki": pts_react},
         })
     events.sort(key=lambda e: (e["score"], e["ts"]), reverse=True)

@@ -26,30 +26,52 @@ import notify
 OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join("data", "news.json")
 PREV_URL = os.environ.get("PREV_URL", "")
 MAX_AGE_HOURS = 72
-MAX_ITEMS = 250
+MAX_ITEMS = 400
 UA = "Mozilla/5.0 (compatible; finans-paneli/1.0; +https://github.com/)"
 
-# (kaynak adı, adres, kategori, dil, seviye)
-# Seviye A: editoryal süreci olan kurumsal haber odası. B: sektör yayını; haber verir ama
+# (kaynak adı, adres, kategori, dil, seviye, yayın kuruluşu)
+# Seviye A: editoryal süreci olan büyük, küresel haber odası ya da resmi kurum. B: sektör yayını; haber verir ama
 # görüş, tanıtım ve sponsorlu içerik de yayımlayabilir. Seviyesi bilinmeyen kaynak eklenmez.
+# Yayın kuruluşu teyit sayımında kullanılır: aynı kuruluşun iki akışı tek kaynak sayılır.
 FEEDS = [
-    ("CoinDesk", "https://www.coindesk.com/arc/outboundfeeds/rss", "kripto", "en", "A"),
-    ("Cointelegraph", "https://cointelegraph.com/rss", "kripto", "en", "B"),
-    ("Decrypt", "https://decrypt.co/feed", "kripto", "en", "B"),
-    ("The Block", "https://www.theblock.co/rss.xml", "kripto", "en", "A"),
-    ("Bitcoin Magazine", "https://bitcoinmagazine.com/feed", "kripto", "en", "B"),
-    ("Investing TR", "https://tr.investing.com/rss/news_301.rss", "kripto", "tr", "B"),
-    ("TechCrunch", "https://techcrunch.com/feed/", "teknoloji", "en", "A"),
-    ("The Verge", "https://www.theverge.com/rss/index.xml", "teknoloji", "en", "A"),
-    ("Ars Technica", "https://feeds.arstechnica.com/arstechnica/index", "teknoloji", "en", "A"),
-    ("CNBC Teknoloji", "https://www.cnbc.com/id/19854910/device/rss/rss.html", "teknoloji", "en", "A"),
-    ("CNBC Piyasalar", "https://www.cnbc.com/id/20910258/device/rss/rss.html", "makro", "en", "A"),
-    ("Bloomberg HT", "https://www.bloomberght.com/rss", "makro", "tr", "A"),
-    ("Anadolu Ajansı", "https://www.aa.com.tr/tr/rss/default?cat=ekonomi", "makro", "tr", "A"),
-    ("Dünya", "https://www.dunya.com/rss", "makro", "tr", "A"),
-    ("BBC", "https://feeds.bbci.co.uk/news/business/rss.xml", "makro", "en", "A"),
-    ("Financial Times", "https://www.ft.com/cryptofinance?format=rss", "kripto", "en", "A"),
+    # Resmi kurum (birincil kaynak)
+    ("Fed (resmi)", "https://www.federalreserve.gov/feeds/press_monetary.xml", "makro", "en", "A", "Fed"),
+    # Küresel finans haber odaları
+    ("Bloomberg Piyasalar", "https://feeds.bloomberg.com/markets/news.rss", "makro", "en", "A", "Bloomberg"),
+    ("Bloomberg Ekonomi", "https://feeds.bloomberg.com/economics/news.rss", "makro", "en", "A", "Bloomberg"),
+    ("Bloomberg Teknoloji", "https://feeds.bloomberg.com/technology/news.rss", "teknoloji", "en", "A", "Bloomberg"),
+    ("Bloomberg Kripto", "https://feeds.bloomberg.com/crypto/news.rss", "kripto", "en", "A", "Bloomberg"),
+    ("WSJ Piyasalar", "https://feeds.content.dowjones.io/public/rss/RSSMarketsMain", "makro", "en", "A", "WSJ"),
+    ("WSJ Ekonomi", "https://feeds.content.dowjones.io/public/rss/socialeconomyfeed", "makro", "en", "A", "WSJ"),
+    ("WSJ Teknoloji", "https://feeds.content.dowjones.io/public/rss/RSSWSJD", "teknoloji", "en", "A", "WSJ"),
+    ("Financial Times Piyasalar", "https://www.ft.com/markets?format=rss", "makro", "en", "A", "FT"),
+    ("Financial Times Teknoloji", "https://www.ft.com/technology?format=rss", "teknoloji", "en", "A", "FT"),
+    ("Financial Times", "https://www.ft.com/cryptofinance?format=rss", "kripto", "en", "A", "FT"),
+    ("CNBC", "https://www.cnbc.com/id/100003114/device/rss/rss.html", "makro", "en", "A", "CNBC"),
+    ("CNBC Piyasalar", "https://www.cnbc.com/id/20910258/device/rss/rss.html", "makro", "en", "A", "CNBC"),
+    ("CNBC Teknoloji", "https://www.cnbc.com/id/19854910/device/rss/rss.html", "teknoloji", "en", "A", "CNBC"),
+    ("New York Times", "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml", "makro", "en", "A", "NYT"),
+    ("New York Times Teknoloji", "https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml", "teknoloji", "en", "A", "NYT"),
+    ("BBC", "https://feeds.bbci.co.uk/news/business/rss.xml", "makro", "en", "A", "BBC"),
+    ("The Guardian", "https://www.theguardian.com/business/rss", "makro", "en", "A", "Guardian"),
+    ("Investing.com", "https://www.investing.com/rss/news_14.rss", "makro", "en", "B", "Investing"),
+    ("Investing.com Borsa", "https://www.investing.com/rss/news_25.rss", "makro", "en", "B", "Investing"),
+    # Kripto
+    ("CoinDesk", "https://www.coindesk.com/arc/outboundfeeds/rss", "kripto", "en", "A", "CoinDesk"),
+    ("The Block", "https://www.theblock.co/rss.xml", "kripto", "en", "A", "The Block"),
+    ("Cointelegraph", "https://cointelegraph.com/rss", "kripto", "en", "B", "Cointelegraph"),
+    ("Decrypt", "https://decrypt.co/feed", "kripto", "en", "B", "Decrypt"),
+    ("Bitcoin Magazine", "https://bitcoinmagazine.com/feed", "kripto", "en", "B", "Bitcoin Magazine"),
+    # Teknoloji
+    ("TechCrunch", "https://techcrunch.com/feed/", "teknoloji", "en", "A", "TechCrunch"),
+    ("The Verge", "https://www.theverge.com/rss/index.xml", "teknoloji", "en", "A", "The Verge"),
+    ("Ars Technica", "https://feeds.arstechnica.com/arstechnica/index", "teknoloji", "en", "A", "Ars Technica"),
+    # Türkiye'den büyük ajans ve kanal
+    ("Bloomberg HT", "https://www.bloomberght.com/rss", "makro", "tr", "A", "Bloomberg HT"),
+    ("Anadolu Ajansı", "https://www.aa.com.tr/tr/rss/default?cat=ekonomi", "makro", "tr", "A", "AA"),
 ]
+OUTLET = {f[0]: f[5] for f in FEEDS}
+OFFICIAL = {"Fed"}
 
 CALENDAR_URL = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
 
@@ -64,7 +86,7 @@ TAGS = {
     "DOGE": [r"dogecoin", r"doge"],
     "AI": [r"ai", r"a\.i\.", r"artificial intelligence", r"yapay zek[aâ]", r"openai", r"anthropic",
            r"chatgpt", r"nvidia", r"gpu", r"gpus", r"llm", r"bittensor", r"deepmind", r"gemini", r"claude"],
-    "Makro": [r"fed", r"fomc", r"federal reserve", r"inflation", r"enflasyon", r"cpi", r"interest rates?",
+    "Makro": [r"fed", r"fomc", r"federal reserve", r"federal open market committee", r"inflation", r"enflasyon", r"cpi", r"interest rates?",
               r"rate cut", r"rate hike", r"faiz", r"treasury", r"tariffs?", r"recession", r"jobs report",
               r"payrolls", r"gdp", r"dollar", r"dolar", r"merkez bankası\w*", r"tcmb", r"borsa\w*", r"bist",
               r"altın\w*", r"petrol\w*", r"gold", r"oil", r"nasdaq", r"s&p 500", r"wall street", r"stocks"],
@@ -209,7 +231,7 @@ def classify(title):
 
 
 def read_feed(feed):
-    name, url, cat, lang, tier = feed
+    name, url, cat, lang, tier, outlet = feed
     now = time.time()
     items = []
     for title, link, ts in parse_feed(fetch(url)):
@@ -224,6 +246,7 @@ def read_feed(feed):
             "title": title[:240],
             "url": link,
             "source": name,
+            "outlet": outlet,
             "cat": cat,
             "lang": lang,
             "tier": tier,
@@ -306,7 +329,7 @@ def main():
     prev_log = load_log()
     errors = []
     fresh = []
-    with ThreadPoolExecutor(max_workers=6) as pool:
+    with ThreadPoolExecutor(max_workers=10) as pool:
         futures = [(feed, pool.submit(read_feed, feed)) for feed in FEEDS]
         for feed, fut in futures:
             try:
@@ -326,8 +349,10 @@ def main():
         merged[item["id"]] = item
         seen_titles.add(key)
     items = sorted(merged.values(), key=lambda i: i["ts"], reverse=True)[:MAX_ITEMS]
-    known = {f[0] for f in FEEDS}
-    items = [i for i in items if i["source"] in known and not SKIP_RE.search(i["title"])]
+    items = [i for i in items if i["source"] in OUTLET and not SKIP_RE.search(i["title"])]
+    for item in items:
+        item["outlet"] = OUTLET[item["source"]]
+        item["official"] = item["outlet"] in OFFICIAL
     markets_path = os.path.join(os.path.dirname(OUT) or ".", "markets.json")
     events = impact.analyze(items, markets_path)
     for item in items:
