@@ -48,8 +48,10 @@
   // Grafiğin karşılığı: USDT (dolar fiyatı) ya da BTC (varlığın BTC'ye göre performansı)
   let quote = load('fp.quote', 'USDT') === 'BTC' ? 'BTC' : 'USDT';
   const q = () => (quote === 'BTC' && selected !== 'BTC' ? 'BTC' : 'USDT');
-  const NF8 = new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 8, maximumFractionDigits: 8 });
-  const fmtBtc = (p) => '₿' + NF8.format(p);
+  // BTC cinsinden fiyatlar çok küçük olduğu için grafik 10'un katıyla çarpılır (çoğu varlıkta satoshi: 1 BTC = 100 milyon sat)
+  let qPow = 8;
+  const fmtBtc = (p) => NF[Math.max(0, 8 - qPow)].format(p) + (qPow === 8 ? ' sat' : '');
+  const qNote = () => (qPow === 8 ? 'satoshi' : '×' + NF[0].format(Math.pow(10, qPow)));
   if (!INTERVALS.some((i) => i.id === interval)) interval = '1h';
 
   // Hisseler: veri GitHub zamanlayıcısının hazırladığı data/markets.json dosyasından gelir
@@ -211,7 +213,7 @@
       b.setAttribute('aria-selected', String(b.dataset.id === (tek ? stockInterval : interval)));
     });
     $('chart-name').textContent = tek ? stockBy[stock].name : bySym[selected].name;
-    $('chart-pair').textContent = tek ? stock + ' · ABD borsası' : selected + '/' + q() + (q() === 'BTC' ? ' · BTC cinsinden' : '');
+    $('chart-pair').textContent = tek ? stock + ' · ABD borsası' : selected + '/' + q() + (q() === 'BTC' ? ' · ' + qNote() : '');
     const tq = $('tg-q');
     tq.hidden = tek || selected === 'BTC';
     tq.setAttribute('aria-pressed', String(quote === 'BTC'));
@@ -370,7 +372,7 @@
 
   // ---------- Grafik ----------
   const tzShift = -new Date().getTimezoneOffset() * 60;
-  let chart, candles, volume, chartToken = 0, haveData = false;
+  let chart, candles, volume, chartToken = 0, haveData = false, chartMul = 1;
   const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
   function initChart() {
@@ -479,9 +481,14 @@
       const rows = await binance('/api/v3/klines?symbol=' + sym + q() + '&interval=' + interval + '&limit=500');
       if (token !== chartToken) return;
       const last = +rows[rows.length - 1][4];
-      const d = q() === 'BTC' ? 8 : decimalsFor(last);
+      const btcQ = q() === 'BTC';
+      if (btcQ) qPow = Math.max(0, Math.min(8, 3 - Math.floor(Math.log10(last))));
+      chartMul = btcQ ? Math.pow(10, qPow) : 1;
+      const d = btcQ ? 8 - qPow : decimalsFor(last);
       candles.applyOptions({ priceFormat: { type: 'price', precision: d, minMove: 1 / Math.pow(10, d) } });
-      const list = rows.map((r) => toCandle(r[0], r[1], r[2], r[3], r[4]));
+      if (btcQ) markSelection();
+      const m = chartMul;
+      const list = rows.map((r) => toCandle(r[0], r[1] * m, r[2] * m, r[3] * m, r[4] * m));
       candles.setData(list);
       volume.setData(rows.map((r) => toVolume(r[0], r[1], r[4], r[5])));
       setTaBars(list);
@@ -499,7 +506,8 @@
   function onKline(d) {
     const k = d.k;
     if (tab !== 'kripto' || !haveData || d.s !== selected + q() || k.i !== interval) return;
-    const c = toCandle(k.t, k.o, k.h, k.l, k.c);
+    const m = chartMul;
+    const c = toCandle(k.t, k.o * m, k.h * m, k.l * m, k.c * m);
     candles.update(c);
     volume.update(toVolume(k.t, k.o, k.c, k.v));
     taUpdate(c);
