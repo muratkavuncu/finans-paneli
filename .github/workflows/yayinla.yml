@@ -115,6 +115,7 @@ jobs:
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
+          DEPLOY_REAL_SHA: "1"
         run: python3 scripts/deploy_pages.py deploy "${{ steps.artifact.outputs.artifact_id }}"
       - name: Yedek dağıtım (hazır eylem)
         if: steps.dagit.outcome == 'failure'

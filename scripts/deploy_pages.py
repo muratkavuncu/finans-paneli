@@ -36,6 +36,8 @@ def deploy(artifact_id):
     # GitHub sürüm kimliğini 40 karakterlik bir özet biçiminde bekliyor; tur kimliğinden benzersiz bir özet üretilir
     seed = "%s-%s-%s" % (os.environ["GITHUB_SHA"], os.environ["GITHUB_RUN_ID"], os.environ.get("GITHUB_RUN_ATTEMPT", "1"))
     version = hashlib.sha1(seed.encode("utf-8")).hexdigest()
+    if os.environ.get("DEPLOY_REAL_SHA") == "1":  # tanı: sürüm kimliği gerçek commit olmak zorunda mı?
+        version = os.environ["GITHUB_SHA"]
     oidc = call(os.environ["ACTIONS_ID_TOKEN_REQUEST_URL"], os.environ["ACTIONS_ID_TOKEN_REQUEST_TOKEN"], bearer="bearer")["value"]
     try:
         made = call("%s/repos/%s/pages/deployments" % (API, repo), token,
