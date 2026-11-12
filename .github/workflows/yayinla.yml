@@ -41,13 +41,21 @@ jobs:
       cancel-in-progress: false
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: https://muratkavuncu.github.io/finans-paneli/
     env:
       SITE: https://muratkavuncu.github.io/finans-paneli/data
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      # Bildirim durumu ve olay kaydı yayından bağımsız olarak önbellekte de tutulur:
+      # yayın takılırsa aynı bildirimler tekrar tekrar gitmesin.
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: state
+          key: state-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: state-
 
       # Önce fiyatlar: haber puanlaması piyasa tepkisini bu dosyadan ölçer
       - name: Hisse ve endeks verisini topla
@@ -65,6 +73,7 @@ jobs:
           PREV_URL: ${{ env.SITE }}/news.json
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
           NTFY_TEST: ${{ inputs.deneme }}
+          STATE_DIR: state
           PRICE_SENT: ${{ inputs.fiyat }}
         run: |
           python3 scripts/fetch_news.py data/news.json || {
@@ -90,13 +99,37 @@ jobs:
           test -s data/daily.json || curl -fsS "$SITE/daily.json" -o data/daily.json || echo '{"updated":0,"symbols":{}}' > data/daily.json
           cp data/daily.json _site/data/
           cp data/news.json data/markets.json data/events_log.json data/notify_state.json _site/data/
+          mkdir -p state
+          cp data/events_log.json data/notify_state.json state/
 
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
-      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+      - id: artifact
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: _site
-      - id: deployment
+
+      # Her dağıtıma benzersiz sürüm kimliği verilir; hazır eylem commit SHA'sını kullandığı için
+      # aynı commit'le yapılan dağıtımlar bir süre sonra sessizce uygulanmıyordu (bkz. scripts/deploy_pages.py).
+      - id: dagit
+        name: Pages'e dağıt
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/deploy_pages.py deploy "${{ steps.artifact.outputs.artifact_id }}"
+      - name: Yedek dağıtım (hazır eylem)
+        if: steps.dagit.outcome == 'failure'
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+
+      - name: Yayının güncellendiğini doğrula
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: python3 scripts/deploy_pages.py verify data/news.json "$SITE/news.json" state
+
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: always()
+        with:
+          path: state
+          key: state-${{ github.run_id }}-${{ github.run_attempt }}
 
   # Bir sonraki turu başlatır. Aynı anda tek zincir yaşar: yeni başlayan, bekleyen eskisini iptal eder.
   zincir:
@@ -116,9 +149,15 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: state
+          key: state-${{ github.run_id }}-izleyici
+          restore-keys: state-
       - name: Beklerken fiyatı izle, sonra bir sonraki turu başlat
         env:
           GH_TOKEN: ${{ github.token }}
+          STATE_DIR: state
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
           SITE: https://muratkavuncu.github.io/finans-paneli/data
         run: |

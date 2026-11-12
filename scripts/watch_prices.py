@@ -35,6 +35,13 @@ def load(name, default):
 def main():
     end = time.time() + TOTAL
     sent = dict(load("notify_state.json", {}).get("sent", {}))
+    try:  # önbellekteki durum daha yeniyse onu kullan (yayın takılmış olabilir)
+        with open(os.path.join(os.environ.get("STATE_DIR", ""), "notify_state.json"), encoding="utf-8") as fh:
+            for key, when in (json.load(fh).get("sent") or {}).items():
+                if isinstance(when, (int, float)) and when > sent.get(key, 0):
+                    sent[key] = int(when)
+    except Exception:
+        pass
     events = load("news.json", {}).get("events", [])
     mine = {}
     checks = 0

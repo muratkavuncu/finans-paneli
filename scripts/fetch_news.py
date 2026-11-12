@@ -436,6 +436,20 @@ def load_log():
         return []
 
 
+STATE_DIR = os.environ.get("STATE_DIR", "")
+
+
+def cached(name, default):
+    """Önbellekteki kopya (yayından bağımsız yedek durum)."""
+    if not STATE_DIR:
+        return default
+    try:
+        with open(os.path.join(STATE_DIR, name), encoding="utf-8") as fh:
+            return json.load(fh)
+    except Exception:
+        return default
+
+
 def load_side(name, default):
     """news.json ile aynı yerde duran yardımcı dosyayı (önceki yayından ya da diskten) okur."""
     try:
@@ -450,6 +464,8 @@ def load_side(name, default):
 def main():
     prev = load_previous()
     prev_log = load_log()
+    known_ids = {e.get("id") for e in prev_log}
+    prev_log = prev_log + [e for e in cached("events_log.json", []) if isinstance(e, dict) and e.get("id") not in known_ids]
     errors = []
     fresh = []
     with ThreadPoolExecutor(max_workers=10) as pool:
@@ -520,6 +536,11 @@ def main():
 
     # Telefona bildirim: gönderilenler tekrar gitmesin diye küçük bir durum dosyası tutulur
     state = load_side("notify_state.json", {})
+    # Yayındaki durum ile önbellekteki durum birleştirilir; hangisi daha yeniyse o geçerli olur
+    merged_sent = state.setdefault("sent", {})
+    for key, when in (cached("notify_state.json", {}).get("sent") or {}).items():
+        if isinstance(when, (int, float)) and when > merged_sent.get(key, 0):
+            merged_sent[key] = int(when)
     # Turlar arasındaki fiyat izleyicisi bildirim gönderdiyse zamanı buradan gelir ("p:BTC=1731230000,...")
     for part in os.environ.get("PRICE_SENT", "").split(","):
         m = re.match(r"^([ptlm]:([A-Z]{2,10})(?::[a-z0-9]{1,12})?)=(\d{10})$", part.strip())
