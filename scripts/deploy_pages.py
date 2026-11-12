@@ -49,7 +49,7 @@ def deploy(artifact_id):
     dep_id = made.get("id") or version
     print("dağıtım oluşturuldu, sürüm:", version)
     status = ""
-    for _ in range(60):
+    for _ in range(30):
         time.sleep(4)
         try:
             status = call("%s/repos/%s/pages/deployments/%s" % (API, repo, dep_id), token).get("status", "")
@@ -95,7 +95,7 @@ def verify(local_path, site_url, state_dir):
     with open(local_path, encoding="utf-8") as fh:
         want = json.load(fh).get("updated", 0)
     got = 0
-    for _ in range(18):
+    for _ in range(12):
         try:
             req = urllib.request.Request("%s?v=%d" % (site_url, time.time() * 1000), headers={"User-Agent": "finans-paneli", "Cache-Control": "no-cache"})
             with urllib.request.urlopen(req, timeout=15) as resp:

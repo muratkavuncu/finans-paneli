@@ -35,7 +35,7 @@ permissions:
 jobs:
   yayinla:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     permissions:
       contents: read
       pages: write
@@ -122,14 +122,20 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           SURUM: ${{ inputs.surum }}
         run: |
-          # Son 50 commit arasından sırayla biri: aynı sürüm kimliği art arda kullanılmaz
+          # Sürüm kimliği son 50 commit arasından sırayla seçilir. Bir kimlik GitHub tarafında bozulmuşsa
+          # (dağıtım başarısız ya da site güncellenmedi) sıradaki denenir.
           ADET=$(git rev-list --max-count=50 HEAD | wc -l)
-          SIRA=$(( GITHUB_RUN_NUMBER % ADET + 1 ))
-          DEPLOY_VERSION=$(git rev-list --max-count=50 HEAD | sed -n "${SIRA}p")
-          case "$SURUM" in *[!0-9a-f]*|"") ;; *) DEPLOY_VERSION="$SURUM" ;; esac
-          export DEPLOY_VERSION
-          echo "sürüm sırası: $SIRA / $ADET"
-          python3 scripts/deploy_pages.py deploy "${{ steps.artifact.outputs.artifact_id }}"
+          TAMAM=0
+          for KAYMA in 0 1 2 3; do
+            SIRA=$(( (GITHUB_RUN_NUMBER + KAYMA * 7) % ADET + 1 ))
+            DEPLOY_VERSION=$(git rev-list --max-count=50 HEAD | sed -n "${SIRA}p")
+            if [ "$KAYMA" = "0" ]; then case "$SURUM" in *[!0-9a-f]*|"") ;; *) DEPLOY_VERSION="$SURUM" ;; esac; fi
+            export DEPLOY_VERSION
+            echo "sürüm sırası: $SIRA / $ADET (deneme $((KAYMA + 1)))"
+            if python3 scripts/deploy_pages.py deploy "${{ steps.artifact.outputs.artifact_id }}" \
+               && python3 scripts/deploy_pages.py verify data/news.json "$SITE/news.json" ""; then TAMAM=1; break; fi
+          done
+          [ "$TAMAM" = "1" ]
       - name: Yedek dağıtım (hazır eylem)
         if: steps.dagit.outcome == 'failure'
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
