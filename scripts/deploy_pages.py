@@ -10,6 +10,7 @@ Kullanım:
   python scripts/deploy_pages.py verify <yerel news.json> <site news.json adresi> [durum_klasörü]
 Yalnızca standart kütüphaneyi kullanır. Gizli değerler hiçbir yere yazılmaz.
 """
+import hashlib
 import json
 import os
 import sys
@@ -32,7 +33,9 @@ def call(url, token, body=None, bearer="Bearer"):
 def deploy(artifact_id):
     repo = os.environ["GITHUB_REPOSITORY"]
     token = os.environ["GH_TOKEN"]
-    version = "%s-%s-%s" % (os.environ["GITHUB_SHA"][:12], os.environ["GITHUB_RUN_ID"], os.environ.get("GITHUB_RUN_ATTEMPT", "1"))
+    # GitHub sürüm kimliğini 40 karakterlik bir özet biçiminde bekliyor; tur kimliğinden benzersiz bir özet üretilir
+    seed = "%s-%s-%s" % (os.environ["GITHUB_SHA"], os.environ["GITHUB_RUN_ID"], os.environ.get("GITHUB_RUN_ATTEMPT", "1"))
+    version = hashlib.sha1(seed.encode("utf-8")).hexdigest()
     oidc = call(os.environ["ACTIONS_ID_TOKEN_REQUEST_URL"], os.environ["ACTIONS_ID_TOKEN_REQUEST_TOKEN"], bearer="bearer")["value"]
     try:
         made = call("%s/repos/%s/pages/deployments" % (API, repo), token,
