@@ -20,6 +20,10 @@ on:
         description: Bu turdan sonra bir sonrakini kendiliğinden başlat
         type: boolean
         default: false
+      surum:
+        description: Tanı için dağıtım sürüm kimliği (commit SHA); boş bırakın
+        type: string
+        default: ""
       fiyat:
         description: Zincirin kendi kullandığı alan (son fiyat ve seviye bildirimlerinin zamanı); boş bırakın
         type: string
@@ -48,6 +52,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 60
 
       # Bildirim durumu ve olay kaydı yayından bağımsız olarak önbellekte de tutulur:
       # yayın takılırsa aynı bildirimler tekrar tekrar gitmesin.
@@ -115,8 +120,16 @@ jobs:
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
-          DEPLOY_REAL_SHA: "1"
-        run: python3 scripts/deploy_pages.py deploy "${{ steps.artifact.outputs.artifact_id }}"
+          SURUM: ${{ inputs.surum }}
+        run: |
+          # Son 50 commit arasından sırayla biri: aynı sürüm kimliği art arda kullanılmaz
+          ADET=$(git rev-list --max-count=50 HEAD | wc -l)
+          SIRA=$(( GITHUB_RUN_NUMBER % ADET + 1 ))
+          DEPLOY_VERSION=$(git rev-list --max-count=50 HEAD | sed -n "${SIRA}p")
+          case "$SURUM" in *[!0-9a-f]*|"") ;; *) DEPLOY_VERSION="$SURUM" ;; esac
+          export DEPLOY_VERSION
+          echo "sürüm sırası: $SIRA / $ADET"
+          python3 scripts/deploy_pages.py deploy "${{ steps.artifact.outputs.artifact_id }}"
       - name: Yedek dağıtım (hazır eylem)
         if: steps.dagit.outcome == 'failure'
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

@@ -1,18 +1,18 @@
 """GitHub Pages dağıtımı ve dağıtımın gerçekten yayına girdiğinin doğrulanması.
 
-Neden var: hazır deploy-pages eylemi sürüm kimliği olarak commit SHA'sını kullanır. Zincir aynı commit'le
-günde yüzlerce kez dağıtım yaptığı için GitHub bir süre sonra yeni dağıtımı uygulamayı bırakıyor ama
-"başarılı" bildiriyor (11.11.2026'da 26 saat fark edilmeden eski veri yayınlandı). Burada her dağıtıma
-benzersiz bir sürüm kimliği verilir ve sonunda sitenin gerçekten yeni veriyi sunduğu kontrol edilir.
+Neden var: hazır deploy-pages eylemi sürüm kimliği olarak o anki commit SHA'sını kullanır. Zincir aynı
+commit'le günde yüzlerce kez dağıtım yaptığı için GitHub bir süre sonra yeni dağıtımı uygulamayı bırakıyor ama
+"başarılı" bildiriyor (11.11.2026'da 26 saat fark edilmeden eski veri yayınlandı). Burada sürüm kimliği
+turdan tura değiştirilir ve sonunda sitenin gerçekten yeni veriyi sunduğu kontrol edilir.
 
 Kullanım:
   python scripts/deploy_pages.py deploy <artifact_id>
   python scripts/deploy_pages.py verify <yerel news.json> <site news.json adresi> [durum_klasörü]
 Yalnızca standart kütüphaneyi kullanır. Gizli değerler hiçbir yere yazılmaz.
 """
-import hashlib
 import json
 import os
+import re
 import sys
 import time
 import urllib.error
@@ -33,10 +33,11 @@ def call(url, token, body=None, bearer="Bearer"):
 def deploy(artifact_id):
     repo = os.environ["GITHUB_REPOSITORY"]
     token = os.environ["GH_TOKEN"]
-    # GitHub sürüm kimliğini 40 karakterlik bir özet biçiminde bekliyor; tur kimliğinden benzersiz bir özet üretilir
-    seed = "%s-%s-%s" % (os.environ["GITHUB_SHA"], os.environ["GITHUB_RUN_ID"], os.environ.get("GITHUB_RUN_ATTEMPT", "1"))
-    version = hashlib.sha1(seed.encode("utf-8")).hexdigest()
-    if os.environ.get("DEPLOY_REAL_SHA") == "1":  # tanı: sürüm kimliği gerçek commit olmak zorunda mı?
+    # GitHub sürüm kimliği olarak yalnızca depodaki gerçek bir commit'i kabul ediyor (uydurma kimlik 404 döner).
+    # Aynı commit art arda yüzlerce kez kullanılınca dağıtım sessizce uygulanmadığı için, iş akışı her turda
+    # son commit'ler arasından sırayla birini seçip DEPLOY_VERSION ile verir.
+    version = os.environ.get("DEPLOY_VERSION", "").strip().lower()
+    if not re.match(r"^[0-9a-f]{40}$", version):
         version = os.environ["GITHUB_SHA"]
     oidc = call(os.environ["ACTIONS_ID_TOKEN_REQUEST_URL"], os.environ["ACTIONS_ID_TOKEN_REQUEST_TOKEN"], bearer="bearer")["value"]
     try:
