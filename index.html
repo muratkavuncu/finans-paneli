@@ -152,7 +152,32 @@
     </div>
   </section>
 
-  <section class="panel" data-page="ai" aria-label="AI gündemi" hidden>
+  <section class="panel ai-pulse" data-page="ai" aria-label="AI nabzı" hidden>
+    <div class="panel-head">
+      <h2>AI nabzı</h2>
+      <span class="hint">son 7 gün</span>
+    </div>
+    <div class="ai-nums">
+      <div><strong id="aip-day">—</strong><span>haber · son 24 saat</span></div>
+      <div><strong id="aip-models">—</strong><span>yeni model · 7 gün</span></div>
+      <div><strong id="aip-off">—</strong><span>resmi duyuru · 7 gün</span></div>
+    </div>
+    <div class="label">Günlere göre haber sayısı</div>
+    <div class="ai-days" id="aip-days"></div>
+    <p class="hint ai-tip" id="aip-tip">Bir güne dokun, konu dağılımını gör.</p>
+    <div class="label">Konulara göre · dokun, haberleri süz</div>
+    <div class="ai-topics" id="aip-topics"></div>
+  </section>
+
+  <section class="panel" data-page="ai" aria-label="Çok konuşulanlar" hidden>
+    <div class="panel-head">
+      <h2>Çok konuşulanlar</h2>
+      <span class="hint">birden çok yayının yazdığı · son 48 saat</span>
+    </div>
+    <div class="ai-hot" id="aip-hot"></div>
+  </section>
+
+  <section class="panel" id="ai-news-panel" data-page="ai" aria-label="AI gündemi" hidden>
     <div class="panel-head">
       <h2>AI gündemi</h2>
       <span class="hint" id="ai-updated">yükleniyor…</span>

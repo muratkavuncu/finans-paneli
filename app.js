@@ -1479,16 +1479,146 @@
     $('ai-more').addEventListener('click', () => { aiShown += 25; renderAi(); });
   }
 
+  // ---------- AI nabzı: sayılar, günlük sütunlar, konu çubukları, çok konuşulanlar ----------
+  const AI_ORDER = ['model', 'urun', 'hizmet', 'benchmark', 'arastirma', 'acik', 'sektor'];
+  const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let aiKey = '', aiPulseKey = '';
+
+  function countUp(node, to) {
+    const from = +node.dataset.v || 0;
+    node.dataset.v = to;
+    if (calm || from === to) { node.textContent = NF[0].format(to); return; }
+    const t0 = performance.now();
+    const step = (t) => {
+      const k = Math.min(1, (t - t0) / 700);
+      node.textContent = NF[0].format(Math.round(from + (to - from) * (1 - Math.pow(1 - k, 3))));
+      if (k < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+
+  function renderAiPulse(all) {
+    document.querySelectorAll('#aip-topics button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.id === aiFilter)));
+    if (aiPulseKey === String(news.updated)) return;
+    aiPulseKey = String(news.updated);
+    const now = Date.now() / 1000;
+    countUp($('aip-day'), all.filter((n) => now - n.ts < 86400).length);
+    countUp($('aip-off'), all.filter((n) => n.official).length);
+
+    // Günlük sütunlar: her sütun konulara göre bölünür
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const days = [];
+    for (let k = 6; k >= 0; k--) {
+      const t = start.getTime() / 1000 - k * 86400;
+      days.push({ t, total: 0, by: {} });
+    }
+    const byTopic = {};
+    all.forEach((n) => {
+      byTopic[n.topic] = (byTopic[n.topic] || 0) + 1;
+      const d = days.find((x) => n.ts >= x.t && n.ts < x.t + 86400);
+      if (d) { d.total++; d.by[n.topic] = (d.by[n.topic] || 0) + 1; }
+    });
+    const maxDay = Math.max(1, ...days.map((d) => d.total));
+    const box = $('aip-days');
+    box.textContent = '';
+    const tip = $('aip-tip');
+    days.forEach((d, i) => {
+      const date = new Date(d.t * 1000);
+      const b = el('button', 'ai-day');
+      b.type = 'button';
+      b.style.setProperty('--i', i);
+      b.appendChild(el('span', 'ai-n', d.total));
+      const wrap = el('span', 'ai-colwrap');
+      const stack = el('span', 'ai-stack');
+      stack.style.height = (d.total / maxDay * 100).toFixed(1) + '%';
+      AI_ORDER.forEach((tp) => {
+        if (!d.by[tp]) return;
+        const seg = el('i', 't-' + tp);
+        seg.style.flexGrow = d.by[tp];
+        stack.appendChild(seg);
+      });
+      wrap.appendChild(stack);
+      b.appendChild(wrap);
+      b.appendChild(el('span', 'ai-d', i === 6 ? 'bugün' : date.toLocaleDateString('tr-TR', { weekday: 'short' })));
+      const text = date.toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' }) + ': ' + d.total + ' haber'
+        + AI_ORDER.filter((tp) => d.by[tp]).map((tp) => ' · ' + AI_TOPICS[tp] + ' ' + d.by[tp]).join('');
+      b.setAttribute('aria-label', text);
+      b.addEventListener('click', () => {
+        box.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+        tip.textContent = text;
+      });
+      box.appendChild(b);
+    });
+
+    // Konu çubukları: aynı renkler sütunların da açıklamasıdır
+    const tb = $('aip-topics');
+    tb.textContent = '';
+    const maxTopic = Math.max(1, ...AI_ORDER.map((tp) => byTopic[tp] || 0));
+    AI_ORDER.forEach((tp, i) => {
+      const c = byTopic[tp] || 0;
+      if (!c) return;
+      const b = el('button', 'ai-topic t-' + tp);
+      b.type = 'button';
+      b.dataset.id = tp;
+      b.style.setProperty('--i', i);
+      b.setAttribute('aria-pressed', String(aiFilter === tp));
+      b.appendChild(el('span', 'ai-tname', AI_TOPICS[tp]));
+      const bar = el('span', 'ai-tbar');
+      const fill = el('i');
+      fill.style.width = Math.max(2, c / maxTopic * 100).toFixed(1) + '%';
+      bar.appendChild(fill);
+      b.appendChild(bar);
+      b.appendChild(el('span', 'ai-tcount', c));
+      b.addEventListener('click', () => {
+        aiFilter = aiFilter === tp ? 'all' : tp;
+        aiShown = 25;
+        save('fp.aif', aiFilter);
+        renderAi();
+        if (aiFilter !== 'all') $('ai-news-panel').scrollIntoView({ behavior: calm ? 'auto' : 'smooth', block: 'start' });
+      });
+      tb.appendChild(b);
+    });
+
+    // Çok konuşulanlar: kaynak sayısına göre
+    const hot = $('aip-hot');
+    hot.textContent = '';
+    const top = all.filter((n) => n.n >= 2 && now - n.ts < 172800).sort((a, b) => (b.n - a.n) || (b.ts - a.ts)).slice(0, 6);
+    if (!top.length) hot.appendChild(el('p', 'empty', 'Son 48 saatte birden çok yayının yazdığı bir AI haberi yok.'));
+    top.forEach((n, i) => {
+      const a = el('a', 'ai-card t-' + n.topic);
+      if (/^https?:\/\//.test(n.url)) a.href = n.url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.style.setProperty('--i', i);
+      const head = el('span', 'ai-card-head');
+      head.appendChild(el('strong', '', n.n));
+      head.appendChild(el('span', '', 'kaynak'));
+      head.appendChild(el('span', 'ai-card-topic', AI_TOPICS[n.topic] || 'AI'));
+      a.appendChild(head);
+      a.appendChild(el('span', 'ai-card-title', n.title));
+      a.appendChild(el('span', 'n-meta', n.source + ' · ' + ago(n.ts)));
+      hot.appendChild(a);
+    });
+  }
+
   function renderAi() {
     if (!news) return;
     const all = Array.isArray(news.ai) ? news.ai : [];
+    if (page === 'ai' && all.length) setTimeout(() => save('fp.aiSeen', String(all[0].ts)), 8000);
+    renderAiPulse(all);
+    // Veri ve süzgeç değişmediyse listeyi yeniden kurma: canlandırma her iki dakikada bir baştan oynamasın
+    const key = news.updated + '|' + aiFilter + '|' + aiShown;
+    if (key === aiKey) return;
+    aiKey = key;
     document.querySelectorAll('#ai-filters button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.id === aiFilter)));
     const items = all.filter(AI_FILTERS.find((f) => f.id === aiFilter).test);
     const list = $('ai-list');
     list.textContent = '';
     if (!items.length) list.appendChild(el('li', 'empty', all.length ? 'Son 7 günde bu filtreye uyan haber yok.' : 'AI gündemi henüz yüklenmedi.'));
-    items.slice(0, aiShown).forEach((n) => {
+    items.slice(0, aiShown).forEach((n, i) => {
       const li = el('li');
+      li.style.setProperty('--i', Math.min(i, 14));
       const a = el('a');
       if (/^https?:\/\//.test(n.url)) a.href = n.url;
       a.target = '_blank';
@@ -1510,7 +1640,6 @@
     });
     $('ai-more').hidden = items.length <= aiShown;
     $('ai-updated').textContent = all.length + ' haber · son 7 gün · güncellendi: ' + ago(news.updated);
-    if (page === 'ai' && all.length) setTimeout(() => save('fp.aiSeen', String(all[0].ts)), 8000);
   }
 
   // ---------- AI sekmesi: modeller, demolar, makaleler, projeler ----------
@@ -1519,22 +1648,31 @@
   const safeUrl = (u, host) => (typeof u === 'string' && u.indexOf('https://' + host + '/') === 0 ? u : '');
   const priceText = (r) => (!r.in && !r.out ? 'ücretsiz' : '$' + NF[2].format(r.in) + ' / $' + NF[2].format(r.out) + ' (1M token giriş/çıkış)');
 
-  function aiRows(id, rows, host, title, meta) {
+  function aiRows(id, rows, host, title, meta, val) {
     const list = $(id);
     list.textContent = '';
     if (!Array.isArray(rows) || !rows.length) { list.appendChild(el('li', 'empty', 'Veri henüz yok.')); return; }
+    // Çubuk: satırın değeri listedeki en büyük değere oranlanır
+    const max = Math.max(1, ...rows.map((r) => +val(r) || 0));
+    let rank = 0;
     rows.forEach((r) => {
       const url = safeUrl(r.url, host);
       if (!url) return;
       const li = el('li');
+      li.style.setProperty('--i', Math.min(rank, 14));
       const a = el('a');
       a.href = url;
       a.target = '_blank';
       a.rel = 'noopener noreferrer';
-      a.appendChild(el('span', 'n-dot'));
+      a.appendChild(el('span', 'ai-rank', ++rank));
       const body = el('span');
       body.appendChild(el('span', 'n-title', title(r)));
       body.appendChild(el('span', 'n-meta', meta(r)));
+      const bar = el('span', 'ai-bar');
+      const fill = el('i');
+      fill.style.width = Math.max(2, (+val(r) || 0) / max * 100).toFixed(1) + '%';
+      bar.appendChild(fill);
+      body.appendChild(bar);
       a.appendChild(body);
       li.appendChild(a);
       list.appendChild(li);
@@ -1546,15 +1684,16 @@
     if (!d) return;
     const when = (r) => (r.ts ? ago(r.ts) + ' · ' : '');
     aiRows('ai-models', d.models, 'openrouter.ai', (r) => r.name || r.id,
-      (r) => when(r) + (r.ctx ? compact(r.ctx) + ' token bağlam · ' : '') + priceText(r));
+      (r) => when(r) + (r.ctx ? compact(r.ctx) + ' token bağlam · ' : '') + priceText(r), (r) => r.ctx);
+    countUp($('aip-models'), (d.models || []).filter((r) => r.ts && Date.now() / 1000 - r.ts < 604800).length);
     aiRows('ai-hfmodels', d.hf_models, 'huggingface.co', (r) => r.id,
-      (r) => (r.task ? r.task + ' · ' : '') + '♥ ' + compact(r.likes) + ' · ' + compact(r.downloads) + ' indirme');
-    aiRows('ai-spaces', d.spaces, 'huggingface.co', (r) => r.id, (r) => when(r) + '♥ ' + compact(r.likes) + (r.task ? ' · ' + r.task : ''));
+      (r) => (r.task ? r.task + ' · ' : '') + '♥ ' + compact(r.likes) + ' · ' + compact(r.downloads) + ' indirme', (r) => r.likes);
+    aiRows('ai-spaces', d.spaces, 'huggingface.co', (r) => r.id, (r) => when(r) + '♥ ' + compact(r.likes) + (r.task ? ' · ' + r.task : ''), (r) => r.likes);
     aiRows('ai-showhn', d.showhn, 'news.ycombinator.com', (r) => r.title.replace(/^Show HN:\s*/i, ''),
-      (r) => when(r) + r.points + ' puan · ' + r.comments + ' yorum');
-    aiRows('ai-papers', d.papers, 'huggingface.co', (r) => r.title, (r) => when(r) + '▲ ' + r.votes + ' oy · arXiv ' + r.id);
+      (r) => when(r) + r.points + ' puan · ' + r.comments + ' yorum', (r) => r.points);
+    aiRows('ai-papers', d.papers, 'huggingface.co', (r) => r.title, (r) => when(r) + '▲ ' + r.votes + ' oy · arXiv ' + r.id, (r) => r.votes);
     aiRows('ai-repos', d.repos, 'github.com', (r) => r.id + (r.desc ? ' — ' + r.desc : ''),
-      (r) => '★ ' + compact(r.stars) + (r.lang ? ' · ' + r.lang : '') + (r.ts ? ' · ' + ago(r.ts) + ' açıldı' : ''));
+      (r) => '★ ' + compact(r.stars) + (r.lang ? ' · ' + r.lang : '') + (r.ts ? ' · ' + ago(r.ts) + ' açıldı' : ''), (r) => r.stars);
     $('ai-data-updated').textContent = d.updated ? 'güncellendi: ' + ago(d.updated) : '';
   }
 
@@ -2228,6 +2367,7 @@
   initFold();
   initHelp();
   initNav();
+  if (page === 'ai') loadAiData();
   setInterval(loadAltStrength, 3600000);
   connect();
   loadGlobal();
