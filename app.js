@@ -2083,6 +2083,93 @@
     } catch (err) { /* bir sonraki turda yeniden denenir */ }
   }
 
+  // ---------- Likidasyon akışı (Binance vadeli, herkese açık akış) ----------
+  const LQ_FILTERS = [['all', 'Tümü'], ['RENDER', 'RENDER'], ['BTC', 'BTC'], ['big', '≥ 100 B $']];
+  const lq = { sock: null, rows: [], long: 0, short: 0, nLong: 0, nShort: 0, rLong: 0, rShort: 0, since: Date.now(), last: 0, beat: 0, opened: 0, filter: 'all', dirty: false };
+  function lqConnect() {
+    let sock;
+    // Likidasyonlar seyrek gelir; akışın gerçekten çalıştığını anlamak için yanına sürekli akan bir nabız kanalı eklenir
+    try { sock = new WebSocket('wss://fstream.binance.com/market/stream?streams=!forceOrder@arr/btcusdt@markPrice'); } catch (err) { setTimeout(lqConnect, 15000); return; }
+    lq.sock = sock;
+    sock.onopen = () => { lq.opened = Date.now(); lq.dirty = true; };
+    sock.onmessage = (ev) => {
+      let d;
+      try { d = JSON.parse(ev.data); } catch (err) { return; }
+      if (d && d.data) d = d.data;
+      lq.beat = Date.now();
+      if (d && d.e === 'markPriceUpdate') return;
+      lq.last = Date.now();
+      (Array.isArray(d) ? d : [d]).forEach((m) => {
+        const o = m && m.o;
+        if (!o || typeof o.s !== 'string' || !/^[A-Z0-9]{2,20}USDT$/.test(o.s)) return;
+        const price = +(o.ap > 0 ? o.ap : o.p), qty = +(o.z > 0 ? o.z : o.q);
+        const usd = price * qty;
+        if (!(usd > 0)) return;
+        const long = o.S === 'SELL'; // satış emri = long pozisyon kapatıldı
+        const sym = o.s.slice(0, -4);
+        if (long) { lq.long += usd; lq.nLong++; } else { lq.short += usd; lq.nShort++; }
+        if (sym === 'RENDER') { if (long) lq.rLong += usd; else lq.rShort += usd; }
+        if (usd >= 1000 || sym === 'RENDER') {
+          lq.rows.unshift({ t: +o.T || Date.now(), sym, long, price, usd });
+          if (lq.rows.length > 300) lq.rows.length = 300;
+        }
+        lq.dirty = true;
+      });
+    };
+    sock.onclose = () => { if (lq.sock === sock) { lq.sock = null; lq.dirty = true; setTimeout(lqConnect, 8000); } };
+    sock.onerror = () => { try { sock.close(); } catch (err) { /* zaten kapalı */ } };
+  }
+  function lqRender() {
+    const open = lq.sock && lq.sock.readyState === 1;
+    const live = open && Date.now() - lq.beat < 20000;
+    // Bağlı görünüp veri göndermeyen bağlantıyı kapat, yeniden bağlansın
+    if (open && !live && Date.now() - lq.opened > 30000) { try { lq.sock.close(); } catch (err) { /* zaten kapalı */ } }
+    const stateText = live ? 'canlı · Binance vadeli' : open ? 'bağlı, veri bekleniyor…' : 'bağlanıyor…';
+    if (!lq.dirty && $('lq-state').textContent === stateText) return;
+    lq.dirty = false;
+    $('lq-state').textContent = stateText;
+    $('lq-long').textContent = fmtBig(lq.long);
+    $('lq-short').textContent = fmtBig(lq.short);
+    $('lq-long-n').textContent = lq.nLong + ' işlem';
+    $('lq-short-n').textContent = lq.nShort + ' işlem';
+    const total = lq.long + lq.short;
+    $('lq-bar').style.width = (total ? lq.long / total * 100 : 50).toFixed(1) + '%';
+    const mins = Math.max(1, Math.round((Date.now() - lq.since) / 60000));
+    $('lq-since').textContent = 'Son ' + (mins >= 120 ? Math.round(mins / 60) + ' saat' : mins + ' dakika') + ' (panel açıldığından beri) · tüm vadeli piyasa';
+    $('lq-render').textContent = lq.rLong || lq.rShort
+      ? 'RENDER: long ' + fmtBig(lq.rLong) + ' · short ' + fmtBig(lq.rShort) : 'RENDER: henüz likidasyon görülmedi';
+    const list = $('lq-list');
+    list.textContent = '';
+    const rows = lq.rows.filter((r) => (lq.filter === 'all' ? true : lq.filter === 'big' ? r.usd >= 100000 : r.sym === lq.filter)).slice(0, 30);
+    if (!rows.length) { list.appendChild(el('li', 'empty', live ? 'Bu süzgeçte henüz likidasyon yok.' : 'Likidasyon bekleniyor…')); return; }
+    rows.forEach((r) => {
+      const li = el('li', r.long ? 'long' : 'short');
+      li.appendChild(el('time', '', new Date(r.t).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })));
+      li.appendChild(el('strong', '', r.sym));
+      li.appendChild(el('span', 'lq-side', r.long ? 'long kapatıldı' : 'short kapatıldı'));
+      li.appendChild(el('span', 'lq-usd', fmtBig(r.usd)));
+      list.appendChild(li);
+    });
+  }
+  function initLq() {
+    const box = $('lq-filters');
+    LQ_FILTERS.forEach((f) => {
+      const b = el('button', '', f[1]);
+      b.type = 'button';
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-selected', String(f[0] === lq.filter));
+      b.addEventListener('click', () => {
+        lq.filter = f[0];
+        box.querySelectorAll('button').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
+        lq.dirty = true;
+        lqRender();
+      });
+      box.appendChild(b);
+    });
+    lqConnect();
+    setInterval(() => { if (page === 'grafik' && !document.hidden) lqRender(); }, 1500);
+  }
+
   // ---------- Takip tablosu (sıralanabilir) ----------
   const WT_COLS = [['s', 'Varlık'], ['price', 'Fiyat'], ['pct', '24 sa'], ['qvol', 'Hacim']];
   let wtSort = load('fp.wts', 'pct'), wtDir = load('fp.wtd', '-1') === '1' ? 1 : -1;
@@ -2292,7 +2379,7 @@
     applyPage();
     window.scrollTo(0, 0);
     if (p === 'ai') { renderAi(); loadAiData(); }
-    if (p === 'grafik') { loadBasket(); renderWatchTable(); }
+    if (p === 'grafik') { loadBasket(); renderWatchTable(); lq.dirty = true; lqRender(); }
   }
   function initNav() {
     document.querySelectorAll('[data-go]').forEach((b) => {
@@ -2828,6 +2915,7 @@
   loadOzPerf();
   setInterval(() => { if (!document.hidden) loadOzPerf(); }, 300000);
   initTape();
+  initLq();
   renderTape();
   setInterval(renderTape, 2000);
   renderWatchTable();

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Finans Paneli</title>
 <!-- Güvenlik: sayfa yalnızca aşağıda adı geçen adreslerden kod çalıştırır ve veri çeker -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.binance.com https://data-api.binance.vision https://fapi.binance.com wss://stream.binance.com:9443 wss://data-stream.binance.vision wss://ws-feed-pro.btcturk.com https://api.coingecko.com https://api.alternative.me; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.binance.com https://data-api.binance.vision https://fapi.binance.com wss://stream.binance.com:9443 wss://data-stream.binance.vision wss://fstream.binance.com wss://ws-feed-pro.btcturk.com https://api.coingecko.com https://api.alternative.me; base-uri 'none'; form-action 'none'; object-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="description" content="Kripto ve teknoloji piyasaları için canlı takip paneli">
 <meta name="theme-color" content="#0d131f">
@@ -484,6 +484,23 @@
     <p class="hint bk-tip" id="bk-tip">yükleniyor…</p>
     <ul class="bk-legend" id="bk-legend"></ul>
     <p class="hint events-note">Her çizgi, dönemin ilk gününe göre yüzde değişimi gösterir (hepsi 0'dan başlar). RENDER düşerken diğer AI coinleri de düşüyorsa hareket sektöre aittir; yalnız RENDER ayrışıyorsa RENDER'a özeldir. BTC karşılaştırma içindir. Günlük kapanışlar Binance'ten gelir.</p>
+  </section>
+
+  <section class="panel" data-page="grafik" data-tab="kripto" aria-label="Likidasyon akışı">
+    <div class="panel-head">
+      <h2>Likidasyon akışı</h2>
+      <span class="hint" id="lq-state">bağlanıyor…</span>
+    </div>
+    <div class="lq-sum">
+      <div><span class="label">Long kapatıldı</span><strong id="lq-long">$0</strong><small id="lq-long-n">0 işlem</small></div>
+      <div><span class="label">Short kapatıldı</span><strong id="lq-short">$0</strong><small id="lq-short-n">0 işlem</small></div>
+    </div>
+    <div class="lq-bar" aria-hidden="true"><i id="lq-bar"></i></div>
+    <p class="hint" id="lq-since">Panel açıldığından beri · tüm vadeli piyasa</p>
+    <p class="hint lq-render" id="lq-render">RENDER: henüz likidasyon görülmedi</p>
+    <div class="chips" id="lq-filters" role="tablist" aria-label="Likidasyon süzgeci"></div>
+    <ol class="lq-list" id="lq-list"><li class="empty">Likidasyon bekleniyor…</li></ol>
+    <p class="hint events-note">Binance vadeli piyasasında borsanın zorla kapattığı pozisyonlar, canlı. "Long kapatıldı" yükseliş bekleyenlerin pozisyonunun satılarak kapatılması demektir ve fiyat düşerken görülür; "short kapatıldı" tersidir. Binance geçmiş likidasyonları paylaşmıyor: liste yalnızca panel açıkken gelenleri gösterir, sayfayı kapatınca sıfırlanır. Akış her coin için saniyede en fazla bir kaydı iletir, bu yüzden toplamlar gerçek tutarın altında kalabilir. Yalnızca Binance; diğer borsalar dahil değil.</p>
   </section>
 
   <section class="panel" data-page="grafik" data-tab="kripto" aria-label="Kripto göstergeleri">
