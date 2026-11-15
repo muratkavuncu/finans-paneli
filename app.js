@@ -1644,6 +1644,7 @@
     const all = Array.isArray(news.ai) ? news.ai : [];
     if (page === 'ai' && all.length) setTimeout(() => save('fp.aiSeen', String(all[0].ts)), 8000);
     renderAiPulse(all);
+    renderOzAi();
     // Veri ve süzgeç değişmediyse listeyi yeniden kurma: canlandırma her iki dakikada bir baştan oynamasın
     const key = news.updated + '|' + aiFilter + '|' + aiShown + '|' + aiLab + '|' + saved.length;
     if (key === aiKey) return;
@@ -2023,6 +2024,37 @@
     svg.addEventListener('pointerleave', () => bkLegend(null));
   }
 
+  // ---------- Özet: "AI'da bugün" ----------
+  function renderOzAi() {
+    const box = $('oz-ai');
+    box.textContent = '';
+    const row = (label, text, sub, url) => {
+      const li = el('li');
+      const node = url ? el('a') : el('div');
+      if (url) { node.href = url; node.target = '_blank'; node.rel = 'noopener noreferrer'; }
+      node.appendChild(el('span', 'label', label));
+      node.appendChild(el('span', 'oz-title', text));
+      if (sub) node.appendChild(el('span', 'n-meta', sub));
+      li.appendChild(node);
+      box.appendChild(li);
+    };
+    const all = news && Array.isArray(news.ai) ? news.ai : [];
+    const now = Date.now() / 1000;
+    const fresh = all.filter((n) => now - n.ts < 172800);
+    const hot = fresh.filter((n) => n.n >= 2).sort((a, b) => (b.n - a.n) || (b.ts - a.ts))[0];
+    const pick = hot || fresh.find((n) => n.topic === 'model') || fresh.find((n) => n.official) || all[0];
+    if (pick) {
+      row(hot ? 'Çok konuşulan' : pick.topic === 'model' ? 'Model haberi' : 'Son haber', pick.title,
+        pick.source + (pick.n >= 2 ? ' · ' + pick.n + ' kaynak' : '') + ' · ' + ago(pick.ts), /^https?:\/\//.test(pick.url) ? pick.url : '');
+    }
+    const d = aiData;
+    const m = d && Array.isArray(d.models) ? d.models.find((r) => r && r.name && safeUrl(r.url, 'openrouter.ai')) : null;
+    if (m) row('Son çıkan model', m.name, (m.ts ? ago(m.ts) + ' · ' : '') + (m.ctx ? compact(m.ctx) + ' bağlam' : 'OpenRouter'), safeUrl(m.url, 'openrouter.ai'));
+    const ar = d && Array.isArray(d.arena) ? d.arena.find((a) => a.id === 'text' && Array.isArray(a.rows) && a.rows.length) : null;
+    if (ar) row('LMArena metin lideri', ar.rows[0].name, NF[0].format(ar.rows[0].rating) + ' puan' + (ar.rows[1] ? ' · ikinci: ' + ar.rows[1].name : ''), '');
+    if (!box.children.length) box.appendChild(el('li', 'empty', 'AI verisi henüz yüklenmedi.'));
+  }
+
   function renderAiData() {
     const d = aiData;
     if (!d) return;
@@ -2050,6 +2082,7 @@
         }
       });
     $('ai-toprepos-more').hidden = tr.length <= topShown;
+    renderOzAi();
     renderArena();
     renderTimeline();
     renderCompare();
@@ -2709,7 +2742,8 @@
   initNav();
   initModels();
   initBasket();
-  if (page === 'ai') loadAiData();
+  loadAiData();
+  setInterval(() => { if (page === 'ozet' && !document.hidden) loadAiData(); }, 900000);
   if (page === 'grafik') loadBasket();
   setInterval(() => { if (page === 'grafik' && !document.hidden) loadBasket(); }, 600000);
   setInterval(loadAltStrength, 3600000);

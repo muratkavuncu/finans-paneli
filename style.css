@@ -648,3 +648,11 @@ i.cmp-b { background: var(--series-2); }
 @media (prefers-reduced-motion: reduce) { .bk-svg.draw, .tl li, .cmp-bar i { animation: none; } }
 .n-desc { display: block; margin-top: 4px; font-size: 13px; line-height: 1.4; color: var(--fg); opacity: .85; overflow-wrap: anywhere; }
 #ai-toprepos .n-tags { margin-top: 6px; }
+
+/* Özet: "AI'da bugün" */
+.oz-ai { list-style: none; margin: 0; padding: 0; }
+.oz-ai li { border-top: 1px solid var(--line); }
+.oz-ai li:first-child { border-top: 0; }
+.oz-ai li.empty { color: var(--muted); padding: 8px 0; font-size: 13px; }
+.oz-ai a, .oz-ai div { display: grid; gap: 2px; padding: 9px 0; color: inherit; text-decoration: none; }
+.oz-ai .n-meta { color: var(--muted); font-size: 12px; }
