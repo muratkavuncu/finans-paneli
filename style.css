@@ -592,7 +592,7 @@ h2 { font-size: 16px; font-weight: 600; }
 @media (prefers-reduced-motion: reduce) { .ar-row, .ar-dot { animation: none; } }
 
 /* ---------- AI alt sekmeleri ---------- */
-.ai-subs { position: sticky; top: 0; z-index: 15; margin: -6px -4px 0; padding: 8px 4px; background: var(--bg); }
+.ai-subs { position: sticky; top: 38px; z-index: 15; margin: -6px -4px 0; padding: 8px 4px; background: var(--bg); }
 .ai-subs button { padding: 8px 16px; font-size: 14px; font-weight: 600; }
 .ai-lab-label { margin-top: 14px; }
 .ai-topic.lab { --tc: var(--series); grid-template-columns: 108px minmax(0, 1fr) 34px; }
@@ -656,3 +656,39 @@ i.cmp-b { background: var(--series-2); }
 .oz-ai li.empty { color: var(--muted); padding: 8px 0; font-size: 13px; }
 .oz-ai a, .oz-ai div { display: grid; gap: 2px; padding: 9px 0; color: inherit; text-decoration: none; }
 .oz-ai .n-meta { color: var(--muted); font-size: 12px; }
+
+/* ---------- Canlı fiyat şeridi ---------- */
+.tape {
+  position: sticky; top: 0; z-index: 16; display: flex; gap: 16px; overflow-x: auto; scrollbar-width: none;
+  margin: -6px calc(-1 * max(16px, env(safe-area-inset-left, 0px))); padding: 9px max(16px, env(safe-area-inset-left, 0px));
+  background: var(--bg); border-bottom: 1px solid var(--line); font-size: 12.5px; white-space: nowrap;
+}
+.tape::-webkit-scrollbar { display: none; }
+.tape-item { display: inline-flex; gap: 6px; align-items: baseline; flex: none; }
+.tape-name { color: var(--muted); font-weight: 600; }
+.tape-pct { font-weight: 600; }
+
+/* Özet: mini grafik, gün aralığı, dönem getirileri */
+.oz-hero { grid-template-columns: minmax(0, 1fr) 96px; align-items: center; }
+.oz-spark { width: 96px; height: 44px; }
+.oz-range, .oz-perf { grid-column: 1 / -1; }
+.oz-range { display: grid; gap: 4px; }
+.oz-range-bar { position: relative; display: block; height: 6px; border-radius: 3px; background: var(--surface-2); }
+.oz-range-bar i { position: absolute; top: -3px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: var(--fg); box-shadow: 0 0 0 2px var(--surface); transition: left .4s; }
+.oz-range-ends { display: flex; justify-content: space-between; gap: 8px; font-size: 11.5px; color: var(--muted); }
+.oz-perf { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.oz-perf-cell { display: grid; gap: 1px; padding: 6px 4px; border-radius: 8px; background: var(--surface-2); text-align: center; font-size: 11px; color: var(--muted); min-width: 0; }
+.oz-perf-cell strong { font-size: 12.5px; color: var(--fg); }
+.oz-perf-cell strong.pos { color: var(--up); }
+.oz-perf-cell strong.neg { color: var(--down); }
+
+/* Takip tablosu */
+.wt { display: grid; }
+.wt-row { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr); gap: 8px; align-items: center; padding: 9px 6px; border: 0; border-top: 1px solid var(--line); background: transparent; font: inherit; color: inherit; text-align: right; cursor: pointer; border-radius: 0; width: 100%; }
+.wt-row > :first-child { text-align: left; }
+.wt-row.sel { background: var(--surface-2); box-shadow: inset 2px 0 0 var(--accent); }
+.wt-head { cursor: default; border-top: 0; padding-top: 0; }
+.wt-head button { border: 0; background: transparent; font: inherit; font-size: 11.5px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); cursor: pointer; padding: 4px 0; text-align: inherit; min-height: 32px; }
+.wt-head button[aria-pressed="true"] { color: var(--fg); font-weight: 600; }
+.wt-name { font-weight: 700; display: flex; align-items: center; gap: 6px; }
+.wt-vol { color: var(--muted); font-size: 12.5px; }

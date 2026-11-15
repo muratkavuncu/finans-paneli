@@ -287,6 +287,7 @@
       if (isFinite(ratio)) $('g-ethbtc').textContent = NF[5].format(ratio);
     }
     if (sym === 'RENDER' || sym === 'BTC') renderOzet();
+    if (sym === 'RENDER') renderOzRange();
     if (sym === selected && tab === 'kripto') {
       const big = $('chart-price');
       big.textContent = priceText;
@@ -2024,6 +2025,108 @@
     svg.addEventListener('pointerleave', () => bkLegend(null));
   }
 
+  // ---------- Canlı fiyat şeridi (her sayfada üstte) ----------
+  const TAPE = [['RENDER', 'c'], ['BTC', 'c'], ['ETH', 'c'], ['SOL', 'c'], ['NDX', 'm', 'Nasdaq'], ['DXY', 'm', 'Dolar endeksi'], ['TRY', 't', 'USD/TRY']];
+  const tapeEls = {};
+  function initTape() {
+    const box = $('tape');
+    TAPE.forEach((t) => {
+      const item = el('span', 'tape-item');
+      item.appendChild(el('span', 'tape-name', t[2] || t[0]));
+      const v = el('strong', '', '—');
+      const p = el('span', 'tape-pct', '');
+      item.appendChild(v);
+      item.appendChild(p);
+      box.appendChild(item);
+      tapeEls[t[0]] = { v, p };
+    });
+  }
+  function renderTape() {
+    TAPE.forEach((t) => {
+      const e = tapeEls[t[0]];
+      let price = null, pct = null;
+      if (t[1] === 'c') { price = state[t[0]].price; pct = state[t[0]].pct; if (price != null) e.v.textContent = fmtPrice(price); }
+      else if (t[1] === 'm') {
+        const m = markets && markets.symbols[t[0]];
+        if (m) { price = m.price; pct = m.pct; e.v.textContent = NF[t[0] === 'NDX' ? 0 : 2].format(price); }
+      } else if (usdtTry) { price = usdtTry; e.v.textContent = '₺' + NF[2].format(usdtTry); }
+      if (price != null && pct != null && isFinite(pct)) { e.p.textContent = fmtPct(+pct); e.p.className = 'tape-pct ' + signClass(+pct); }
+    });
+  }
+
+  // ---------- Özet: gün aralığı ve dönem getirileri ----------
+  function renderOzRange() {
+    const r = state.RENDER;
+    if (r.price == null || !isFinite(r.high) || !isFinite(r.low) || r.high <= r.low) return;
+    $('oz-lo').textContent = fmtPrice(r.low);
+    $('oz-hi').textContent = fmtPrice(r.high);
+    $('oz-range-dot').style.left = Math.max(0, Math.min(100, (r.price - r.low) / (r.high - r.low) * 100)).toFixed(1) + '%';
+  }
+  async function loadOzPerf() {
+    try {
+      const [h, d] = await Promise.all([
+        binance('/api/v3/klines?symbol=RENDERUSDT&interval=1h&limit=25'),
+        binance('/api/v3/klines?symbol=RENDERUSDT&interval=1d&limit=91'),
+      ]);
+      drawSpark($('oz-spark'), h.map((r) => +r[4]));
+      const last = +h[h.length - 1][4];
+      const back = (rows, n) => (rows.length > n ? (last / +rows[rows.length - 1 - n][4] - 1) * 100 : NaN);
+      const box = $('oz-perf');
+      box.textContent = '';
+      [['1 sa', back(h, 1)], ['24 sa', back(h, 24)], ['7 g', back(d, 7)], ['30 g', back(d, 30)], ['90 g', back(d, 90)]].forEach((x) => {
+        if (!isFinite(x[1])) return;
+        const cell = el('span', 'oz-perf-cell');
+        cell.appendChild(el('span', '', x[0]));
+        cell.appendChild(el('strong', signClass(x[1]), fmtPct(x[1])));
+        box.appendChild(cell);
+      });
+    } catch (err) { /* bir sonraki turda yeniden denenir */ }
+  }
+
+  // ---------- Takip tablosu (sıralanabilir) ----------
+  const WT_COLS = [['s', 'Varlık'], ['price', 'Fiyat'], ['pct', '24 sa'], ['qvol', 'Hacim']];
+  let wtSort = load('fp.wts', 'pct'), wtDir = load('fp.wtd', '-1') === '1' ? 1 : -1;
+  if (!WT_COLS.some((c) => c[0] === wtSort)) wtSort = 'pct';
+  function renderWatchTable() {
+    const box = $('wt');
+    box.textContent = '';
+    const head = el('div', 'wt-row wt-head');
+    head.setAttribute('role', 'row');
+    WT_COLS.forEach((c) => {
+      const b = el('button', '', c[1] + (wtSort === c[0] ? (wtDir > 0 ? ' ▲' : ' ▼') : ''));
+      b.type = 'button';
+      b.setAttribute('aria-pressed', String(wtSort === c[0]));
+      b.addEventListener('click', () => {
+        if (wtSort === c[0]) wtDir = -wtDir; else { wtSort = c[0]; wtDir = c[0] === 's' ? 1 : -1; }
+        save('fp.wts', wtSort);
+        save('fp.wtd', String(wtDir));
+        renderWatchTable();
+      });
+      head.appendChild(b);
+    });
+    box.appendChild(head);
+    const rows = COINS.map((c) => ({ s: c.s, ai: c.ai, price: +state[c.s].price, pct: +state[c.s].pct, qvol: +state[c.s].qvol }));
+    rows.sort((a, b) => (wtSort === 's' ? a.s.localeCompare(b.s) * wtDir
+      : ((isFinite(a[wtSort]) ? a[wtSort] : -Infinity) - (isFinite(b[wtSort]) ? b[wtSort] : -Infinity)) * wtDir));
+    rows.forEach((r) => {
+      const row = el('button', 'wt-row' + (r.s === selected ? ' sel' : ''));
+      row.type = 'button';
+      row.setAttribute('role', 'row');
+      const name = el('span', 'wt-name', r.s);
+      if (r.ai) name.appendChild(el('span', 'tag', 'AI'));
+      row.appendChild(name);
+      row.appendChild(el('span', '', isFinite(r.price) && r.price ? fmtPrice(r.price) : '—'));
+      row.appendChild(el('strong', signClass(r.pct), isFinite(r.pct) ? fmtPct(r.pct) : '—'));
+      row.appendChild(el('span', 'wt-vol', isFinite(r.qvol) && r.qvol ? fmtBig(r.qvol) : '—'));
+      row.addEventListener('click', () => {
+        selectSymbol(r.s);
+        renderWatchTable();
+        document.querySelector('.chart-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+      box.appendChild(row);
+    });
+  }
+
   // ---------- Özet: "AI'da bugün" ----------
   function renderOzAi() {
     const box = $('oz-ai');
@@ -2189,7 +2292,7 @@
     applyPage();
     window.scrollTo(0, 0);
     if (p === 'ai') { renderAi(); loadAiData(); }
-    if (p === 'grafik') loadBasket();
+    if (p === 'grafik') { loadBasket(); renderWatchTable(); }
   }
   function initNav() {
     document.querySelectorAll('[data-go]').forEach((b) => {
@@ -2722,6 +2825,13 @@
   setInterval(loadSignals, 120000);
   setInterval(() => { if (page === 'ai' && !document.hidden) loadAiData(); }, 300000);
   loadOzTa();
+  loadOzPerf();
+  setInterval(() => { if (!document.hidden) loadOzPerf(); }, 300000);
+  initTape();
+  renderTape();
+  setInterval(renderTape, 2000);
+  renderWatchTable();
+  setInterval(() => { if (page === 'grafik' && tab === 'kripto' && !document.hidden) renderWatchTable(); }, 4000);
   setInterval(() => { if (!document.hidden) loadOzTa(); }, 300000);
   setInterval(loadMarkets, 120000);
   setInterval(() => { renderNews(); renderCalendar(); renderNextEvent(); }, 60000);

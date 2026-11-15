@@ -34,6 +34,8 @@
     </div>
   </header>
 
+  <div class="tape" id="tape" aria-label="Canlı fiyat şeridi"></div>
+
   <section class="ozet" data-page="ozet" aria-label="Özet">
     <button type="button" class="oz-hero" data-go="grafik" data-sym="RENDER">
       <span class="oz-main">
@@ -41,6 +43,12 @@
         <span class="oz-row"><span class="oz-price" id="oz-price">—</span><span class="chip" id="oz-pct">—</span></span>
         <span class="oz-sub"><span id="oz-tl">BtcTurk —</span><span id="oz-vs">BTC'ye göre —</span></span>
       </span>
+      <svg class="oz-spark" id="oz-spark" viewBox="0 0 100 34" preserveAspectRatio="none" aria-hidden="true"></svg>
+      <span class="oz-range">
+        <span class="oz-range-bar"><i id="oz-range-dot"></i></span>
+        <span class="oz-range-ends"><span id="oz-lo">—</span><span>24 saatlik aralık</span><span id="oz-hi">—</span></span>
+      </span>
+      <span class="oz-perf" id="oz-perf"></span>
     </button>
     <div class="ta-pips oz-pips" id="oz-pips"></div>
     <div class="oz-grid">
@@ -316,6 +324,14 @@
   </section>
 
   <section class="watch" id="watch" data-page="grafik" data-tab="kripto" aria-label="Kripto takip listesi"></section>
+
+  <section class="panel" data-page="grafik" data-tab="kripto" aria-label="Takip tablosu">
+    <div class="panel-head">
+      <h2>Takip tablosu</h2>
+      <span class="hint">başlığa dokun, sırala · satıra dokun, grafiği aç</span>
+    </div>
+    <div class="wt" id="wt" role="table" aria-label="Takip edilen coinler"></div>
+  </section>
   <section class="watch" id="watch-tek" data-page="grafik" data-tab="tek" aria-label="Teknoloji takip listesi" hidden></section>
 
   <section class="panel chart-panel" data-page="grafik" aria-label="Fiyat grafiği">
