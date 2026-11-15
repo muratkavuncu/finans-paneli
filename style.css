@@ -24,7 +24,7 @@
   --down: #f6465d;
   --up-soft: rgba(46, 189, 133, .35);
   --down-soft: rgba(246, 70, 93, .35);
-  --warn: #f2a93b;
+  --warn: #ff7f2a;
   --c1: #f2a93b;
   --c2: #6f8cff;
   --c3: #2fc4c0;
@@ -54,7 +54,7 @@
     --down: #dc2f47;
     --up-soft: rgba(14, 159, 110, .3);
     --down-soft: rgba(220, 47, 71, .3);
-    --warn: #c77a08;
+    --warn: #c2540a;
     --c1: #e09a22;
     --c2: #4c6fff;
     --c3: #12a5a1;
