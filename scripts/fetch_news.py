@@ -224,6 +224,9 @@ def parse_feed(raw):
 
 def classify(title):
     tags = [tag for tag, rx in TAG_RE.items() if rx.search(title)]
+    # Büyük harfle yazılmış RENDER token adıdır; küçük harfli "render" (görüntü işleme) sayılmaz
+    if "RENDER" not in tags and re.search(r"(?<![\w$])RENDER(?!\w)", title):
+        tags.append("RENDER")
     pos = len(POS_RE.findall(title))
     neg = len(NEG_RE.findall(title))
     sent = 1 if pos > neg else -1 if neg > pos else 0

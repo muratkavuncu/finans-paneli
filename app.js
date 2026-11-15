@@ -6,8 +6,8 @@
   const WS_HOSTS = ['wss://stream.binance.com:9443', 'wss://data-stream.binance.vision'];
 
   const COINS = [
-    { s: 'BTC', name: 'Bitcoin', main: true },
     { s: 'RENDER', name: 'Render', main: true, ai: true },
+    { s: 'BTC', name: 'Bitcoin', main: true },
     { s: 'ETH', name: 'Ethereum', main: true },
     { s: 'SOL', name: 'Solana', main: true },
     { s: 'BNB', name: 'BNB' },
@@ -44,7 +44,7 @@
     try { localStorage.setItem(key, value); } catch (e) { /* önemli değil */ }
   }
 
-  let selected = load('fp.symbol', 'BTC');
+  let selected = load('fp.symbol', 'RENDER');
   if (!bySym[selected]) selected = 'BTC';
   let interval = load('fp.interval', '1h');
   // Grafiğin karşılığı: USDT (dolar fiyatı) ya da BTC (varlığın BTC'ye göre performansı)

@@ -145,6 +145,8 @@ PLAYBOOK = [
          up=[V], down=[], why="Kurumsal talep arzı sıkıştırır; tek başına etkisi genelde sınırlıdır."),
 ]
 PLAY = {p["id"]: p for p in PLAYBOOK}
+RENDER_PLAY = dict(id="render", label="RENDER haberi", w=8, wide=False, up=[], down=[],
+                   why="RENDER ile doğrudan ilgili haber; etkisinin yönü içeriğe bağlı.")
 
 # Aynı olayda zıt yönlü iki kalıp birden tutuyorsa yön verilmez, genel türe düşülür
 OPPOSITES = {"infl_hot": ("infl_cool", "infl"), "infl_cool": ("infl_hot", "infl"),
@@ -336,7 +338,9 @@ def analyze(items, markets_path):
             item["score"] = score
 
         if not best:
-            continue
+            if "RENDER" not in tags:
+                continue
+            best = RENDER_PLAY  # kural kitabında karşılığı olmasa da RENDER haberi olay sayılır (bildirim için)
         label = ", ".join(assets[:2]) or "İlgili varlık"
         up, down, why = best["up"], best["down"], best["why"]
         if foreign:

@@ -23,7 +23,10 @@ DRY = os.environ.get("NTFY_DRY") == "1"
 PANEL = "https://muratkavuncu.github.io/finans-paneli/"
 
 # --- Haber
-NEWS_MIN_SCORE = 60          # teyitli olay bildirimi için en düşük etki puanı
+# Kullanıcı isteği (15.11.2026): bildirim az olsun, yalnızca büyük olaylarda gelsin; öncelik RENDER.
+NEWS_MIN_SCORE = 75          # teyitli olay bildirimi için en düşük etki puanı ("çok yüksek" düzeyi)
+DAILY_CAP = 5                # günde en fazla bu kadar haber/BTC bildirimi (RENDER ve sabah özeti hariç)
+CAP_BYPASS_SCORE = 90        # bu puanın üstündeki olay günlük sınıra takılmaz
 NEWS_MAX_AGE = 3 * 3600      # bundan eski olay için bildirim gitmez
 EARLY_MAX_AGE = 45 * 60      # erken uyarı yalnızca taze haber için
 NEWS_PER_RUN = 3
@@ -32,12 +35,14 @@ TYPE_COOLDOWN = 3 * 3600     # aynı tür + aynı varlık için tekrar bildirim 
 EARLY_TYPES = {"fed_cut", "fed_hike", "infl_hot", "infl_cool", "hack", "collapse", "etf_yes", "etf_no",
                "chip_export", "tariff", "geo", "reg_bad", "reg_good"}
 # Tek kaynaklı haberde erken uyarı için fiyatın da tepki vermiş olması gerekir (yüzde)
-EARLY_MOVE = {"BTC": 0.5, "Nasdaq": 0.5}
-EARLY_MOVE_OTHER = 1.5
+EARLY_MOVE = {"BTC": 1.5, "Nasdaq": 1.5}
+EARLY_MOVE_OTHER = 3.0
 
 # --- Fiyat: varlık -> (15 dakikada yüzde, 5 dakikada yüzde)
-PRICE_RULES = {"BTC": (1.0, 0.75), "RENDER": (3.0, 2.0)}
-PRICE_COOLDOWN = 3600        # aynı varlık için en erken bir saat sonra tekrar
+PRICE_RULES = {"RENDER": (3.0, 2.0), "BTC": (2.0, 1.5)}
+PRICE_COOLDOWN = {"RENDER": 2 * 3600, "BTC": 4 * 3600}   # aynı varlık için tekrar aralığı
+TECH_SYMBOLS = ["RENDER"]    # seviye kırılımı ve EMA 200 bildirimi yalnızca bu varlıklar için
+SEND_REACTION = False        # veri sonrası "ilk tepki" bildirimi kapalı (sert hareket olursa fiyat bildirimi zaten gelir)
 
 # --- Takvim
 CALENDAR_AHEAD = 25 * 60     # veriden en fazla bu kadar önce hatırlat
@@ -115,6 +120,28 @@ def since(data, ts):
     return None if base is None else (data[-1][1] / base - 1) * 100
 
 
+def budget_left(sent, now):
+    """Bugün (Türkiye saatiyle) gönderilen haber, takvim ve BTC fiyat bildirimlerine göre kalan hak."""
+    day_start = now - (now + 3 * 3600) % 86400
+    used = {v for k, v in sent.items() if v >= day_start and (k[:2] in ("n:", "e:", "c:") or k == "p:BTC")}
+    return DAILY_CAP - len(used)
+
+
+def btcturk_tl(pair="RENDERTRY"):
+    """BtcTurk'teki son TL fiyatı (herkese açık veri); alınamazsa None."""
+    try:
+        req = urllib.request.Request("https://api.btcturk.com/api/v2/ticker?pairSymbol=" + pair, headers={"User-Agent": "finans-paneli"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            return float(json.loads(resp.read(100000).decode("utf-8"))["data"][0]["last"])
+    except Exception:
+        return None
+
+
+def tl_text(pair="RENDERTRY"):
+    v = btcturk_tl(pair)
+    return "" if not v else "BtcTurk ₺" + ("%.2f" % v).replace(".", ",")
+
+
 def early_ok(e):
     """Henüz teyit puanı düşük olsa da haber vermeye değer mi: büyük kaynak + net olay türü + fiyat tepkisi."""
     if e["type"] not in EARLY_TYPES or e.get("tier") != "A" or e.get("foreign") or e.get("lang") != "en":
@@ -151,7 +178,9 @@ def price_alerts(events, prices, sent, now):
     count = 0
     for sym, (lim15, lim5) in PRICE_RULES.items():
         data = live(prices, sym, now)
-        if not data or now - sent.get("p:" + sym, 0) < PRICE_COOLDOWN:
+        if not data or now - sent.get("p:" + sym, 0) < PRICE_COOLDOWN.get(sym, 3600):
+            continue
+        if sym != "RENDER" and budget_left(sent, now) <= 0:
             continue
         move15 = (data[-1][1] / data[-4][1] - 1) * 100
         move5 = (data[-1][1] / data[-2][1] - 1) * 100
@@ -161,7 +190,7 @@ def price_alerts(events, prices, sent, now):
             move, span, ratio = move5, "5 dakikada", abs(move5) / lim5
         else:
             continue
-        lines = ["Fiyat: " + money(data[-1][1])]
+        lines = ["Fiyat: " + money(data[-1][1]) + ((" · " + tl_text()) if sym == "RENDER" and tl_text() else "")]
         cause = [e for e in events if now - e["ts"] <= 3600 and not e.get("preview") and e["score"] >= 40
                  and (e["cat"] == "makro" or sym in e["assets"] or (e["cat"] == "kripto" and not e["assets"]))]
         if cause:
@@ -179,7 +208,7 @@ def price_alerts(events, prices, sent, now):
 # --- Teknik seviye (saatlik grafik)
 LEVEL_TOUCHES = 3           # seviye sayılması için en az kaç kez dönülmüş olmalı
 TECH_MARGIN = 0.75           # kırılım sayılması için seviyenin ötesine geçilmesi gereken pay (ATR'nin katı)
-TECH_COOLDOWN = 4 * 3600     # aynı varlık + aynı yön için tekrar aralığı
+TECH_COOLDOWN = 12 * 3600    # aynı varlık + aynı yön için tekrar aralığı
 LEVEL_COOLDOWN = 24 * 3600   # aynı seviye için tekrar aralığı
 EMA_COOLDOWN = 12 * 3600     # EMA 200 geçişi için tekrar aralığı
 
@@ -262,7 +291,7 @@ def tech_alerts(prices, sent, now):
     if not fetch:
         return 0
     count = 0
-    for sym in PRICE_RULES:
+    for sym in TECH_SYMBOLS:
         bars = fetch(sym, "1h")
         if len(bars) < 250 or now - bars[-1][0] > 2 * 3600:
             continue
@@ -316,12 +345,16 @@ def daily_summary(events, calendar, prices, sent, now):
     key = "d:%04d%02d%02d" % (t.tm_year, t.tm_mon, t.tm_mday)
     if not SUMMARY_HOURS_UTC[0] <= t.tm_hour < SUMMARY_HOURS_UTC[1] or key in sent:
         return 0
-    lines = []
+    lines, day = [], {}
     for sym in PRICE_RULES:
         data = live(prices, sym, now)
         if data:
             back = data[-289][1] if len(data) >= 289 else data[0][1]
-            lines.append("%s %s · 24 sa %s" % (sym, money(data[-1][1]), pct((data[-1][1] / back - 1) * 100)))
+            day[sym] = data[-1][1] / back
+            extra = (" · " + tl_text()) if sym == "RENDER" and tl_text() else ""
+            lines.append("%s %s · 24 sa %s%s" % (sym, money(data[-1][1]), pct((day[sym] - 1) * 100), extra))
+    if "RENDER" in day and "BTC" in day:
+        lines.append("RENDER, BTC'ye göre 24 sa %s" % pct((day["RENDER"] / day["BTC"] - 1) * 100))
     top = [e for e in events if now - e["ts"] <= 12 * 3600 and not e.get("preview") and e["score"] >= 45][:3]
     if top:
         lines.append("Gece öne çıkanlar:")
@@ -367,12 +400,22 @@ def run(events, calendar, prices, state):
         if e.get("preview") or age > NEWS_MAX_AGE:
             continue
         tkey = e["type"] + ":" + (e["assets"][0] if e["assets"] else "-")
-        if e["score"] >= NEWS_MIN_SCORE and e["n"] >= 2:  # tek kaynaklı haber "teyitli" sayılmaz
+        is_render = "RENDER" in e.get("assets", []) or "RENDER" in e.get("tags", [])
+        if not is_render and budget_left(sent, now) <= 0 and e["score"] < CAP_BYPASS_SCORE:
+            continue
+        if is_render:  # RENDER ile doğrudan ilgili her haber, puanı düşük olsa da bildirilir
+            if "n:" + e["id"] in sent or recent("N:" + tkey, TYPE_COOLDOWN):
+                continue
+            if send("RENDER · %s" % e["type_label"], news_body(e, prices, now, e["n"] >= 2), priority=4,
+                    tags=["large_orange_diamond"], news_url=e["url"]):
+                sent["n:" + e["id"]] = sent["N:" + tkey] = int(now)
+                news_sent += 1
+        elif e["score"] >= NEWS_MIN_SCORE and e["n"] >= 2:  # tek kaynaklı haber "teyitli" sayılmaz
             if "n:" + e["id"] in sent or recent("N:" + tkey, TYPE_COOLDOWN):
                 continue
             was_early = "e:" + e["id"] in sent or recent("E:" + tkey, TYPE_COOLDOWN)
             title = ("Teyit edildi · %s · etki %d" if was_early else "%s · etki %d") % (e["type_label"], e["score"])
-            if send(title, news_body(e, prices, now, True), priority=5 if e["score"] >= 75 else 4,
+            if send(title, news_body(e, prices, now, True), priority=5 if e["score"] >= 85 else 4,
                     tags=["rotating_light"], news_url=e["url"]):
                 sent["n:" + e["id"]] = sent["N:" + tkey] = int(now)
                 news_sent += 1
@@ -410,7 +453,7 @@ def run(events, calendar, prices, state):
             if send("%d dk sonra: %s" % (round(left / 60), names), "\n".join(detail), priority=4, tags=["alarm_clock"]):
                 sent["c:%d" % ts] = int(now)
                 count += 1
-        if REACT_FROM <= -left <= REACT_TO and "r:%d" % ts not in sent:
+        if SEND_REACTION and REACT_FROM <= -left <= REACT_TO and "r:%d" % ts not in sent:
             moves = []
             for sym in PRICE_RULES:
                 data = live(prices, sym, now)
