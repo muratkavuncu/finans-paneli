@@ -645,3 +645,5 @@ i.cmp-b { background: var(--c5); }
 .bk-legend i { width: 12px; height: 4px; border-radius: 2px; }
 @keyframes bk-reveal { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
 @media (prefers-reduced-motion: reduce) { .bk-svg.draw, .tl li, .cmp-bar i { animation: none; } }
+.n-desc { display: block; margin-top: 4px; font-size: 13px; line-height: 1.4; color: var(--fg); opacity: .85; overflow-wrap: anywhere; }
+#ai-toprepos .n-tags { margin-top: 6px; }

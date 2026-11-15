@@ -150,6 +150,32 @@ def repos():
     return sorted(seen.values(), key=lambda r: -r["stars"])[:LIMIT]
 
 
+TOPIC = re.compile(r"^[a-z0-9-]{1,30}$")
+
+
+def top_repos():
+    """GitHub'da en cok yildiz almis AI depolari (tum zamanlar). Aciklama deponun kendi yazdigi metindir."""
+    seen = {}
+    for topic in ("ai", "llm", "machine-learning", "deep-learning", "generative-ai"):
+        url = "https://api.github.com/search/repositories?q=topic:%s&sort=stars&order=desc&per_page=30" % topic
+        try:
+            items = get(url).get("items", [])
+        except Exception as exc:
+            print("HATA populer depo", topic, repr(exc)[:80], file=sys.stderr)
+            continue
+        for r in items:
+            name = str(r.get("full_name", ""))
+            desc = clean(r.get("description"), 300)
+            if not REPO_ID.match(name) or BAD.search(name + " " + desc) or r.get("fork") or r.get("archived"):
+                continue
+            seen[name] = {"id": name, "desc": desc, "stars": int(r.get("stargazers_count") or 0), "lang": clean(r.get("language"), 24),
+                          "ts": stamp(r.get("pushed_at") or ""), "topics": [t for t in (r.get("topics") or []) if TOPIC.match(str(t))][:4],
+                          "url": "https://github.com/" + name}
+    if not seen:
+        raise ValueError("populer depo verisi yok")
+    return sorted(seen.values(), key=lambda r: -r["stars"])[:25]
+
+
 def show_hn():
     since = int(time.time() - 7 * 86400)
     seen = {}
@@ -194,7 +220,7 @@ def arena():
 
 
 SECTIONS = [("models", new_models), ("hf_models", lambda: hf_list("models")), ("spaces", lambda: hf_list("spaces")),
-            ("papers", papers), ("repos", repos), ("showhn", show_hn), ("arena", arena), ("catalog", catalog), ("releases", releases)]
+            ("papers", papers), ("repos", repos), ("showhn", show_hn), ("arena", arena), ("catalog", catalog), ("releases", releases), ("top_repos", top_repos)]
 
 
 def main():

@@ -1699,7 +1699,7 @@
   const safeUrl = (u, host) => (typeof u === 'string' && u.indexOf('https://' + host + '/') === 0 ? u : '');
   const priceText = (r) => (!r.in && !r.out ? 'ücretsiz' : '$' + NF[2].format(r.in) + ' / $' + NF[2].format(r.out) + ' (1M token giriş/çıkış)');
 
-  function aiRows(id, rows, host, title, meta, val) {
+  function aiRows(id, rows, host, title, meta, val, extra) {
     const list = $(id);
     list.textContent = '';
     if (!Array.isArray(rows) || !rows.length) { list.appendChild(el('li', 'empty', 'Veri henüz yok.')); return; }
@@ -1724,6 +1724,7 @@
       const fill = el('i');
       fill.style.width = Math.max(2, (+val(r) || 0) / max * 100).toFixed(1) + '%';
       bar.appendChild(fill);
+      if (extra) extra(r, body);
       body.appendChild(bar);
       a.appendChild(body);
       li.appendChild(a);
@@ -1782,7 +1783,7 @@
   const orgOf = (r) => (r.name.indexOf(':') > 0 ? r.name.split(':')[0] : r.id.split('/')[0]).trim();
   const shortName = (r) => (r.name.indexOf(':') > 0 ? r.name.slice(r.name.indexOf(':') + 1).trim() : r.name);
   const catalog = () => (aiData && Array.isArray(aiData.catalog) ? aiData.catalog.filter((r) => r && r.name && safeUrl(r.url, 'openrouter.ai')) : []);
-  let tlOrg = '', tlShown = 15;
+  let tlOrg = '', tlShown = 15, topShown = 10;
 
   function barButton(label, count, max, pressed, i, onClick) {
     const b = el('button', 'ai-topic lab');
@@ -1916,6 +1917,7 @@
 
   function initModels() {
     $('tl-more').addEventListener('click', () => { tlShown += 15; renderTimeline(); });
+    $('ai-toprepos-more').addEventListener('click', () => { topShown += 15; renderAiData(); });
     $('cmp-a').addEventListener('change', (e) => { cmpA = e.target.value; save('fp.cmpa', cmpA); renderCompare(); });
     $('cmp-b').addEventListener('change', (e) => { cmpB = e.target.value; save('fp.cmpb', cmpB); renderCompare(); });
     document.querySelectorAll('#ai-subs button').forEach((b) => {
@@ -2036,6 +2038,18 @@
     aiRows('ai-papers', d.papers, 'huggingface.co', (r) => r.title, (r) => when(r) + '▲ ' + r.votes + ' oy · arXiv ' + r.id, (r) => r.votes);
     aiRows('ai-repos', d.repos, 'github.com', (r) => r.id + (r.desc ? ' — ' + r.desc : ''),
       (r) => '★ ' + compact(r.stars) + (r.lang ? ' · ' + r.lang : '') + (r.ts ? ' · ' + ago(r.ts) + ' açıldı' : ''), (r) => r.stars);
+    const tr = Array.isArray(d.top_repos) ? d.top_repos : [];
+    aiRows('ai-toprepos', tr.slice(0, topShown), 'github.com', (r) => r.id,
+      (r) => '★ ' + compact(r.stars) + (r.lang ? ' · ' + r.lang : '') + (r.ts ? ' · son güncelleme ' + ago(r.ts) : ''), (r) => r.stars,
+      (r, body) => {
+        if (r.desc) body.appendChild(el('span', 'n-desc', r.desc));
+        if (Array.isArray(r.topics) && r.topics.length) {
+          const tags = el('span', 'n-tags');
+          r.topics.slice(0, 4).forEach((t) => tags.appendChild(el('span', '', t)));
+          body.appendChild(tags);
+        }
+      });
+    $('ai-toprepos-more').hidden = tr.length <= topShown;
     renderArena();
     renderTimeline();
     renderCompare();
