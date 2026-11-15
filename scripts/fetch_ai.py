@@ -14,6 +14,7 @@ import os
 import re
 import sys
 import time
+import urllib.parse
 import urllib.request
 
 OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join("data", "ai.json")
@@ -87,7 +88,7 @@ def catalog():
 RELEASE_REPOS = ["ollama/ollama", "ggml-org/llama.cpp", "huggingface/transformers", "vllm-project/vllm", "langchain-ai/langchain",
                  "comfyanonymous/ComfyUI", "open-webui/open-webui", "anthropics/claude-code", "openai/codex", "unslothai/unsloth",
                  "browser-use/browser-use", "microsoft/autogen"]
-TAG = re.compile(r"^[\w.+-]{1,60}$")
+TAG = re.compile(r"^[\w.+=@-]{1,60}$")  # "langchain-core==1.8.1" gibi etiketler de gecerli
 
 
 def releases():
@@ -103,7 +104,7 @@ def releases():
         if not TAG.match(tag):
             continue
         rows.append({"id": repo, "tag": tag, "title": clean(r.get("name"), 80), "ts": stamp(r.get("published_at") or ""),
-                     "url": "https://github.com/%s/releases/tag/%s" % (repo, tag)})
+                     "url": "https://github.com/%s/releases/tag/%s" % (repo, urllib.parse.quote(tag, safe=""))})
     if not rows:
         raise ValueError("surum verisi yok")
     return sorted(rows, key=lambda x: -x["ts"])

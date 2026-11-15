@@ -983,12 +983,53 @@
     return r.json();
   }
 
+  // ---------- Vadeli göstergelerin geçmişi (fonlama ve açık pozisyon, 30 gün) ----------
+  let fhSym = '', fhLoaded = 0;
+  async function loadFutHist() {
+    const sym = selected;
+    if (sym === fhSym && Date.now() - fhLoaded < 1800000) return;
+    fhSym = sym;
+    fhLoaded = Date.now();
+    const pair = sym + 'USDT';
+    const fresh = () => sym === selected;
+    const fail = (id, tid) => { if (!fresh()) return; $(id).textContent = ''; $(tid).textContent = 'bu varlık için veri yok'; };
+
+    getJson(FAPI + '/fapi/v1/fundingRate?symbol=' + pair + '&limit=90').then((rows) => {
+      if (!fresh() || !Array.isArray(rows) || rows.length < 3) { fail('fh-fund', 'fh-fund-t'); return; }
+      const v = rows.map((r) => +r.fundingRate * 100);
+      const max = Math.max(1e-6, ...v.map(Math.abs));
+      const w = 300 / v.length;
+      let svg = '<line x1="0" x2="300" y1="35" y2="35" class="fh-zero" vector-effect="non-scaling-stroke"/>';
+      v.forEach((x, i) => {
+        const h = Math.max(0.6, Math.abs(x) / max * 32);
+        svg += '<rect x="' + (i * w + 0.4).toFixed(1) + '" y="' + (x >= 0 ? 35 - h : 35).toFixed(1) + '" width="' + Math.max(0.6, w - 0.8).toFixed(1)
+          + '" height="' + h.toFixed(1) + '" class="' + (x >= 0 ? 'fh-pos' : 'fh-neg') + '"/>';
+      });
+      $('fh-fund').innerHTML = svg; // yalnızca sayılardan üretilir
+      const avg = v.reduce((s, x) => s + x, 0) / v.length;
+      const pos = v.filter((x) => x > 0).length;
+      $('fh-fund-t').textContent = 'ortalama %' + NF[4].format(avg) + ' · ' + v.length + ' dönemin ' + pos + "'inde artı · en yüksek %"
+        + NF[4].format(Math.max(...v)) + ' · en düşük %' + NF[4].format(Math.min(...v));
+    }).catch(() => fail('fh-fund', 'fh-fund-t'));
+
+    getJson(FAPI + '/futures/data/openInterestHist?symbol=' + pair + '&period=4h&limit=180').then((rows) => {
+      if (!fresh() || !Array.isArray(rows) || rows.length < 3) { fail('fh-oi', 'fh-oi-t'); return; }
+      const v = rows.map((r) => +r.sumOpenInterestValue).filter((x) => x > 0);
+      const lo = Math.min(...v), hi = Math.max(...v), span = hi - lo || 1;
+      const d = v.map((x, i) => (i ? 'L' : 'M') + (i / (v.length - 1) * 300).toFixed(1) + ' ' + (66 - (x - lo) / span * 60).toFixed(1)).join('');
+      $('fh-oi').innerHTML = '<path d="' + d + 'L300 70L0 70Z" class="fh-area"/><path d="' + d + '" class="fh-line" vector-effect="non-scaling-stroke"/>';
+      const chg = (v[v.length - 1] / v[0] - 1) * 100;
+      $('fh-oi-t').textContent = 'şimdi ' + fmtBig(v[v.length - 1]) + ' · 30 günde ' + fmtPct(chg) + ' · en yüksek ' + fmtBig(hi) + ' · en düşük ' + fmtBig(lo);
+    }).catch(() => fail('fh-oi', 'fh-oi-t'));
+  }
+
   async function loadFutures() {
     const token = ++indToken;
     const sym = selected;
     const pair = sym + 'USDT';
     $('ind-sym').textContent = sym;
     const fresh = () => token === indToken;
+    loadFutHist();
 
     getJson(FAPI + '/fapi/v1/premiumIndex?symbol=' + pair).then((d) => {
       if (!fresh()) return;
@@ -1577,9 +1618,9 @@
   let aiSub = load('fp.aisub', 'gundem');
   if (!['gundem', 'modeller', 'kesfet', 'siteler'].includes(aiSub)) aiSub = 'gundem';
   let aiLab = '';
-  const AI_LABS = [['OpenAI', /openai|chatgpt|gpt-?\d|sora|codex/i], ['Anthropic', /anthropic|claude/i],
-    ['Google', /google|gemini|deepmind|veo|gemma/i], ['Meta', /meta|llama/i], ['Microsoft', /microsoft|copilot/i],
-    ['xAI', /xai|grok/i], ['Nvidia', /nvidia/i], ['Apple', /apple/i], ['Amazon', /amazon|aws|alexa/i],
+  const AI_LABS = [['OpenAI', /openai|chatgpt|\bgpt-?\d|\bsora\b|codex/i], ['Anthropic', /anthropic|claude/i],
+    ['Google', /google|gemini|deepmind|\bveo\b|gemma/i], ['Meta', /\bmeta\b|\bllama\b/i], ['Microsoft', /microsoft|copilot/i],
+    ['xAI', /\bxai\b|\bgrok\b/i], ['Nvidia', /nvidia/i], ['Apple', /\bapple\b/i], ['Amazon', /amazon|\baws\b|alexa/i],
     ['Mistral', /mistral/i], ['DeepSeek', /deepseek/i], ['Alibaba', /alibaba|qwen/i]];
   // "Sonra oku": yalnızca bu tarayıcıda saklanır
   let saved = [];

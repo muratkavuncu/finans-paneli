@@ -330,10 +330,21 @@ AI_NAMED = compile_words([r"gpt[\w.-]*", r"claude", r"gemini", r"llama", r"mistr
 AI_VERSION = re.compile(r"\d+(?:\.\d+)+|\b\d+(?:b|k)\b|-\d\b", re.I)
 AI_BUSINESS = compile_words([r"ipo", r"raises?", r"raised", r"funding", r"valuation", r"lawsuits?", r"sues?", r"sued", r"acquir\w+",
                              r"acquisition", r"deals?", r"billion", r"million", r"trillion", r"stake", r"layoffs?", r"regulat\w+",
-                             r"policy", r"pledge", r"court", r"antitrust", r"shares?", r"investors?", r"ceo", r"revenue"])
+                             r"policy", r"pledge", r"court", r"antitrust", r"shares?", r"investors?", r"ceo", r"revenue",
+                             r"resign\w*", r"ouster", r"oust\w*", r"scandal\w*", r"board", r"investigat\w+", r"petition", r"congress",
+                             r"democrats?", r"republicans?", r"senat\w+", r"startups?", r"vcs?", r"rivals?", r"successor", r"fired",
+                             r"moratoriums?", r"backlash", r"founders?", r"executives?", r"execs?", r"tycoons?", r"turmoil", r"exit",
+                             r"reinstate\w*", r"affairs?", r"drama", r"lobby\w*", r"tariffs?", r"export\w*", r"merger", r"probe",
+                             r"funds?", r"invest\w*", r"unioniz\w+", r"government", r"head of", r"replace\w*", r"shutdown"])
 AI_APP2 = compile_words([r"hands-on", r"camera", r"drones?", r"dj", r"operating system", r"desktop", r"phones?", r"wearables?",
                          r"chatbots?", r"creative", r"photoshop", r"editor", r"review", r"tested", r"i tried", r"gets new", r"built for",
-                         r"powered", r"playlist", r"shopping", r"translate\w*", r"notebook\w*"])
+                         r"powered", r"playlist", r"shopping", r"translate\w*", r"notebook\w*", r"introducing", r"can now", r"chatgpt",
+                         r"wallet", r"pets?", r"tamagotchi", r"smart ?home", r"homeview", r"products?", r"uses ai", r"used ai",
+                         r"now calls", r"photos?"])
+# Yalnizca ad ve surum numarasi iceren basliklar arac surum duyurusudur ("datasette-llm 0.1a11")
+AI_RELTITLE = re.compile(r"^[\w.-]+ v?\d+(?:\.\d+)+[\w.-]*$")
+# Musteri hikayeleri: "... with OpenAI" gibi
+AI_CASE = re.compile(r"\bwith\s+(?:openai|claude|gemini|chatgpt|copilot)\b|\bhow\s+\w+\s+(?:ships|uses|built|scales|runs)\b", re.I)
 AI_TECH = compile_words([r"embeddings?", r"transformers?", r"attention", r"training", r"trained", r"inference", r"reasoning",
                          r"tokens?", r"tokeniz\w+", r"architectur\w+", r"neural", r"diffusion", r"reinforcement", r"explained",
                          r"from scratch", r"deep dive", r"tutorial", r"understanding", r"context window", r"prompt\w*", r"rag",
@@ -361,11 +372,11 @@ def ai_topic(title):
     if (AI_NAMED.search(title) and (AI_RELEASE.search(title) or AI_VERSION.search(title))) or \
             (AI_MODEL.search(title) and AI_RELEASE.search(title)):
         return "model"
-    if AI_OPEN.search(title):
+    if AI_OPEN.search(title) or AI_RELTITLE.match(title.strip()):
         return "acik"
     if AI_RESEARCH.search(title) or AI_RESEARCH2.search(title):
         return "arastirma"
-    if AI_SERVICE.search(title):
+    if AI_SERVICE.search(title) or AI_CASE.search(title):
         return "hizmet"
     if AI_APP.search(title) or AI_APP2.search(title):
         return "urun"
