@@ -49,7 +49,12 @@ def stamp(iso):
         return 0
 
 
-def new_models():
+_MODELS = []
+
+
+def all_models():
+    if _MODELS:
+        return _MODELS
     rows = []
     for m in get("https://openrouter.ai/api/v1/models")["data"]:
         mid = str(m.get("id", ""))
@@ -66,7 +71,42 @@ def new_models():
                      "ctx": int(m.get("context_length") or 0), "in": round(cin, 3), "out": round(cout, 3),
                      "url": "https://openrouter.ai/" + mid})
     rows.sort(key=lambda r: -r["ts"])
-    return rows[:LIMIT + 2]
+    _MODELS.extend(rows)
+    return _MODELS
+
+
+def new_models():
+    return all_models()[:LIMIT + 2]
+
+
+def catalog():
+    """Zaman cizelgesi ve karsilastirma icin en yeni 80 model."""
+    return all_models()[:80]
+
+
+RELEASE_REPOS = ["ollama/ollama", "ggml-org/llama.cpp", "huggingface/transformers", "vllm-project/vllm", "langchain-ai/langchain",
+                 "comfyanonymous/ComfyUI", "open-webui/open-webui", "anthropics/claude-code", "openai/codex", "unslothai/unsloth",
+                 "browser-use/browser-use", "microsoft/autogen"]
+TAG = re.compile(r"^[\w.+-]{1,60}$")
+
+
+def releases():
+    """Cok kullanilan acik kaynak AI projelerinin son surumleri (GitHub)."""
+    rows = []
+    for repo in RELEASE_REPOS:
+        try:
+            r = get("https://api.github.com/repos/%s/releases/latest" % repo)
+        except Exception as exc:
+            print("HATA surum", repo, repr(exc)[:80], file=sys.stderr)
+            continue
+        tag = str(r.get("tag_name", ""))
+        if not TAG.match(tag):
+            continue
+        rows.append({"id": repo, "tag": tag, "title": clean(r.get("name"), 80), "ts": stamp(r.get("published_at") or ""),
+                     "url": "https://github.com/%s/releases/tag/%s" % (repo, tag)})
+    if not rows:
+        raise ValueError("surum verisi yok")
+    return sorted(rows, key=lambda x: -x["ts"])
 
 
 def hf_list(kind):
@@ -154,7 +194,7 @@ def arena():
 
 
 SECTIONS = [("models", new_models), ("hf_models", lambda: hf_list("models")), ("spaces", lambda: hf_list("spaces")),
-            ("papers", papers), ("repos", repos), ("showhn", show_hn), ("arena", arena)]
+            ("papers", papers), ("repos", repos), ("showhn", show_hn), ("arena", arena), ("catalog", catalog), ("releases", releases)]
 
 
 def main():

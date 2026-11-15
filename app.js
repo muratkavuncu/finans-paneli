@@ -1447,9 +1447,10 @@
 
   // ---------- AI gündemi (Teknoloji sekmesi) ----------
   const AI_TOPICS = { model: 'Model', urun: 'Ürün', hizmet: 'Hizmet ve API', benchmark: 'Benchmark', arastirma: 'Araştırma',
-    acik: 'Açık kaynak', sektor: 'Şirket ve sektör' };
+    acik: 'Açık kaynak', sektor: 'Şirket ve sektör', genel: 'Genel' };
   const AI_FILTERS = [
     { id: 'all', label: 'Tümü', test: () => true },
+    { id: 'saved', label: '★ Kaydedilenler', test: () => true },
     { id: 'model', label: 'Modeller', test: (n) => n.topic === 'model' },
     { id: 'urun', label: 'Ürünler', test: (n) => n.topic === 'urun' },
     { id: 'hizmet', label: 'Hizmet ve API', test: (n) => n.topic === 'hizmet' },
@@ -1460,11 +1461,30 @@
     { id: 'official', label: 'Resmi duyurular', test: (n) => n.official },
     { id: 'top', label: 'Çok konuşulan', test: (n) => n.n >= 2 },
     { id: 'sektor', label: 'Şirket ve sektör', test: (n) => n.topic === 'sektor' },
+    { id: 'genel', label: 'Genel', test: (n) => n.topic === 'genel' },
   ];
   let aiFilter = load('fp.aif', 'all');
   if (!AI_FILTERS.some((f) => f.id === aiFilter)) aiFilter = 'all';
   let aiShown = 25;
   const aiSeen = +load('fp.aiSeen', '0') || 0;
+  let aiSub = load('fp.aisub', 'gundem');
+  if (!['gundem', 'modeller', 'kesfet', 'siteler'].includes(aiSub)) aiSub = 'gundem';
+  let aiLab = '';
+  const AI_LABS = [['OpenAI', /openai|chatgpt|gpt-?\d|sora|codex/i], ['Anthropic', /anthropic|claude/i],
+    ['Google', /google|gemini|deepmind|veo|gemma/i], ['Meta', /meta|llama/i], ['Microsoft', /microsoft|copilot/i],
+    ['xAI', /xai|grok/i], ['Nvidia', /nvidia/i], ['Apple', /apple/i], ['Amazon', /amazon|aws|alexa/i],
+    ['Mistral', /mistral/i], ['DeepSeek', /deepseek/i], ['Alibaba', /alibaba|qwen/i]];
+  // "Sonra oku": yalnızca bu tarayıcıda saklanır
+  let saved = [];
+  try { saved = JSON.parse(load('fp.saved', '[]')); } catch (err) { saved = []; }
+  if (!Array.isArray(saved)) saved = [];
+  const isSaved = (id) => saved.some((x) => x.id === id);
+  function toggleSaved(n) {
+    if (isSaved(n.id)) saved = saved.filter((x) => x.id !== n.id);
+    else saved.unshift({ id: n.id, title: String(n.title).slice(0, 240), url: n.url, source: n.source, ts: n.ts, topic: n.topic, kind: n.kind, official: !!n.official, n: n.n || 1 });
+    saved = saved.slice(0, 100);
+    save('fp.saved', JSON.stringify(saved));
+  }
 
   function initAi() {
     const box = $('ai-filters');
@@ -1480,7 +1500,7 @@
   }
 
   // ---------- AI nabzı: sayılar, günlük sütunlar, konu çubukları, çok konuşulanlar ----------
-  const AI_ORDER = ['model', 'urun', 'hizmet', 'benchmark', 'arastirma', 'acik', 'sektor'];
+  const AI_ORDER = ['model', 'urun', 'hizmet', 'benchmark', 'arastirma', 'acik', 'sektor', 'genel'];
   const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
   let aiKey = '', aiPulseKey = '';
 
@@ -1499,6 +1519,7 @@
 
   function renderAiPulse(all) {
     document.querySelectorAll('#aip-topics button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.id === aiFilter)));
+    document.querySelectorAll('#aip-labs button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lab === aiLab)));
     if (aiPulseKey === String(news.updated)) return;
     aiPulseKey = String(news.updated);
     const now = Date.now() / 1000;
@@ -1580,6 +1601,22 @@
       tb.appendChild(b);
     });
 
+    // Laboratuvar çubukları: başlıkta adı ya da ürünü geçen haber sayısı
+    const lb = $('aip-labs');
+    lb.textContent = '';
+    const labs = AI_LABS.map((l) => [l[0], all.filter((n) => l[1].test(n.title) || n.source === l[0]).length]).filter((l) => l[1])
+      .sort((a, b) => b[1] - a[1]).slice(0, 8);
+    labs.forEach((l, i) => {
+      const b = barButton(l[0], l[1], labs[0][1], aiLab === l[0], i, () => {
+        aiLab = aiLab === l[0] ? '' : l[0];
+        aiShown = 25;
+        renderAi();
+        if (aiLab) $('ai-news-panel').scrollIntoView({ behavior: calm ? 'auto' : 'smooth', block: 'start' });
+      });
+      b.dataset.lab = l[0];
+      lb.appendChild(b);
+    });
+
     // Çok konuşulanlar: kaynak sayısına göre
     const hot = $('aip-hot');
     hot.textContent = '';
@@ -1608,14 +1645,16 @@
     if (page === 'ai' && all.length) setTimeout(() => save('fp.aiSeen', String(all[0].ts)), 8000);
     renderAiPulse(all);
     // Veri ve süzgeç değişmediyse listeyi yeniden kurma: canlandırma her iki dakikada bir baştan oynamasın
-    const key = news.updated + '|' + aiFilter + '|' + aiShown;
+    const key = news.updated + '|' + aiFilter + '|' + aiShown + '|' + aiLab + '|' + saved.length;
     if (key === aiKey) return;
     aiKey = key;
     document.querySelectorAll('#ai-filters button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.id === aiFilter)));
-    const items = all.filter(AI_FILTERS.find((f) => f.id === aiFilter).test);
+    const lab = AI_LABS.find((l) => l[0] === aiLab);
+    const items = (aiFilter === 'saved' ? saved : all).filter(AI_FILTERS.find((f) => f.id === aiFilter).test)
+      .filter((n) => !lab || lab[1].test(n.title) || n.source === lab[0]);
     const list = $('ai-list');
     list.textContent = '';
-    if (!items.length) list.appendChild(el('li', 'empty', all.length ? 'Son 7 günde bu filtreye uyan haber yok.' : 'AI gündemi henüz yüklenmedi.'));
+    if (!items.length) list.appendChild(el('li', 'empty', aiFilter === 'saved' ? 'Henüz kaydettiğin haber yok. Bir haberin yanındaki yıldıza dokun.' : all.length ? 'Son 7 günde bu filtreye uyan haber yok.' : 'AI gündemi henüz yüklenmedi.'));
     items.slice(0, aiShown).forEach((n, i) => {
       const li = el('li');
       li.style.setProperty('--i', Math.min(i, 14));
@@ -1636,6 +1675,18 @@
       body.appendChild(tags);
       a.appendChild(body);
       li.appendChild(a);
+      const star = el('button', 'n-save', isSaved(n.id) ? '★' : '☆');
+      star.type = 'button';
+      star.setAttribute('aria-label', 'Sonra oku listesine ekle ya da çıkar');
+      star.setAttribute('aria-pressed', String(isSaved(n.id)));
+      star.addEventListener('click', () => {
+        toggleSaved(n);
+        star.textContent = isSaved(n.id) ? '★' : '☆';
+        star.setAttribute('aria-pressed', String(isSaved(n.id)));
+        aiKey = news.updated + '|' + aiFilter + '|' + aiShown + '|' + aiLab + '|' + saved.length;
+        if (aiFilter === 'saved') { aiKey = ''; renderAi(); }
+      });
+      li.appendChild(star);
       list.appendChild(li);
     });
     $('ai-more').hidden = items.length <= aiShown;
@@ -1664,6 +1715,7 @@
       a.href = url;
       a.target = '_blank';
       a.rel = 'noopener noreferrer';
+      a.className = 'ranked';
       a.appendChild(el('span', 'ai-rank', ++rank));
       const body = el('span');
       body.appendChild(el('span', 'n-title', title(r)));
@@ -1726,6 +1778,249 @@
     });
   }
 
+  // ---------- Model zaman çizelgesi, karşılaştırma, proje sürümleri ----------
+  const orgOf = (r) => (r.name.indexOf(':') > 0 ? r.name.split(':')[0] : r.id.split('/')[0]).trim();
+  const shortName = (r) => (r.name.indexOf(':') > 0 ? r.name.slice(r.name.indexOf(':') + 1).trim() : r.name);
+  const catalog = () => (aiData && Array.isArray(aiData.catalog) ? aiData.catalog.filter((r) => r && r.name && safeUrl(r.url, 'openrouter.ai')) : []);
+  let tlOrg = '', tlShown = 15;
+
+  function barButton(label, count, max, pressed, i, onClick) {
+    const b = el('button', 'ai-topic lab');
+    b.type = 'button';
+    b.style.setProperty('--i', i);
+    b.setAttribute('aria-pressed', String(pressed));
+    b.appendChild(el('span', 'ai-tname', label));
+    const bar = el('span', 'ai-tbar');
+    const fill = el('i');
+    fill.style.width = Math.max(2, count / max * 100).toFixed(1) + '%';
+    bar.appendChild(fill);
+    b.appendChild(bar);
+    b.appendChild(el('span', 'ai-tcount', count));
+    b.addEventListener('click', onClick);
+    return b;
+  }
+
+  function renderTimeline() {
+    const now = Date.now() / 1000;
+    const rows = catalog().filter((r) => r.ts && now - r.ts < 60 * 86400);
+    const orgs = {};
+    rows.forEach((r) => { orgs[orgOf(r)] = (orgs[orgOf(r)] || 0) + 1; });
+    const top = Object.entries(orgs).sort((a, b) => b[1] - a[1]).slice(0, 8);
+    const ob = $('tl-orgs');
+    ob.textContent = '';
+    top.forEach((o, i) => ob.appendChild(barButton(o[0], o[1], top[0][1], tlOrg === o[0], i, () => {
+      tlOrg = tlOrg === o[0] ? '' : o[0];
+      tlShown = 15;
+      renderTimeline();
+    })));
+    const list = $('tl-list');
+    list.textContent = '';
+    const shown = rows.filter((r) => !tlOrg || orgOf(r) === tlOrg);
+    if (!shown.length) list.appendChild(el('li', 'empty', 'Son 60 günde kayıtlı model yok.'));
+    let lastDay = '';
+    shown.slice(0, tlShown).forEach((r, i) => {
+      const day = new Date(r.ts * 1000).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+      const li = el('li');
+      li.style.setProperty('--i', Math.min(i, 14));
+      li.appendChild(el('time', '', day === lastDay ? '' : day));
+      lastDay = day;
+      li.appendChild(el('i', 'tl-dot'));
+      const a = el('a');
+      a.href = safeUrl(r.url, 'openrouter.ai');
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.appendChild(el('strong', '', shortName(r)));
+      a.appendChild(el('span', 'n-meta', orgOf(r) + (r.ctx ? ' · ' + compact(r.ctx) + ' bağlam' : '') + ' · '
+        + (!r.in && !r.out ? 'ücretsiz' : '$' + NF[2].format(r.in) + ' / $' + NF[2].format(r.out))));
+      li.appendChild(a);
+      list.appendChild(li);
+    });
+    $('tl-more').hidden = shown.length <= tlShown;
+  }
+
+  let cmpA = load('fp.cmpa', ''), cmpB = load('fp.cmpb', '');
+  function renderCompare() {
+    const cat = catalog();
+    const out = $('cmp-out');
+    out.textContent = '';
+    if (cat.length < 2) { out.appendChild(el('p', 'empty', 'Model listesi henüz yok.')); return; }
+    if (!cat.some((r) => r.id === cmpA)) cmpA = cat[0].id;
+    if (!cat.some((r) => r.id === cmpB) || cmpB === cmpA) cmpB = (cat.find((r) => r.id !== cmpA) || cat[1]).id;
+    const sorted = cat.slice().sort((x, y) => x.name.localeCompare(y.name, 'tr'));
+    [['cmp-a', cmpA], ['cmp-b', cmpB]].forEach((pair) => {
+      const sel = $(pair[0]);
+      sel.textContent = '';
+      sorted.forEach((r) => {
+        const o = el('option', '', r.name);
+        o.value = r.id;
+        o.selected = r.id === pair[1];
+        sel.appendChild(o);
+      });
+    });
+    const a = cat.find((r) => r.id === cmpA), b = cat.find((r) => r.id === cmpB);
+    const date = (r) => (r.ts ? new Date(r.ts * 1000).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—');
+    const usdM = (v) => (v ? '$' + NF[2].format(v) : 'ücretsiz');
+    [['Bağlam boyutu (token)', (r) => r.ctx, (v) => (v ? compact(v) : '—')],
+      ['Giriş fiyatı (1M token)', (r) => r.in, usdM],
+      ['Çıkış fiyatı (1M token)', (r) => r.out, usdM]].forEach((m, i) => {
+      const box = el('div', 'cmp-row');
+      box.appendChild(el('div', 'label', m[0]));
+      const max = Math.max(m[1](a) || 0, m[1](b) || 0, 1e-9);
+      [[a, 'cmp-a'], [b, 'cmp-b']].forEach((x) => {
+        const line = el('div', 'cmp-line');
+        const bar = el('span', 'cmp-bar');
+        const fill = el('i', x[1]);
+        fill.style.width = Math.max(1, (m[1](x[0]) || 0) / max * 100).toFixed(1) + '%';
+        fill.style.setProperty('--i', i);
+        bar.appendChild(fill);
+        line.appendChild(bar);
+        line.appendChild(el('strong', '', m[2](m[1](x[0]))));
+        box.appendChild(line);
+      });
+      out.appendChild(box);
+    });
+    const meta = el('div', 'cmp-row');
+    meta.appendChild(el('div', 'label', 'OpenRouter\'a eklenme'));
+    [[a, 'cmp-a'], [b, 'cmp-b']].forEach((x) => {
+      const line = el('div', 'cmp-date');
+      line.appendChild(el('i', x[1]));
+      line.appendChild(el('span', '', shortName(x[0]) + ' · ' + date(x[0])));
+      meta.appendChild(line);
+    });
+    out.appendChild(meta);
+  }
+
+  function renderReleases() {
+    const list = $('ai-releases');
+    list.textContent = '';
+    const rows = aiData && Array.isArray(aiData.releases) ? aiData.releases : [];
+    if (!rows.length) { list.appendChild(el('li', 'empty', 'Sürüm verisi henüz yok.')); return; }
+    rows.forEach((r, i) => {
+      const url = safeUrl(r.url, 'github.com');
+      if (!url) return;
+      const li = el('li');
+      li.style.setProperty('--i', Math.min(i, 14));
+      const a = el('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.appendChild(el('span', 'n-dot'));
+      const body = el('span');
+      body.appendChild(el('span', 'n-title', String(r.id).split('/')[1] + ' ' + r.tag));
+      body.appendChild(el('span', 'n-meta', (r.ts ? ago(r.ts) + ' · ' : '') + r.id));
+      a.appendChild(body);
+      li.appendChild(a);
+      list.appendChild(li);
+    });
+  }
+
+  function initModels() {
+    $('tl-more').addEventListener('click', () => { tlShown += 15; renderTimeline(); });
+    $('cmp-a').addEventListener('change', (e) => { cmpA = e.target.value; save('fp.cmpa', cmpA); renderCompare(); });
+    $('cmp-b').addEventListener('change', (e) => { cmpB = e.target.value; save('fp.cmpb', cmpB); renderCompare(); });
+    document.querySelectorAll('#ai-subs button').forEach((b) => {
+      b.addEventListener('click', () => { aiSub = b.dataset.id; save('fp.aisub', aiSub); applyPage(); window.scrollTo(0, 0); });
+    });
+  }
+
+  // ---------- AI coin sepeti: dönem başına göre getiri ----------
+  const BASKET = [['RENDER', '--c1'], ['TAO', '--c2'], ['FET', '--c3'], ['NEAR', '--c4'], ['WLD', '--c5'], ['BTC', '--c6']];
+  const BK_RANGES = [7, 30, 90];
+  let bkDays = +load('fp.bk', '30'), bkRaw = null, bkLoaded = 0, bkSeries = null;
+  if (!BK_RANGES.includes(bkDays)) bkDays = 30;
+
+  function bkLegend(at) {
+    if (!bkSeries) return;
+    const n = bkSeries[0].length;
+    const i = at == null ? n - 1 : Math.max(0, Math.min(n - 1, at));
+    const box = $('bk-legend');
+    box.textContent = '';
+    BASKET.map((b, k) => ({ name: b[0], color: b[1], v: bkSeries[k][i][1] })).sort((x, y) => y.v - x.v).forEach((x) => {
+      const li = el('li', x.name === 'RENDER' ? 'main' : '');
+      const sw = el('i');
+      sw.style.background = 'var(' + x.color + ')';
+      li.appendChild(sw);
+      li.appendChild(el('span', '', x.name));
+      li.appendChild(el('strong', '', fmtPct(x.v)));
+      box.appendChild(li);
+    });
+    const d = new Date(bkSeries[0][i][0]).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' });
+    $('bk-tip').textContent = at == null ? 'Son ' + bkDays + ' gün · grafiğe dokun, günü seç' : d + ' itibarıyla';
+    const cur = document.getElementById('bk-cur');
+    if (cur) {
+      const x = (i / (n - 1) * 300).toFixed(1);
+      cur.setAttribute('x1', x);
+      cur.setAttribute('x2', x);
+      cur.style.display = at == null ? 'none' : '';
+    }
+  }
+
+  function drawBasket() {
+    if (!bkRaw) return;
+    const n = Math.min(bkDays + 1, ...bkRaw.map((r) => r.length));
+    if (n < 3) return;
+    bkSeries = bkRaw.map((rows) => {
+      const cut = rows.slice(-n);
+      return cut.map((r) => [r[0], (r[1] / cut[0][1] - 1) * 100]);
+    });
+    const all = bkSeries.reduce((acc, sr) => acc.concat(sr.map((p) => p[1])), []);
+    const lo = Math.min(0, ...all), hi = Math.max(0, ...all), span = hi - lo || 1;
+    const y = (v) => (6 + (hi - v) / span * 138).toFixed(1);
+    let svg = '<line x1="0" x2="300" y1="' + y(0) + '" y2="' + y(0) + '" class="bk-zero" vector-effect="non-scaling-stroke"/>';
+    // RENDER en üstte çizilsin diye sondan başa
+    BASKET.map((b, k) => k).reverse().forEach((k) => {
+      const d = bkSeries[k].map((p, i) => (i ? 'L' : 'M') + (i / (n - 1) * 300).toFixed(1) + ' ' + y(p[1])).join('');
+      svg += '<path d="' + d + '" class="bk-line' + (k === 0 ? ' main' : '') + (BASKET[k][0] === 'BTC' ? ' ref' : '')
+        + '" style="stroke: var(' + BASKET[k][1] + ')" vector-effect="non-scaling-stroke"/>';
+    });
+    svg += '<line id="bk-cur" y1="0" y2="150" class="bk-cur" vector-effect="non-scaling-stroke" style="display:none"/>';
+    $('bk-svg').innerHTML = svg; // yalnızca bu dosyada üretilen sayılar ve sabit sınıf adları
+    const node = $('bk-svg');
+    node.classList.remove('draw');
+    void node.getBoundingClientRect();
+    node.classList.add('draw');
+    bkLegend(null);
+  }
+
+  async function loadBasket() {
+    if (Date.now() - bkLoaded < 1800000) return;
+    bkLoaded = Date.now();
+    try {
+      const res = await Promise.all(BASKET.map((b) => binance('/api/v3/klines?symbol=' + b[0] + 'USDT&interval=1d&limit=91')));
+      bkRaw = res.map((rows) => rows.map((r) => [r[0], +r[4]]));
+      drawBasket();
+    } catch (err) {
+      bkLoaded = 0;
+      $('bk-tip').textContent = 'Veri alınamadı, yeniden denenecek.';
+    }
+  }
+
+  function initBasket() {
+    const box = $('bk-range');
+    BK_RANGES.forEach((d) => {
+      const b = el('button', '', d + 'G');
+      b.type = 'button';
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-selected', String(d === bkDays));
+      b.addEventListener('click', () => {
+        bkDays = d;
+        save('fp.bk', String(d));
+        box.querySelectorAll('button').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
+        drawBasket();
+      });
+      box.appendChild(b);
+    });
+    const svg = $('bk-svg');
+    const pick = (e) => {
+      if (!bkSeries) return;
+      const r = svg.getBoundingClientRect();
+      bkLegend(Math.round((e.clientX - r.left) / r.width * (bkSeries[0].length - 1)));
+    };
+    svg.addEventListener('pointerdown', pick);
+    svg.addEventListener('pointermove', pick);
+    svg.addEventListener('pointerleave', () => bkLegend(null));
+  }
+
   function renderAiData() {
     const d = aiData;
     if (!d) return;
@@ -1742,6 +2037,9 @@
     aiRows('ai-repos', d.repos, 'github.com', (r) => r.id + (r.desc ? ' — ' + r.desc : ''),
       (r) => '★ ' + compact(r.stars) + (r.lang ? ' · ' + r.lang : '') + (r.ts ? ' · ' + ago(r.ts) + ' açıldı' : ''), (r) => r.stars);
     renderArena();
+    renderTimeline();
+    renderCompare();
+    renderReleases();
     $('ai-data-updated').textContent = d.updated ? 'güncellendi: ' + ago(d.updated) : '';
   }
 
@@ -1830,8 +2128,9 @@
 
   function applyPage() {
     document.querySelectorAll('[data-page]').forEach((n) => {
-      n.hidden = n.dataset.page !== page || (!!n.dataset.tab && n.dataset.tab !== tab);
+      n.hidden = n.dataset.page !== page || (!!n.dataset.tab && n.dataset.tab !== tab) || (!!n.dataset.sub && n.dataset.sub !== aiSub);
     });
+    document.querySelectorAll('#ai-subs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.id === aiSub)));
     document.querySelectorAll('#nav button').forEach((b) => {
       if (b.dataset.go === page) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
     });
@@ -1843,6 +2142,7 @@
     applyPage();
     window.scrollTo(0, 0);
     if (p === 'ai') { renderAi(); loadAiData(); }
+    if (p === 'grafik') loadBasket();
   }
   function initNav() {
     document.querySelectorAll('[data-go]').forEach((b) => {
@@ -2393,7 +2693,11 @@
   initFold();
   initHelp();
   initNav();
+  initModels();
+  initBasket();
   if (page === 'ai') loadAiData();
+  if (page === 'grafik') loadBasket();
+  setInterval(() => { if (page === 'grafik' && !document.hidden) loadBasket(); }, 600000);
   setInterval(loadAltStrength, 3600000);
   connect();
   loadGlobal();

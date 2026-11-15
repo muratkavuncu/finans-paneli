@@ -586,3 +586,62 @@ h2 { font-size: 16px; font-weight: 600; }
 .ar-legend .ar-ci { width: 22px; margin-left: 8px; }
 @keyframes ar-slide { from { left: 0; opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .ar-row, .ar-dot { animation: none; } }
+
+/* ---------- AI alt sekmeleri ---------- */
+.ai-subs { position: sticky; top: 0; z-index: 15; margin: -6px -4px 0; padding: 8px 4px; background: var(--bg); }
+.ai-subs button { padding: 8px 16px; font-size: 14px; font-weight: 600; }
+.ai-subs button[aria-selected="true"] { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+.t-genel { --tc: var(--c6); } .t-sektor { --tc: var(--muted); }
+.n-dot.ai-genel { background: var(--c6); } .n-dot.ai-sektor { background: var(--muted); }
+.ai-lab-label { margin-top: 14px; }
+.ai-topic.lab { --tc: var(--c2); grid-template-columns: 108px minmax(0, 1fr) 34px; }
+.ai-topic.lab::before { display: none; }
+
+/* Sonra oku */
+#ai-list li { display: grid; grid-template-columns: minmax(0, 1fr) 40px; align-items: start; }
+#ai-list li.empty { display: block; }
+.n-save { border: 0; background: transparent; color: var(--muted); font-size: 20px; line-height: 1; width: 40px; height: 44px; cursor: pointer; border-radius: 8px; }
+.n-save[aria-pressed="true"] { color: var(--accent); }
+.news a.ranked { grid-template-columns: 20px minmax(0, 1fr); }
+
+/* Model zaman çizelgesi */
+.tl { list-style: none; margin: 14px 0 0; padding: 0; }
+.tl li { display: grid; grid-template-columns: 50px 12px minmax(0, 1fr); gap: 8px; align-items: start; position: relative; padding-bottom: 12px; animation: ai-rise .35s ease-out both; animation-delay: calc(var(--i, 0) * 30ms); }
+.tl li.empty { display: block; color: var(--muted); }
+.tl li::before { content: ""; position: absolute; left: 63px; top: 12px; bottom: -4px; width: 2px; background: var(--line); }
+.tl li:last-child::before { display: none; }
+.tl time { font-size: 12px; font-weight: 600; color: var(--muted); text-align: right; padding-top: 1px; white-space: nowrap; }
+.tl-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c2); margin-top: 4px; box-shadow: 0 0 0 2px var(--surface); position: relative; z-index: 1; }
+.tl a { display: grid; gap: 1px; color: inherit; text-decoration: none; min-width: 0; }
+.tl strong { font-size: 14px; line-height: 1.3; overflow-wrap: anywhere; }
+.tl .n-meta { color: var(--muted); font-size: 12px; }
+
+/* Model karşılaştırma */
+.cmp-pick { display: grid; gap: 8px; margin-bottom: 12px; }
+.cmp-pick label { display: grid; grid-template-columns: 12px minmax(0, 1fr); gap: 8px; align-items: center; }
+.cmp-pick select { width: 100%; font: inherit; color: var(--fg); background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 9px 10px; min-height: 44px; }
+i.cmp-a, i.cmp-b { display: block; width: 10px; height: 10px; border-radius: 3px; background: var(--c2); }
+i.cmp-b { background: var(--c5); }
+.cmp { display: grid; gap: 12px; }
+.cmp-row { display: grid; gap: 5px; }
+.cmp-line { display: grid; grid-template-columns: minmax(0, 1fr) 76px; gap: 8px; align-items: center; }
+.cmp-line strong { text-align: right; font-size: 13px; }
+.cmp-bar { display: block; height: 12px; }
+.cmp-bar i { height: 100%; width: auto; border-radius: 0 4px 4px 0; transform-origin: left; animation: ai-grow-x .6s cubic-bezier(.2, .8, .3, 1) both; animation-delay: calc(var(--i, 0) * 80ms); }
+.cmp-date { display: grid; grid-template-columns: 12px minmax(0, 1fr); gap: 8px; align-items: center; font-size: 13px; }
+
+/* AI coin sepeti */
+.bk-svg { display: block; width: 100%; height: 190px; touch-action: pan-y; overflow: visible; }
+.bk-line { fill: none; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
+.bk-line.main { stroke-width: 3; }
+.bk-line.ref { opacity: .75; }
+.bk-svg.draw { animation: bk-reveal .9s ease-out both; }
+.bk-zero { stroke: var(--line); stroke-width: 1; stroke-dasharray: 3 3; }
+.bk-cur { stroke: var(--muted); stroke-width: 1; }
+.bk-tip { margin: 6px 0; }
+.bk-legend { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 14px; }
+.bk-legend li { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap: 8px; align-items: center; font-size: 13px; padding: 4px 0; }
+.bk-legend li.main span { font-weight: 700; }
+.bk-legend i { width: 12px; height: 4px; border-radius: 2px; }
+@keyframes bk-reveal { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@media (prefers-reduced-motion: reduce) { .bk-svg.draw, .tl li, .cmp-bar i { animation: none; } }

@@ -134,7 +134,14 @@
     </div>
   </section>
 
-  <section class="panel ai-pulse" data-page="ai" aria-label="AI nabzı" hidden>
+  <nav class="chips ai-subs" id="ai-subs" data-page="ai" role="tablist" aria-label="AI bölümleri" hidden>
+    <button type="button" role="tab" data-id="gundem">Gündem</button>
+    <button type="button" role="tab" data-id="modeller">Modeller</button>
+    <button type="button" role="tab" data-id="kesfet">Keşfet</button>
+    <button type="button" role="tab" data-id="siteler">Siteler</button>
+  </nav>
+
+  <section class="panel ai-pulse" data-page="ai" data-sub="gundem" aria-label="AI nabzı" hidden>
     <div class="panel-head">
       <h2>AI nabzı</h2>
       <span class="hint">son 7 gün</span>
@@ -149,9 +156,11 @@
     <p class="hint ai-tip" id="aip-tip">Bir güne dokun, konu dağılımını gör.</p>
     <div class="label">Konulara göre · dokun, haberleri süz</div>
     <div class="ai-topics" id="aip-topics"></div>
+    <div class="label ai-lab-label">Laboratuvarlara göre · dokun, haberleri süz</div>
+    <div class="ai-topics" id="aip-labs"></div>
   </section>
 
-  <section class="panel" data-page="ai" aria-label="AI siteleri" hidden>
+  <section class="panel" data-page="ai" data-sub="siteler" aria-label="AI siteleri" hidden>
     <div class="panel-head">
       <h2>AI siteleri</h2>
       <span class="hint">dokun, sitede aç</span>
@@ -174,7 +183,7 @@
     <p class="hint events-note">Artificial Analysis ve diğer sitelerin çoğu verisini anahtarsız, açık bir akışla paylaşmıyor; bu yüzden rakamlarını panele kopyalamıyorum, doğrudan siteye yönlendiriyorum. Açık veri yayımlayan LMArena'nın sıralaması aşağıda grafik olarak var.</p>
   </section>
 
-  <section class="panel" data-page="ai" aria-label="Model sıralamaları" hidden>
+  <section class="panel" data-page="ai" data-sub="modeller" aria-label="Model sıralamaları" hidden>
     <div class="panel-head">
       <h2>Model sıralamaları</h2>
       <span class="hint" id="ar-date">LMArena</span>
@@ -185,7 +194,32 @@
     <p class="hint events-note">Kaynak: LMArena'nın Hugging Face'te yayımladığı açık veri kümesi (CC BY 4.0). Puan, insanların iki modelin yanıtını kör karşılaştırıp oyladığı düellolardan hesaplanan Elo benzeri bir değerdir; yüksek olan daha çok tercih edilmiş demektir. Doğruluğu ya da hızı ölçmez. İlk 8 model gösterilir.</p>
   </section>
 
-  <section class="panel" data-page="ai" aria-label="Çok konuşulanlar" hidden>
+  <section class="panel" data-page="ai" data-sub="modeller" aria-label="Model zaman çizelgesi" hidden>
+    <div class="panel-head">
+      <h2>Model zaman çizelgesi</h2>
+      <span class="hint">OpenRouter · son 60 gün</span>
+    </div>
+    <div class="label">Kim kaç model çıkardı · dokun, çizelgeyi süz</div>
+    <div class="ai-topics" id="tl-orgs"></div>
+    <ol class="tl" id="tl-list"></ol>
+    <button type="button" class="more" id="tl-more" hidden>Daha fazla göster</button>
+    <p class="hint events-note">OpenRouter'a eklenme tarihine göre sıralanır; bu, modelin API üzerinden kullanıma açıldığı gündür ve duyuru tarihinden birkaç gün farklı olabilir. Yalnızca OpenRouter'da yer alan modeller görünür.</p>
+  </section>
+
+  <section class="panel" data-page="ai" data-sub="modeller" aria-label="Model karşılaştırma" hidden>
+    <div class="panel-head">
+      <h2>Model karşılaştırma</h2>
+      <span class="hint">bağlam ve fiyat</span>
+    </div>
+    <div class="cmp-pick">
+      <label><i class="cmp-a"></i><select id="cmp-a" aria-label="Birinci model"></select></label>
+      <label><i class="cmp-b"></i><select id="cmp-b" aria-label="İkinci model"></select></label>
+    </div>
+    <div class="cmp" id="cmp-out"></div>
+    <p class="hint events-note">Bağlam boyutu ve 1 milyon token başına fiyat OpenRouter'dan gelir. Yetenek karşılaştırması değildir; hangi modelin daha iyi olduğunu göstermez. Bunun için yukarıdaki sıralamalara ya da Siteler bölümündeki kaynaklara bak. Listede en yeni 80 model vardır.</p>
+  </section>
+
+  <section class="panel" data-page="ai" data-sub="gundem" aria-label="Çok konuşulanlar" hidden>
     <div class="panel-head">
       <h2>Çok konuşulanlar</h2>
       <span class="hint">birden çok yayının yazdığı · son 48 saat</span>
@@ -193,7 +227,7 @@
     <div class="ai-hot" id="aip-hot"></div>
   </section>
 
-  <section class="panel" id="ai-news-panel" data-page="ai" aria-label="AI gündemi" hidden>
+  <section class="panel" id="ai-news-panel" data-page="ai" data-sub="gundem" aria-label="AI gündemi" hidden>
     <div class="panel-head">
       <h2>AI gündemi</h2>
       <span class="hint" id="ai-updated">yükleniyor…</span>
@@ -204,7 +238,7 @@
     <p class="hint events-note">Yapay zekâ laboratuvarlarının kendi duyuruları ve büyük teknoloji yayınlarının AI haberleri; başlıklar orijinal dilinde ve değiştirilmeden gösterilir. Uzman blogları tek kişinin görüşüdür. Konu etiketleri (model, ürün, benchmark, araştırma vb.) başlıktaki kelimelere göre otomatik verilir, yanılabilir. "N kaynak" aynı haberi kaç yayının yazdığını gösterir.</p>
   </section>
 
-  <div class="two" data-page="ai" hidden>
+  <div class="two" data-page="ai" data-sub="modeller" hidden>
     <section class="panel" aria-label="Yeni çıkan modeller">
       <div class="panel-head"><h2>Yeni çıkan modeller</h2><span class="hint" id="ai-data-updated"></span></div>
       <ol class="news" id="ai-models"></ol>
@@ -217,7 +251,7 @@
     </section>
   </div>
 
-  <div class="two" data-page="ai" hidden>
+  <div class="two" data-page="ai" data-sub="kesfet" hidden>
     <section class="panel" aria-label="İlginç demolar">
       <div class="panel-head"><h2>İlginç demolar</h2><span class="hint">Hugging Face Spaces · denenebilir</span></div>
       <ol class="news" id="ai-spaces"></ol>
@@ -230,7 +264,7 @@
     </section>
   </div>
 
-  <div class="two" data-page="ai" hidden>
+  <div class="two" data-page="ai" data-sub="kesfet" hidden>
     <section class="panel" aria-label="Öne çıkan makaleler">
       <div class="panel-head"><h2>Öne çıkan makaleler</h2><span class="hint">Hugging Face Daily Papers · son 10 gün</span></div>
       <ol class="news" id="ai-papers"></ol>
@@ -242,6 +276,15 @@
       <p class="hint events-note">Son 30 günde açılıp en çok yıldız alan LLM ve AI ajanı projeleri.</p>
     </section>
   </div>
+
+  <section class="panel" data-page="ai" data-sub="kesfet" aria-label="Proje sürümleri" hidden>
+    <div class="panel-head">
+      <h2>Proje sürümleri</h2>
+      <span class="hint">GitHub · çok kullanılan AI araçları</span>
+    </div>
+    <ol class="news" id="ai-releases"></ol>
+    <p class="hint events-note">Ollama, llama.cpp, Transformers, vLLM gibi yaygın açık kaynak AI araçlarının en son yayımlanan sürümleri; en yenisi üstte.</p>
+  </section>
 
   <section class="summary" data-page="grafik" data-tab="tek" aria-label="Teknoloji özeti" hidden>
     <div class="stat" id="tek-SOX"></div>
@@ -400,6 +443,17 @@
       <p class="calc-out" id="btk-calc">Emir defteri bekleniyor…</p>
     </div>
     <p class="hint events-note">Yalnızca BtcTurk'ün herkese açık piyasa verisini okur; hesabına bağlanmaz, emir vermez. "Global fiyata göre" Binance fiyatı × dolar kuru ile karşılaştırmadır. Hesaplayıcı, tutarın o anki emir defterinde piyasa emriyle hangi ortalama fiyattan dolacağını gösterir; komisyon dahil değildir ve defter sen emri girene kadar değişebilir.</p>
+  </section>
+
+  <section class="panel" id="bk-panel" data-page="grafik" data-tab="kripto" aria-label="AI coin sepeti">
+    <div class="panel-head">
+      <h2>AI coin sepeti</h2>
+      <div class="tabs" id="bk-range" role="tablist" aria-label="Dönem"></div>
+    </div>
+    <svg class="bk-svg" id="bk-svg" viewBox="0 0 300 150" preserveAspectRatio="none" role="img" aria-label="AI coinlerinin dönem başına göre getirisi"></svg>
+    <p class="hint bk-tip" id="bk-tip">yükleniyor…</p>
+    <ul class="bk-legend" id="bk-legend"></ul>
+    <p class="hint events-note">Her çizgi, dönemin ilk gününe göre yüzde değişimi gösterir (hepsi 0'dan başlar). RENDER düşerken diğer AI coinleri de düşüyorsa hareket sektöre aittir; yalnız RENDER ayrışıyorsa RENDER'a özeldir. BTC karşılaştırma içindir. Günlük kapanışlar Binance'ten gelir.</p>
   </section>
 
   <section class="panel" data-page="grafik" data-tab="kripto" aria-label="Kripto göstergeleri">

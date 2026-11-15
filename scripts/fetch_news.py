@@ -312,6 +312,10 @@ AI_BUSINESS = compile_words([r"ipo", r"raises?", r"raised", r"funding", r"valuat
 AI_APP2 = compile_words([r"hands-on", r"camera", r"drones?", r"dj", r"operating system", r"desktop", r"phones?", r"wearables?",
                          r"chatbots?", r"creative", r"photoshop", r"editor", r"review", r"tested", r"i tried", r"gets new", r"built for",
                          r"powered", r"playlist", r"shopping", r"translate\w*", r"notebook\w*"])
+AI_TECH = compile_words([r"embeddings?", r"transformers?", r"attention", r"training", r"trained", r"inference", r"reasoning",
+                         r"tokens?", r"tokeniz\w+", r"architectur\w+", r"neural", r"diffusion", r"reinforcement", r"explained",
+                         r"from scratch", r"deep dive", r"tutorial", r"understanding", r"context window", r"prompt\w*", r"rag",
+                         r"distill\w+", r"scaling", r"compute", r"gpus?", r"chips?", r"hallucinat\w+"])
 AI_RESEARCH2 = compile_words([r"percent", r"outperform\w*", r"scores?", r"completes", r"solves?", r"discover\w*", r"findings?"])
 
 
@@ -343,7 +347,9 @@ def ai_topic(title):
         return "hizmet"
     if AI_APP.search(title) or AI_APP2.search(title):
         return "urun"
-    return "sektor"
+    if AI_TECH.search(title):
+        return "arastirma"
+    return "genel"
 
 
 def read_ai_feed(feed):
