@@ -126,8 +126,35 @@ def show_hn():
     return sorted(seen.values(), key=lambda r: -r["points"])[:LIMIT]
 
 
+ARENA = ["text", "webdev", "vision", "search", "text_to_image", "text_to_video"]
+ARENA_API = "https://datasets-server.huggingface.co/first-rows?dataset=lmarena-ai/leaderboard-dataset&config=%s&split=latest"
+
+
+def arena():
+    """LMArena siralamalari (Hugging Face'teki acik veri kumesi, CC BY 4.0). Her tablodan genel siralamanin ilk 8'i."""
+    out = []
+    for cfg in ARENA:
+        try:
+            rows = [r.get("row") or {} for r in get(ARENA_API % cfg).get("rows", [])]
+        except Exception as exc:
+            print("HATA arena", cfg, repr(exc)[:120], file=sys.stderr)
+            continue
+        rows = [r for r in rows if r.get("category") == "overall" and isinstance(r.get("rating"), (int, float))
+                and isinstance(r.get("rank"), (int, float))]
+        rows.sort(key=lambda r: r["rank"])
+        top = [{"name": clean(r.get("model_name"), 60), "org": clean(r.get("organization"), 30), "rank": int(r["rank"]),
+                "rating": round(r["rating"]), "lo": round(r.get("rating_lower") or r["rating"]),
+                "hi": round(r.get("rating_upper") or r["rating"]), "votes": int(r.get("vote_count") or 0)} for r in rows[:8]]
+        date = clean(rows[0].get("leaderboard_publish_date"), 10) if rows else ""
+        if len(top) >= 3 and all(t["name"] for t in top):
+            out.append({"id": cfg, "date": date if re.match(r"^\d{4}-\d{2}-\d{2}$", date) else "", "rows": top})
+    if not out:
+        raise ValueError("arena verisi yok")
+    return out
+
+
 SECTIONS = [("models", new_models), ("hf_models", lambda: hf_list("models")), ("spaces", lambda: hf_list("spaces")),
-            ("papers", papers), ("repos", repos), ("showhn", show_hn)]
+            ("papers", papers), ("repos", repos), ("showhn", show_hn), ("arena", arena)]
 
 
 def main():

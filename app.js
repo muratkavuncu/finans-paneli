@@ -1679,6 +1679,53 @@
     });
   }
 
+  // ---------- Model sıralamaları (LMArena açık verisi) ----------
+  const ARENA_LABELS = { text: 'Metin', webdev: 'Web kodlama', vision: 'Görsel anlama', search: 'Arama',
+    text_to_image: 'Görsel üretme', text_to_video: 'Video üretme' };
+  let arenaTab = load('fp.arena', 'text');
+
+  function renderArena() {
+    const all = aiData && Array.isArray(aiData.arena) ? aiData.arena.filter((a) => ARENA_LABELS[a.id] && Array.isArray(a.rows) && a.rows.length) : [];
+    const tabs = $('ar-tabs'), box = $('ar-list');
+    tabs.textContent = '';
+    box.textContent = '';
+    if (!all.length) { box.appendChild(el('p', 'empty', 'Sıralama verisi henüz yok.')); return; }
+    const cur = all.find((a) => a.id === arenaTab) || all[0];
+    all.forEach((a) => {
+      const b = el('button', '', ARENA_LABELS[a.id]);
+      b.type = 'button';
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-selected', String(a === cur));
+      b.addEventListener('click', () => { arenaTab = a.id; save('fp.arena', a.id); renderArena(); });
+      tabs.appendChild(b);
+    });
+    $('ar-date').textContent = 'LMArena' + (cur.date ? ' · ' + new Date(cur.date + 'T00:00:00').toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' }) : '');
+    // Eksen sıfırdan başlamaz: puanlar birbirine yakın, o yüzden çubuk yerine nokta ve aralık çizilir
+    const lo = Math.min(...cur.rows.map((r) => r.lo)), hi = Math.max(...cur.rows.map((r) => r.hi));
+    const pad = Math.max(1, (hi - lo) * 0.06), span = hi - lo + 2 * pad;
+    const pos = (v) => ((v - lo + pad) / span * 100).toFixed(1) + '%';
+    cur.rows.forEach((r, i) => {
+      const row = el('div', 'ar-row');
+      row.style.setProperty('--i', i);
+      row.appendChild(el('span', 'ai-rank', r.rank));
+      const name = el('span', 'ar-name');
+      name.appendChild(el('strong', '', r.name));
+      name.appendChild(el('small', '', (r.org ? r.org + ' · ' : '') + '±' + Math.round((r.hi - r.lo) / 2) + ' · ' + compact(r.votes) + ' oy'));
+      row.appendChild(name);
+      row.appendChild(el('span', 'ar-val', NF[0].format(r.rating)));
+      const track = el('span', 'ar-track');
+      const ci = el('i', 'ar-ci');
+      ci.style.left = pos(r.lo);
+      ci.style.width = ((r.hi - r.lo) / span * 100).toFixed(1) + '%';
+      const dot = el('i', 'ar-dot');
+      dot.style.left = pos(r.rating);
+      track.appendChild(ci);
+      track.appendChild(dot);
+      row.appendChild(track);
+      box.appendChild(row);
+    });
+  }
+
   function renderAiData() {
     const d = aiData;
     if (!d) return;
@@ -1694,6 +1741,7 @@
     aiRows('ai-papers', d.papers, 'huggingface.co', (r) => r.title, (r) => when(r) + '▲ ' + r.votes + ' oy · arXiv ' + r.id, (r) => r.votes);
     aiRows('ai-repos', d.repos, 'github.com', (r) => r.id + (r.desc ? ' — ' + r.desc : ''),
       (r) => '★ ' + compact(r.stars) + (r.lang ? ' · ' + r.lang : '') + (r.ts ? ' · ' + ago(r.ts) + ' açıldı' : ''), (r) => r.stars);
+    renderArena();
     $('ai-data-updated').textContent = d.updated ? 'güncellendi: ' + ago(d.updated) : '';
   }
 

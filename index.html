@@ -151,6 +151,40 @@
     <div class="ai-topics" id="aip-topics"></div>
   </section>
 
+  <section class="panel" data-page="ai" aria-label="AI siteleri" hidden>
+    <div class="panel-head">
+      <h2>AI siteleri</h2>
+      <span class="hint">dokun, sitede aç</span>
+    </div>
+    <div class="sites">
+      <a class="site c1 wide" href="https://artificialanalysis.ai/" target="_blank" rel="noopener noreferrer"><i aria-hidden="true">AA</i><span><strong>Artificial Analysis</strong><small>Zekâ endeksi, hız ve fiyat karşılaştırması</small></span></a>
+      <a class="site c1" href="https://artificialanalysis.ai/leaderboards/models" target="_blank" rel="noopener noreferrer"><i aria-hidden="true">AA</i><span><strong>AA · Model tablosu</strong><small>Tüm modeller tek tabloda</small></span></a>
+      <a class="site c1" href="https://artificialanalysis.ai/leaderboards/providers" target="_blank" rel="noopener noreferrer"><i aria-hidden="true">AA</i><span><strong>AA · API sağlayıcıları</strong><small>Aynı model, farklı sağlayıcı: hız ve fiyat</small></span></a>
+      <a class="site c2" href="https://lmarena.ai/leaderboard" target="_blank" rel="noopener noreferrer"><i aria-hidden="true">LM</i><span><strong>LMArena</strong><small>İnsanların kör oylarıyla sıralama</small></span></a>
+      <a class="site c3" href="https://openrouter.ai/rankings" target="_blank" rel="noopener noreferrer"><i aria-hidden="true">OR</i><span><strong>OpenRouter Rankings</strong><small>En çok kullanılan modeller (token hacmi)</small></span></a>
+      <a class="site c4" href="https://www.swebench.com/" target="_blank" rel="noopener noreferrer"><i aria-hidden="true">SW</i><span><strong>SWE-bench</strong><small>Gerçek yazılım hatalarını çözme</small></span></a>
+      <a class="site c5" href="https://arcprize.org/leaderboard" target="_blank" rel="noopener noreferrer"><i aria-hidden="true">AR</i><span><strong>ARC Prize</strong><small>Görülmemiş bulmacalarda akıl yürütme</small></span></a>
+      <a class="site c2" href="https://metr.org/" target="_blank" rel="noopener noreferrer"><i aria-hidden="true">ME</i><span><strong>METR</strong><small>Kendi başına tamamlanan görev süresi</small></span></a>
+      <a class="site c3" href="https://livebench.ai/" target="_blank" rel="noopener noreferrer"><i aria-hidden="true">LB</i><span><strong>LiveBench</strong><small>Soruları düzenli yenilenen genel test</small></span></a>
+      <a class="site c4" href="https://epoch.ai/benchmarks" target="_blank" rel="noopener noreferrer"><i aria-hidden="true">EP</i><span><strong>Epoch AI</strong><small>Zor matematik ve bilim testleri</small></span></a>
+      <a class="site c5" href="https://huggingface.co/models?sort=trending" target="_blank" rel="noopener noreferrer"><i aria-hidden="true">HF</i><span><strong>Hugging Face · Trend</strong><small>Şu an ilgi gören açık modeller</small></span></a>
+      <a class="site c5" href="https://huggingface.co/papers" target="_blank" rel="noopener noreferrer"><i aria-hidden="true">HF</i><span><strong>Hugging Face · Makaleler</strong><small>Günün öne çıkan makaleleri</small></span></a>
+      <a class="site c6" href="https://github.com/trending" target="_blank" rel="noopener noreferrer"><i aria-hidden="true">GH</i><span><strong>GitHub Trending</strong><small>Yükselen açık kaynak projeler</small></span></a>
+    </div>
+    <p class="hint events-note">Artificial Analysis ve diğer sitelerin çoğu verisini anahtarsız, açık bir akışla paylaşmıyor; bu yüzden rakamlarını panele kopyalamıyorum, doğrudan siteye yönlendiriyorum. Açık veri yayımlayan LMArena'nın sıralaması aşağıda grafik olarak var.</p>
+  </section>
+
+  <section class="panel" data-page="ai" aria-label="Model sıralamaları" hidden>
+    <div class="panel-head">
+      <h2>Model sıralamaları</h2>
+      <span class="hint" id="ar-date">LMArena</span>
+    </div>
+    <div class="chips" id="ar-tabs" role="tablist" aria-label="Sıralama türü"></div>
+    <div class="ar-list" id="ar-list"><p class="empty">Sıralama yükleniyor…</p></div>
+    <p class="hint ar-legend"><i class="ar-dot"></i> puan <i class="ar-ci"></i> güven aralığı · aralıklar örtüşüyorsa fark kesin değildir</p>
+    <p class="hint events-note">Kaynak: LMArena'nın Hugging Face'te yayımladığı açık veri kümesi (CC BY 4.0). Puan, insanların iki modelin yanıtını kör karşılaştırıp oyladığı düellolardan hesaplanan Elo benzeri bir değerdir; yüksek olan daha çok tercih edilmiş demektir. Doğruluğu ya da hızı ölçmez. İlk 8 model gösterilir.</p>
+  </section>
+
   <section class="panel" data-page="ai" aria-label="Çok konuşulanlar" hidden>
     <div class="panel-head">
       <h2>Çok konuşulanlar</h2>
@@ -208,20 +242,6 @@
       <p class="hint events-note">Son 30 günde açılıp en çok yıldız alan LLM ve AI ajanı projeleri.</p>
     </section>
   </div>
-
-  <section class="panel" data-page="ai" aria-label="Karşılaştırma tabloları" hidden>
-    <div class="panel-head"><h2>Benchmark tabloları</h2><span class="hint">güncel sıralamalar için kaynak siteler</span></div>
-    <ol class="news links">
-      <li><a href="https://lmarena.ai/leaderboard" target="_blank" rel="noopener noreferrer"><span class="n-dot"></span><span><span class="n-title">LMArena</span><span class="n-meta">İnsanların kör karşılaştırma oylarıyla model sıralaması (metin, görsel, kod)</span></span></a></li>
-      <li><a href="https://artificialanalysis.ai/" target="_blank" rel="noopener noreferrer"><span class="n-dot"></span><span><span class="n-title">Artificial Analysis</span><span class="n-meta">Zekâ, hız ve fiyat karşılaştırması; sağlayıcı bazında ölçümler</span></span></a></li>
-      <li><a href="https://www.swebench.com/" target="_blank" rel="noopener noreferrer"><span class="n-dot"></span><span><span class="n-title">SWE-bench</span><span class="n-meta">Gerçek yazılım hatalarını çözme başarısı (kodlama ajanları)</span></span></a></li>
-      <li><a href="https://arcprize.org/leaderboard" target="_blank" rel="noopener noreferrer"><span class="n-dot"></span><span><span class="n-title">ARC Prize</span><span class="n-meta">Daha önce görülmemiş bulmacalarda akıl yürütme (ARC-AGI)</span></span></a></li>
-      <li><a href="https://metr.org/" target="_blank" rel="noopener noreferrer"><span class="n-dot"></span><span><span class="n-title">METR</span><span class="n-meta">Modellerin kendi başına tamamlayabildiği görev süresi ölçümleri</span></span></a></li>
-      <li><a href="https://livebench.ai/" target="_blank" rel="noopener noreferrer"><span class="n-dot"></span><span><span class="n-title">LiveBench</span><span class="n-meta">Ezberi önlemek için soruları düzenli yenilenen genel test</span></span></a></li>
-      <li><a href="https://epoch.ai/benchmarks" target="_blank" rel="noopener noreferrer"><span class="n-dot"></span><span><span class="n-title">Epoch AI</span><span class="n-meta">Zor matematik ve bilim testlerinde zaman içindeki ilerleme</span></span></a></li>
-    </ol>
-    <p class="hint events-note">Bu sıralamaların ücretsiz ve güvenilir bir veri akışı olmadığı için rakamları panele taşımıyorum; güncel tablo için kaynağına git. Benchmark haberleri bu sayfadaki AI gündeminde "Benchmark" filtresinde.</p>
-  </section>
 
   <section class="summary" data-page="grafik" data-tab="tek" aria-label="Teknoloji özeti" hidden>
     <div class="stat" id="tek-SOX"></div>

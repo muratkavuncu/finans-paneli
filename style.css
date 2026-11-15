@@ -557,3 +557,32 @@ h2 { font-size: 16px; font-weight: 600; }
 @media (prefers-reduced-motion: reduce) {
   .ai-stack, .ai-tbar i, .ai-bar i, .ai-card, [data-page="ai"] .news li { animation: none; }
 }
+
+/* AI siteleri: kısayol karoları */
+.sites { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.site { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 10px; align-items: center; padding: 10px; border-radius: 12px; background: var(--surface-2); color: inherit; text-decoration: none; min-height: 60px; }
+.site.wide { grid-column: 1 / -1; padding: 14px 12px; box-shadow: inset 0 0 0 1px var(--accent); }
+.site i { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; font-style: normal; font-family: var(--font-display); font-weight: 700; font-size: 12.5px; color: var(--bg); background: var(--sc, var(--c6)); }
+.site.c1 { --sc: var(--c1); } .site.c2 { --sc: var(--c2); } .site.c3 { --sc: var(--c3); } .site.c4 { --sc: var(--c4); } .site.c5 { --sc: var(--c5); } .site.c6 { --sc: var(--c6); }
+.site span { display: grid; gap: 1px; min-width: 0; }
+.site strong { font-size: 13.5px; line-height: 1.25; overflow-wrap: anywhere; }
+.site.wide strong { font-family: var(--font-display); font-size: 16px; }
+.site small { color: var(--muted); font-size: 11.5px; line-height: 1.3; }
+@media (min-width: 861px) { .sites { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+/* Model sıralamaları: nokta ve güven aralığı */
+.ar-list { display: grid; margin-top: 10px; }
+.ar-row { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; column-gap: 8px; row-gap: 4px; align-items: start; padding: 9px 0; border-top: 1px solid var(--line); animation: ai-rise .35s ease-out both; animation-delay: calc(var(--i, 0) * 40ms); }
+.ar-row:first-child { border-top: 0; }
+.ar-name { display: grid; gap: 1px; min-width: 0; }
+.ar-name strong { font-size: 14px; line-height: 1.3; overflow-wrap: anywhere; }
+.ar-name small { color: var(--muted); font-size: 12px; }
+.ar-val { font-family: var(--font-display); font-weight: 700; font-size: 15px; }
+.ar-track { grid-column: 2 / -1; position: relative; height: 14px; background: linear-gradient(var(--line), var(--line)) center / 100% 1px no-repeat; }
+.ar-ci { position: absolute; top: 5px; height: 4px; border-radius: 2px; background: var(--muted); opacity: .55; }
+.ar-dot { position: absolute; top: 2px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: var(--c2); box-shadow: 0 0 0 2px var(--surface); animation: ar-slide .7s cubic-bezier(.2, .8, .3, 1) both; animation-delay: calc(var(--i, 0) * 40ms); }
+.ar-legend { margin: 10px 0 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ar-legend .ar-dot, .ar-legend .ar-ci { position: static; display: inline-block; margin: 0; animation: none; box-shadow: none; }
+.ar-legend .ar-ci { width: 22px; margin-left: 8px; }
+@keyframes ar-slide { from { left: 0; opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .ar-row, .ar-dot { animation: none; } }
