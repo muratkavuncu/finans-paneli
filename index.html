@@ -260,6 +260,25 @@
     <p class="hint events-note">Bu göstergeler geçmiş fiyattan türetilir ve geleceği garanti etmez; "yukarı ağırlıklı" gibi özetler işaretlerin sayımıdır, al-sat tavsiyesi değildir. Zaman dilimini değiştirince tablo da değişir.</p>
   </section>
 
+  <section class="panel" data-tab="kripto" aria-label="RENDER sinyal pilotu">
+    <div class="panel-head">
+      <h2>RENDER sinyal pilotu</h2>
+      <span class="hint" id="sig-updated">yükleniyor…</span>
+    </div>
+    <div class="sig-top">
+      <div class="sig-big" id="sig-state">—</div>
+      <p class="sig-line" id="sig-line"></p>
+      <p class="sig-now" id="sig-now" hidden></p>
+    </div>
+    <p class="hint" id="sig-pilot"></p>
+    <p class="hint" id="sig-hold"></p>
+    <div class="label sig-label">Pilot kuralın son işlemleri (geçmiş hesap)</div>
+    <ol class="sig-trades" id="sig-trades"></ol>
+    <div class="label sig-label">Tüm kurallar yan yana</div>
+    <div class="bt-list" id="sig-rules"></div>
+    <p class="hint events-note">Kağıt üstünde denemedir: emir vermez, yalnızca kuralın "al" ya da "sat" dediği anı bildirir. Karar 4 saatlik mum kapanınca verilir; işlem fiyatı olarak sonraki mumun açılışı alınır ve her alım-satımda %0,25 maliyet düşülür. Bu kuralların hiçbiri bu dönemde RENDER'da kâr etmedi; en iyileri yalnızca tutmaktan az kaybettirdi. Geçmiş sonuç geleceği göstermez; tavsiye değildir.</p>
+  </section>
+
   <section class="panel" data-tab="kripto" aria-label="BtcTurk RENDER/TL">
     <div class="panel-head">
       <h2>BtcTurk · RENDER/TL</h2>

@@ -1572,6 +1572,69 @@
     aiBusy = false;
   }
 
+  // ---------- RENDER sinyal pilotu ----------
+  let sig = null;
+  const dt = (ts) => new Date(ts * 1000).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+
+  function renderSignals() {
+    if (!sig || !Array.isArray(sig.rules)) return;
+    const pilot = sig.rules.find((r) => r.id === sig.pilot_rule) || sig.rules[0];
+    const st = $('sig-state');
+    st.textContent = pilot.in ? 'İÇERİDE' : 'DIŞARIDA';
+    st.className = 'sig-big ' + (pilot.in ? 'pos' : '');
+    let line = pilot.name + ' · 4 saatlik mum';
+    if (pilot.in && pilot.open) line += ' · giriş ' + fmtPrice(pilot.open.in_p) + ' (' + dt(pilot.open.in_t) + ') · şu an ' + fmtPct(pilot.open.ret);
+    $('sig-line').textContent = line;
+    const s = pilot.signal;
+    $('sig-now').hidden = !s;
+    if (s) $('sig-now').textContent = 'Yeni sinyal: ' + s.side + ' · ' + dt(s.t) + ' kapanışında ' + fmtPrice(s.price);
+    $('sig-pilot').textContent = 'Pilot (' + new Date(sig.pilot_start * 1000).toLocaleDateString('tr-TR') + ' tarihinden beri): '
+      + pilot.pilot.trades + ' kapanmış işlem' + (pilot.pilot.trades ? ', toplam ' + fmtPct(pilot.pilot.ret) : '')
+      + (pilot.pilot_open ? ' · 1 açık işlem' : '');
+    $('sig-hold').textContent = 'Son ' + Math.round(sig.bars * 4 / 24) + ' günde hiç satmadan tutmak: ' + fmtPct(sig.hold.ret)
+      + ' (en büyük düşüş ' + fmtPct(sig.hold.dd) + ')';
+
+    const list = $('sig-rules');
+    list.textContent = '';
+    sig.rules.forEach((r) => {
+      const row = el('div', 'bt-row sig-row');
+      const left = el('span', 'bt-main');
+      const head = el('strong', '', r.name);
+      if (r.id === sig.pilot_rule) head.appendChild(el('span', 'tag', 'PİLOT'));
+      left.appendChild(head);
+      left.appendChild(el('span', 'bt-desc', r.desc));
+      left.appendChild(el('span', 'bt-stats', r.hist.trades + ' işlem · ' + r.hist.wins + ' kazançlı · en büyük düşüş ' + fmtPct(r.hist.dd)
+        + ' · geçmiş toplam ' + fmtPct(r.hist.ret)));
+      const right = el('span', 'bt-side');
+      right.appendChild(el('span', 'sig-chip ' + (r.in ? 'in' : 'out'), r.in ? 'içeride' : 'dışarıda'));
+      if (r.in && r.open) right.appendChild(el('span', 'bt-vs ' + signClass(r.open.ret), fmtPct(r.open.ret)));
+      row.appendChild(left);
+      row.appendChild(right);
+      list.appendChild(row);
+    });
+
+    const tr = $('sig-trades');
+    tr.textContent = '';
+    const recent = (pilot.recent || []).slice().reverse();
+    if (!recent.length) tr.appendChild(el('li', 'empty', 'Henüz kapanmış işlem yok.'));
+    recent.forEach((t) => {
+      const li = el('li');
+      li.appendChild(el('span', '', dt(t.in_t) + ' al ' + fmtPrice(t.in_p) + ' → ' + dt(t.out_t) + ' sat ' + fmtPrice(t.out_p)));
+      li.appendChild(el('strong', signClass(t.ret), fmtPct(t.ret)));
+      tr.appendChild(li);
+    });
+    $('sig-updated').textContent = 'son mum: ' + dt(sig.candle);
+  }
+
+  async function loadSignals() {
+    try {
+      const r = await fetch('data/signals.json?t=' + Math.floor(Date.now() / 60000), { cache: 'no-store' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      sig = await r.json();
+      renderSignals();
+    } catch (err) { /* bir sonraki turda yeniden denenir */ }
+  }
+
   // ---------- Katlanır bölümler ----------
   function initFold() {
     document.querySelectorAll('.panel > .panel-head > h2').forEach((h) => {
@@ -2012,6 +2075,8 @@
   loadNews();
   loadMarkets();
   setInterval(loadNews, 120000);
+  loadSignals();
+  setInterval(loadSignals, 120000);
   setInterval(() => { if (tab === 'ai' && !document.hidden) loadAiData(); }, 300000);
   setInterval(loadMarkets, 120000);
   setInterval(() => { renderNews(); renderCalendar(); renderNextEvent(); }, 60000);

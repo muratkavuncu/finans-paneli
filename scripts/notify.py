@@ -8,6 +8,7 @@ Dört tür bildirim gönderir:
   3) Takvim   - kritik veriden önce hatırlatma
   4) Tepki    - kritik veri açıklandıktan birkaç dakika sonra piyasanın ilk tepkisi
   5) Özet     - günde bir kez sabah özeti
+  6) Sinyal   - RENDER sinyal pilotu: seçili kuralın al/sat durumu değişince
 
 Kanal adı NTFY_TOPIC ortam değişkeninden okunur ve hiçbir yere yazılmaz; yoksa hiçbir şey gönderilmez.
 NTFY_DRY=1 ise göndermek yerine ne göndereceğini yazar.
@@ -373,7 +374,41 @@ def daily_summary(events, calendar, prices, sent, now):
     return 0
 
 
-def run(events, calendar, prices, state):
+def signal_alert(sig, sent, now):
+    """RENDER sinyal pilotu: seçili kuralın durumu değişince bir kez bildirir (bkz. signals.py)."""
+    if not sig:
+        return 0
+    rule = next((r for r in sig.get("rules", []) if r["id"] == sig.get("pilot_rule")), None)
+    s = rule and rule.get("signal")
+    if not s or now - s["t"] > 4 * 3600:
+        return 0  # sinyal yok ya da bir mumdan eski
+    key = "s:%s:%d" % (rule["id"], s["t"])
+    if key in sent:
+        return 0
+    buy = s["side"] == "AL"
+    hist, hold = rule["hist"], sig["hold"]
+    days = round(sig["bars"] * 4 / 24)
+    tl = tl_text()
+    lines = ["Kural: %s · 4 saatlik mum" % rule["name"],
+             "Fiyat: %s%s" % (money(sig["price"]), (" · " + tl) if tl else "")]
+    if not buy and rule.get("open"):
+        lines.append("Kapanan işlemin sonucu (maliyet dahil): %s" % pct(rule["open"]["ret"]))
+    lines.append("Geçmiş (%d gün): %d işlem, %d kazançlı, toplam %s · hiç satmadan tutmak %s"
+                 % (days, hist["trades"], hist["wins"], pct(hist["ret"]), pct(hold["ret"])))
+    pilot = rule["pilot"]
+    lines.append("Pilot başından beri: %d işlem%s" % (pilot["trades"], (", toplam " + pct(pilot["ret"])) if pilot["trades"] else ""))
+    if hist["ret"] <= 0:
+        lines.append("Uyarı: bu kural geçmişte kâr etmedi; yalnızca tutmaktan az kaybettirdi." if hist["ret"] > hold["ret"]
+                     else "Uyarı: bu kural geçmişte kâr etmedi.")
+    lines.append("Kağıt üstünde deneme; karar senin.")
+    if send("RENDER sinyali: %s (pilot)" % s["side"], "\n".join(lines), priority=4,
+            tags=["green_circle" if buy else "red_circle"]):
+        sent[key] = int(now)
+        return 1
+    return 0
+
+
+def run(events, calendar, prices, state, signal=None):
     """state: {"sent": {anahtar: zaman}}; gönderilenleri işaretler ve güncel state'i döndürür."""
     sent = dict(state.get("sent", {}))
     now = time.time()
@@ -433,6 +468,7 @@ def run(events, calendar, prices, state):
     count += price_alerts(events, prices, sent, now)
     count += tech_alerts(prices, sent, now)
     count += daily_summary(events, calendar, prices, sent, now)
+    count += signal_alert(signal, sent, now)
 
     # 3) ve 4) Kritik veri: önce hatırlatma, açıklandıktan sonra ilk tepki. Aynı saatteki veriler tek bildirimde toplanır.
     slots = {}

@@ -22,6 +22,7 @@ from email.utils import parsedate_to_datetime
 
 import impact
 import notify
+import signals
 
 OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join("data", "news.json")
 PREV_URL = os.environ.get("PREV_URL", "")
@@ -550,7 +551,12 @@ def main():
         if m and m.group(2) in notify.PRICE_RULES and int(m.group(3)) <= time.time() + 60:
             sent = state.setdefault("sent", {})
             sent[m.group(1)] = max(int(m.group(3)), sent.get(m.group(1), 0))
-    state = notify.run(events, calendar, impact.Prices(markets_path), state)
+    try:  # RENDER sinyal pilotu: durum dosyasını yazar, durum değiştiyse bildirim gider
+        signal = signals.build(os.path.join(os.path.dirname(OUT) or ".", "signals.json"))
+    except Exception as exc:
+        signal = None
+        print("HATA sinyal", repr(exc)[:160], file=sys.stderr)
+    state = notify.run(events, calendar, impact.Prices(markets_path), state, signal)
     with open(os.path.join(os.path.dirname(OUT) or ".", "notify_state.json"), "w", encoding="utf-8") as fh:
         json.dump(state, fh, separators=(",", ":"))
     print("haber:", len(items), "yeni çekilen:", len(fresh), "takvim:", len(calendar), "hata:", errors)
