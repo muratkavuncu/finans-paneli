@@ -73,7 +73,7 @@
   const sEls = {};
   let markets = null, marketsStamp = 0;
   let tab = load('fp.tab', 'kripto');
-  if (!['kripto', 'tek', 'ai'].includes(tab)) tab = 'kripto';
+  if (!['kripto', 'tek'].includes(tab)) tab = 'kripto';
   let stock = load('fp.stock', 'NVDA');
   if (!stockBy[stock]) stock = 'NVDA';
   let stockInterval = load('fp.sint', '30m') === '1d' ? '1d' : '30m';
@@ -227,13 +227,10 @@
 
   // Sekme değişince görünür bölümleri, grafiği ve haber filtrelerini eşitle
   function applyTab() {
-    document.querySelectorAll('[data-tab]').forEach((n) => { n.hidden = n.dataset.tab !== tab; });
-    // Piyasa bölümleri (nabız, grafik, olaylar, gündem) AI sekmesinde gizlenir
-    document.querySelectorAll('[data-not]').forEach((n) => { n.hidden = n.dataset.not === tab; });
+    applyPage();
     document.querySelectorAll('#maintabs button').forEach((b) => {
       b.setAttribute('aria-selected', String(b.dataset.id === tab));
     });
-    if (tab === 'ai') { renderAi(); loadAiData(); return; }
     buildIntervals();
     markSelection();
     if (tab === 'kripto') { state[selected].shown = null; markDirty(selected); } else renderStocks();
@@ -289,6 +286,7 @@
       const ratio = state.ETH.price / state.BTC.price;
       if (isFinite(ratio)) $('g-ethbtc').textContent = NF[5].format(ratio);
     }
+    if (sym === 'RENDER' || sym === 'BTC') renderOzet();
     if (sym === selected && tab === 'kripto') {
       const big = $('chart-price');
       big.textContent = priceText;
@@ -1398,6 +1396,7 @@
       setVerdict('btk-vol-v', '≈ ' + tl(+t.V * +t.AV, 0));
     }
     btkCalc();
+    renderOzet();
   }
 
   // Yazılan tutar canlı emir defterinde yürütülseydi ortalama hangi fiyattan dolardı
@@ -1511,7 +1510,7 @@
     });
     $('ai-more').hidden = items.length <= aiShown;
     $('ai-updated').textContent = all.length + ' haber · son 7 gün · güncellendi: ' + ago(news.updated);
-    if (tab === 'ai' && all.length) setTimeout(() => save('fp.aiSeen', String(all[0].ts)), 8000);
+    if (page === 'ai' && all.length) setTimeout(() => save('fp.aiSeen', String(all[0].ts)), 8000);
   }
 
   // ---------- AI sekmesi: modeller, demolar, makaleler, projeler ----------
@@ -1624,6 +1623,11 @@
       tr.appendChild(li);
     });
     $('sig-updated').textContent = 'son mum: ' + dt(sig.candle);
+    $('oz-sig').textContent = pilot.in ? 'İçeride' : 'Dışarıda';
+    $('oz-sig').className = 'value ' + (pilot.in ? 'pos' : '');
+    $('oz-sig-sub').textContent = s ? 'yeni sinyal: ' + s.side : pilot.in && pilot.open ? 'açık işlem ' + fmtPct(pilot.open.ret) : pilot.name;
+    ozVotes.sig = pilot.in ? 1 : -1;
+    renderGauge();
   }
 
   async function loadSignals() {
@@ -1633,6 +1637,142 @@
       sig = await r.json();
       renderSignals();
     } catch (err) { /* bir sonraki turda yeniden denenir */ }
+  }
+
+  // ---------- Sayfalar (alt çubuk) ----------
+  const PAGES = ['ozet', 'grafik', 'sinyal', 'haber', 'ai'];
+  let page = PAGES.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'ozet';
+
+  function applyPage() {
+    document.querySelectorAll('[data-page]').forEach((n) => {
+      n.hidden = n.dataset.page !== page || (!!n.dataset.tab && n.dataset.tab !== tab);
+    });
+    document.querySelectorAll('#nav button').forEach((b) => {
+      if (b.dataset.go === page) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+    });
+  }
+  function setPage(p) {
+    if (!PAGES.includes(p)) return;
+    page = p;
+    try { history.replaceState(null, '', p === 'ozet' ? location.pathname : '#' + p); } catch (err) { /* adres çubuğu güncellenemezse sorun değil */ }
+    applyPage();
+    window.scrollTo(0, 0);
+    if (p === 'ai') { renderAi(); loadAiData(); }
+  }
+  function initNav() {
+    document.querySelectorAll('[data-go]').forEach((b) => {
+      b.addEventListener('click', () => {
+        const sym = b.dataset.sym;
+        if (sym && bySym[sym]) {
+          if (tab !== 'kripto') { tab = 'kripto'; save('fp.tab', tab); applyTab(); }
+          if (sym !== selected) selectSymbol(sym);
+        }
+        setPage(b.dataset.go);
+      });
+    });
+  }
+
+  // ---------- Özet sayfası ----------
+  function renderOzet() {
+    const r = state.RENDER, b = state.BTC;
+    if (r.price != null) {
+      $('oz-price').textContent = fmtPrice(r.price);
+      $('oz-pct').textContent = fmtPct(r.pct);
+      setSigned($('oz-pct'), 'chip', r.pct);
+      if (btkTick) $('oz-tl').textContent = 'BtcTurk ' + tl(+btkTick.LA);
+      else if (usdtTry) $('oz-tl').textContent = '≈ ' + tl(r.price * usdtTry);
+    }
+    if (b.price != null) {
+      $('oz-btc').textContent = fmtPrice(b.price);
+      $('oz-btc-sub').textContent = '24 sa ' + fmtPct(b.pct);
+      setSigned($('oz-btc-sub'), 'sub', b.pct);
+    }
+    if (isFinite(r.pct) && isFinite(b.pct)) {
+      const rel = ((1 + r.pct / 100) / (1 + b.pct / 100) - 1) * 100;
+      const vs = $('oz-vs');
+      vs.textContent = "BTC'ye göre " + fmtPct(rel) + ' (24 sa)';
+      vs.className = signClass(rel);
+    }
+  }
+
+  // RENDER ibresi: her işaret bir oy (+1 alış yönü, -1 satış yönü, 0 nötr). Ağırlık yok, yalnızca sayım.
+  const ozVotes = { ta: null, sig: null, news: null };
+  function renderGauge() {
+    const votes = (ozVotes.ta || []).concat(ozVotes.sig == null ? [] : [ozVotes.sig], ozVotes.news == null ? [] : [ozVotes.news]);
+    if (!ozVotes.ta || !votes.length) return;
+    const up = votes.filter((x) => x > 0).length, dn = votes.filter((x) => x < 0).length;
+    const score = (up - dn) / votes.length;
+    const lab = $('oz-g-label');
+    lab.textContent = score >= 0.6 ? 'Güçlü alış yönü' : score >= 0.25 ? 'Alış yönü' : score <= -0.6 ? 'Güçlü satış yönü' : score <= -0.25 ? 'Satış yönü' : 'Nötr';
+    lab.className = score >= 0.25 ? 'pos' : score <= -0.25 ? 'neg' : '';
+    $('oz-g-sub').textContent = up + ' alış · ' + dn + ' satış · ' + (votes.length - up - dn) + ' nötr';
+    $('oz-needle').style.transform = 'rotate(' + (score * 80).toFixed(1) + 'deg)';
+  }
+
+  // RENDER'ın 4 saatlik mumlarından işaret sayımı; "Teknik görünüm" kartındaki sayımla aynı kurallar
+  async function loadOzTa() {
+    try {
+      const rows = await binance('/api/v3/klines?symbol=RENDERUSDT&interval=4h&limit=400');
+      const t = computeTA(rows.map((r) => toCandle(r[0], r[1], r[2], r[3], r[4])));
+      const sg = [];
+      if (t.e50 != null) sg.push(t.price > t.e20 && t.e20 > t.e50 ? 1 : t.price < t.e20 && t.e20 < t.e50 ? -1 : 0);
+      if (t.rsi != null) sg.push(t.rsi >= 55 ? 1 : t.rsi <= 45 ? -1 : 0);
+      if (t.hist != null) sg.push(t.hist > 0 ? 1 : t.hist < 0 ? -1 : 0);
+      if (t.e200 != null) sg.push(t.price > t.e200 ? 1 : -1);
+      const up = sg.filter((x) => x > 0).length, dn = sg.filter((x) => x < 0).length;
+      const v = $('oz-ta');
+      v.textContent = up - dn >= 2 ? 'Yukarı' : dn - up >= 2 ? 'Aşağı' : 'Karışık';
+      v.className = 'value ' + (up - dn >= 2 ? 'pos' : dn - up >= 2 ? 'neg' : '');
+      $('oz-ta-sub').textContent = up + ' yukarı · ' + dn + ' aşağı' + (t.rsi != null ? ' · RSI ' + NF[0].format(t.rsi) : '');
+      ozVotes.ta = sg;
+      renderGauge();
+    } catch (err) { /* bir sonraki turda yeniden denenir */ }
+  }
+
+  function renderOzEvents() {
+    const box = $('oz-events');
+    box.textContent = '';
+    const now = Date.now() / 1000;
+    // İbrenin haber oyu: son 48 saatteki RENDER haberlerinin olumlu/olumsuz dengesi
+    const rn = (news.items || []).filter((n) => now - n.ts < 172800 && (n.tags || []).includes('RENDER'));
+    const bal = rn.reduce((s, n) => s + (n.sent > 0 ? 1 : n.sent < 0 ? -1 : 0), 0);
+    ozVotes.news = rn.length ? Math.sign(bal) : null;
+    $('oz-g-note').textContent = 'İbre bir işaret sayımıdır: 4 saatlik teknik göstergeler, sinyal pilotu ve son 48 saatin RENDER haberleri ('
+      + (rn.length ? rn.length + ' haber' : 'haber yok, sayılmadı') + '). Tavsiye değildir.';
+    renderGauge();
+    const isR = (e) => (e.assets || []).includes('RENDER') || (e.tags || []).includes('RENDER');
+    const list = (news.events || []).filter((e) => now - e.ts < 86400)
+      .sort((a, b) => (isR(b) - isR(a)) || (b.score - a.score)).slice(0, 3);
+    if (!list.length) { box.appendChild(el('li', 'empty', 'Son 24 saatte büyük bir olay yok.')); return; }
+    list.forEach((e) => {
+      const li = el('li');
+      const a = el('a');
+      if (/^https?:\/\//.test(e.url)) a.href = e.url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.appendChild(el('span', 'oz-score ' + levelOf(e.score)[1], e.score));
+      const body = el('span');
+      body.appendChild(el('span', 'oz-title', e.title));
+      body.appendChild(el('span', 'n-meta', (isR(e) ? 'RENDER · ' : '') + e.type_label + ' · ' + e.n + ' kaynak · ' + ago(e.ts)));
+      a.appendChild(body);
+      li.appendChild(a);
+      box.appendChild(li);
+    });
+  }
+
+  // ---------- Açıklamalar: "?" düğmesinin arkasında ----------
+  function initHelp() {
+    document.querySelectorAll('.panel').forEach((panel) => {
+      const head = panel.querySelector(':scope > .panel-head');
+      if (!head || !panel.querySelector('.events-note, .ind > p')) return;
+      const b = el('button', 'help-btn', '?');
+      b.type = 'button';
+      b.title = 'Açıklamayı göster ya da gizle';
+      b.setAttribute('aria-label', 'Açıklama');
+      b.setAttribute('aria-pressed', 'false');
+      b.addEventListener('click', () => b.setAttribute('aria-pressed', String(panel.classList.toggle('help'))));
+      head.appendChild(b);
+    });
   }
 
   // ---------- Katlanır bölümler ----------
@@ -1772,6 +1912,7 @@
     const now = Date.now() / 1000;
     const upcoming = (news.calendar || []).filter((e) => e.ts > now && e.impact !== 'Holiday');
     const ev = upcoming.find((e) => e.impact === 'High') || upcoming[0];
+    $('oz-ev').textContent = ev ? (ev.title_tr || ev.title) + ' · ' + untilText(ev.ts) : 'bu hafta kalan önemli veri yok';
     if (!ev) { $('ev-val').textContent = 'Yok'; $('ev-sub').textContent = 'bu hafta kalan önemli veri yok'; return; }
     $('ev-val').textContent = untilText(ev.ts).replace(' sonra', '');
     $('ev-sub').textContent = (ev.title_tr || ev.title) + ' · ' +
@@ -1833,6 +1974,8 @@
       const v = +rows[0].value;
       const diff = rows[1] ? v - +rows[1].value : 0;
       $('fng-val').textContent = v;
+      $('oz-fng').textContent = v;
+      $('oz-fng-sub').textContent = FNG_TR[rows[0].value_classification] || rows[0].value_classification;
       $('fng-label').textContent = (FNG_TR[rows[0].value_classification] || rows[0].value_classification) +
         (diff ? ' · dün ' + (diff > 0 ? '+' : '') + diff : '');
       $('fng-needle').style.transform = 'rotate(' + (-90 + v * 1.8) + 'deg)';
@@ -1853,18 +1996,6 @@
     { id: 'Regülasyon', label: 'Regülasyon', test: (n) => n.tags.includes('Regülasyon') },
     { id: 'tr', label: 'Türkçe', test: (n) => n.lang === 'tr' },
   ];
-  const TAB_FILTERS = {
-    kripto: ['all', 'conf', 'hot', 'BTC', 'RENDER', 'Makro', 'Regülasyon', 'tr'],
-    tek: ['all', 'conf', 'hot', 'AI', 'Teknoloji', 'Makro', 'Regülasyon', 'tr'],
-    ai: ['all'],
-  };
-  const COIN_TAGS = ['BTC', 'ETH', 'SOL', 'RENDER', 'XRP', 'BNB', 'DOGE'];
-  // Makro haberler iki sekmede de görünür; gerisi sekmenin konusuna göre ayrılır
-  function inTab(n) {
-    if (n.cat === 'makro') return true;
-    if (tab === 'tek') return n.cat === 'teknoloji' || n.tags.includes('AI') || n.tags.includes('Teknoloji');
-    return n.cat === 'kripto' || n.tags.some((t) => COIN_TAGS.includes(t));
-  }
   const NEWS_STEP = 20;
   let news = null, newsFilter = 'all', newsShown = NEWS_STEP;
   const seenBefore = +load('fp.newsSeen', '0');
@@ -1888,7 +2019,7 @@
     box.textContent = '';
     newsFilter = 'all';
     newsShown = NEWS_STEP;
-    FILTERS.filter((f) => TAB_FILTERS[tab].includes(f.id)).forEach((f) => {
+    FILTERS.forEach((f) => {
       const b = el('button', '', f.label);
       b.type = 'button';
       b.role = 'tab';
@@ -1910,8 +2041,7 @@
     renderEvents();
     const list = $('news');
     const filter = FILTERS.find((f) => f.id === newsFilter);
-    const base = news.items.filter(inTab);
-    const items = base.filter(filter.test);
+    const items = news.items.filter(filter.test);
     list.textContent = '';
     if (!items.length) list.appendChild(el('li', 'empty', 'Son 3 günde bu filtreye uyan haber yok.'));
     items.slice(0, newsShown).forEach((n) => {
@@ -1942,7 +2072,7 @@
     $('news-updated').textContent = 'güncellendi: ' + ago(news.updated);
 
     const dayAgo = Date.now() / 1000 - 86400;
-    const recent = base.filter((n) => n.ts >= dayAgo);
+    const recent = news.items.filter((n) => n.ts >= dayAgo);
     const pos = recent.filter((n) => n.sent > 0).length;
     const neg = recent.filter((n) => n.sent < 0).length;
     const neu = recent.length - pos - neg;
@@ -1962,9 +2092,10 @@
     if (!news) return;
     const box = $('events');
     box.textContent = '';
-    const list = (news.events || []).filter(inTab).slice(0, 4);
+    renderOzEvents();
+    const list = (news.events || []).slice(0, 5);
     if (!list.length) {
-      box.appendChild(el('p', 'empty', 'Son 48 saatte bu sekmede yüksek etkili bir olay yok.'));
+      box.appendChild(el('p', 'empty', 'Son 48 saatte yüksek etkili bir olay yok.'));
       return;
     }
     list.forEach((e) => {
@@ -2077,7 +2208,9 @@
   setInterval(loadNews, 120000);
   loadSignals();
   setInterval(loadSignals, 120000);
-  setInterval(() => { if (tab === 'ai' && !document.hidden) loadAiData(); }, 300000);
+  setInterval(() => { if (page === 'ai' && !document.hidden) loadAiData(); }, 300000);
+  loadOzTa();
+  setInterval(() => { if (!document.hidden) loadOzTa(); }, 300000);
   setInterval(loadMarkets, 120000);
   setInterval(() => { renderNews(); renderCalendar(); renderNextEvent(); }, 60000);
   loadSnapshot().catch(() => {});
@@ -2093,6 +2226,8 @@
   initBtk();
   initAi();
   initFold();
+  initHelp();
+  initNav();
   setInterval(loadAltStrength, 3600000);
   connect();
   loadGlobal();
