@@ -754,3 +754,11 @@ i.cmp-b { background: var(--series-2); }
 .fh-line { fill: none; stroke: var(--series); stroke-width: 1.6; stroke-linejoin: round; }
 .fh-area { fill: var(--series); opacity: .14; }
 @media (max-width: 520px) { .fh { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---------- Arama kutusu ---------- */
+.search {
+  width: 100%; font: inherit; font-size: 14px; color: var(--fg); background: var(--surface-2); border: 1px solid var(--line);
+  border-radius: 10px; padding: 9px 12px; min-height: 42px; margin-bottom: 8px; -webkit-appearance: none; appearance: none;
+}
+.search::placeholder { color: var(--muted); }
+.search:focus { outline: 2px solid var(--accent); outline-offset: 1px; }

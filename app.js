@@ -1794,16 +1794,17 @@
     renderAiPulse(all);
     renderOzAi();
     // Veri ve süzgeç değişmediyse listeyi yeniden kurma: canlandırma her iki dakikada bir baştan oynamasın
-    const key = news.updated + '|' + aiFilter + '|' + aiShown + '|' + aiLab + '|' + saved.length;
+    const key = news.updated + '|' + aiFilter + '|' + aiShown + '|' + aiLab + '|' + saved.length + '|' + aiQuery;
     if (key === aiKey) return;
     aiKey = key;
     document.querySelectorAll('#ai-filters button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.id === aiFilter)));
     const lab = AI_LABS.find((l) => l[0] === aiLab);
     const items = (aiFilter === 'saved' ? saved : all).filter(AI_FILTERS.find((f) => f.id === aiFilter).test)
-      .filter((n) => !lab || lab[1].test(n.title) || n.source === lab[0]);
+      .filter((n) => !lab || lab[1].test(n.title) || n.source === lab[0])
+      .filter(matcher(aiQuery) || (() => true));
     const list = $('ai-list');
     list.textContent = '';
-    if (!items.length) list.appendChild(el('li', 'empty', aiFilter === 'saved' ? 'Henüz kaydettiğin haber yok. Bir haberin yanındaki yıldıza dokun.' : all.length ? 'Son 7 günde bu filtreye uyan haber yok.' : 'AI gündemi henüz yüklenmedi.'));
+    if (!items.length) list.appendChild(el('li', 'empty', aiQuery ? 'Aramana uyan haber yok.' : aiFilter === 'saved' ? 'Henüz kaydettiğin haber yok. Bir haberin yanındaki yıldıza dokun.' : all.length ? 'Son 7 günde bu filtreye uyan haber yok.' : 'AI gündemi henüz yüklenmedi.'));
     items.slice(0, aiShown).forEach((n, i) => {
       const li = el('li');
       li.style.setProperty('--i', Math.min(i, 14));
@@ -1833,7 +1834,7 @@
         toggleSaved(n);
         star.textContent = isSaved(n.id) ? '★' : '☆';
         star.setAttribute('aria-pressed', String(isSaved(n.id)));
-        aiKey = news.updated + '|' + aiFilter + '|' + aiShown + '|' + aiLab + '|' + saved.length;
+        aiKey = news.updated + '|' + aiFilter + '|' + aiShown + '|' + aiLab + '|' + saved.length + '|' + aiQuery;
         if (aiFilter === 'saved') { aiKey = ''; renderAi(); }
       });
       li.appendChild(star);
@@ -2359,6 +2360,29 @@
         document.querySelector('.chart-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
       box.appendChild(row);
+    });
+  }
+
+  // ---------- Arama: yazılan her kelime başlık, açıklama ya da kaynakta geçmeli ----------
+  let aiQuery = '', newsQuery = '';
+  const fold = (t) => String(t || '').toLocaleLowerCase('tr');
+  function matcher(q) {
+    const words = fold(q).split(' ').filter(Boolean).slice(0, 6);
+    if (!words.length) return null;
+    return (n) => {
+      const hay = fold(n.title) + ' ' + fold(n.desc) + ' ' + fold(n.source);
+      return words.every((w) => hay.indexOf(w) >= 0);
+    };
+  }
+  function initSearch() {
+    let t1 = 0, t2 = 0;
+    $('ai-search').addEventListener('input', (e) => {
+      clearTimeout(t1);
+      t1 = setTimeout(() => { aiQuery = e.target.value.trim().slice(0, 60); aiShown = 25; renderAi(); }, 200);
+    });
+    $('news-search').addEventListener('input', (e) => {
+      clearTimeout(t2);
+      t2 = setTimeout(() => { newsQuery = e.target.value.trim().slice(0, 60); newsShown = NEWS_STEP; renderNews(); }, 200);
     });
   }
 
@@ -2892,9 +2916,9 @@
     renderEvents();
     const list = $('news');
     const filter = FILTERS.find((f) => f.id === newsFilter);
-    const items = news.items.filter(filter.test);
+    const items = news.items.filter(filter.test).filter(matcher(newsQuery) || (() => true));
     list.textContent = '';
-    if (!items.length) list.appendChild(el('li', 'empty', 'Son 3 günde bu filtreye uyan haber yok.'));
+    if (!items.length) list.appendChild(el('li', 'empty', newsQuery ? 'Aramana uyan haber yok.' : 'Son 3 günde bu filtreye uyan haber yok.'));
     items.slice(0, newsShown).forEach((n) => {
       const li = el('li');
       const a = el('a');
@@ -3065,6 +3089,7 @@
   loadOzPerf();
   setInterval(() => { if (!document.hidden) loadOzPerf(); }, 300000);
   initTape();
+  initSearch();
   initDepth();
   initLq();
   renderTape();
