@@ -470,6 +470,28 @@
     <p class="hint events-note">Yalnızca BtcTurk'ün herkese açık piyasa verisini okur; hesabına bağlanmaz, emir vermez. "Global fiyata göre" Binance fiyatı × dolar kuru ile karşılaştırmadır. Hesaplayıcı, tutarın o anki emir defterinde piyasa emriyle hangi ortalama fiyattan dolacağını gösterir; komisyon dahil değildir ve defter sen emri girene kadar değişebilir.</p>
   </section>
 
+  <section class="panel" data-page="sinyal" aria-label="BtcTurk derinlik ve işlemler">
+    <div class="panel-head">
+      <h2>BtcTurk derinlik · RENDER/TL</h2>
+      <div class="tabs" id="dp-range" role="tablist" aria-label="Fiyat aralığı"></div>
+    </div>
+    <svg class="dp-svg" id="dp-svg" viewBox="0 0 300 120" preserveAspectRatio="none" role="img" aria-label="Emir defteri derinlik grafiği"></svg>
+    <div class="dp-axis"><span id="dp-lo">—</span><strong id="dp-mid">—</strong><span id="dp-hi">—</span></div>
+    <div class="dp-sum">
+      <div><span class="label">Alış tarafı</span><strong id="dp-bid">—</strong><small id="dp-bid-tl"></small></div>
+      <div><span class="label">Satış tarafı</span><strong id="dp-ask">—</strong><small id="dp-ask-tl"></small></div>
+    </div>
+    <div class="label dp-label">En büyük kademeler (duvarlar)</div>
+    <div class="dp-walls">
+      <ol id="dp-wall-bid"></ol>
+      <ol id="dp-wall-ask"></ol>
+    </div>
+    <div class="label dp-label">Son işlemler</div>
+    <div class="chips" id="tr-filters" role="tablist" aria-label="İşlem büyüklüğü"></div>
+    <ol class="lq-list tr-list" id="tr-list"><li class="empty">İşlemler bekleniyor…</li></ol>
+    <p class="hint events-note">Grafik, orta fiyatın seçili yüzde aralığındaki emirlerin birikimli miktarını gösterir: sol taraf alış emirleri, sağ taraf satış emirleri. Yüksek basamak o fiyatta büyük bir emir (duvar) olduğunu gösterir. Emirler her an geri çekilebilir; duvarın orada durması o fiyatın tutacağı anlamına gelmez. İşlemlerde "alış", emri veren tarafın alıcı olduğunu (satış emirlerinden aldığını) gösterir. Yalnızca BtcTurk'ün herkese açık verisidir; hesabına bağlanmaz.</p>
+  </section>
+
   <section class="panel" id="bk-panel" data-page="grafik" data-tab="kripto" aria-label="AI coin sepeti">
     <div class="panel-head">
       <h2>AI coin sepeti</h2>

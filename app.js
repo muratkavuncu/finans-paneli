@@ -1354,19 +1354,123 @@
   const bookSide = (rows, dir) => (Array.isArray(rows) ? rows : []).map((r) => ({ p: +r.P, a: +r.A }))
     .filter((r) => r.p > 0 && r.a > 0).sort((x, y) => dir * (x.p - y.p));
 
+  // ---------- BtcTurk derinlik grafiği ve son işlemler ----------
+  const DP_RANGES = [2, 5, 10];
+  const TR_FILTERS = [[0, 'Tümü'], [10000, '≥ ₺10 B'], [50000, '≥ ₺50 B'], [250000, '≥ ₺250 B']];
+  let dpRange = +load('fp.dpr', '5'), trMin = +load('fp.trm', '10000'), btkTrades = [];
+  if (!DP_RANGES.includes(dpRange)) dpRange = 5;
+  if (!TR_FILTERS.some((f) => f[0] === trMin)) trMin = 10000;
+
+  function btkAddTrades(items) {
+    (Array.isArray(items) ? items : [items]).forEach((x) => {
+      const p = +x.P, a = +x.A, t = +x.D;
+      if (!(p > 0) || !(a > 0) || !(t > 0) || btkTrades.some((y) => y.i === String(x.I))) return;
+      btkTrades.push({ i: String(x.I), t, p, a, buy: +x.S === 0 });
+    });
+    btkTrades.sort((x, y) => y.t - x.t);
+    if (btkTrades.length > 300) btkTrades.length = 300;
+  }
+
+  function btkDepth() {
+    const svg = $('dp-svg');
+    if (!btkBook || !btkBook.bids.length || !btkBook.asks.length) return;
+    const mid = (btkBook.bids[0].p + btkBook.asks[0].p) / 2;
+    const lo = mid * (1 - dpRange / 100), hi = mid * (1 + dpRange / 100);
+    const bids = btkBook.bids.filter((r) => r.p >= lo), asks = btkBook.asks.filter((r) => r.p <= hi);
+    const sum = (rows) => rows.reduce((s, r) => s + r.a, 0);
+    const sumTl = (rows) => rows.reduce((s, r) => s + r.a * r.p, 0);
+    const max = Math.max(sum(bids), sum(asks), 1e-9);
+    const x = (p) => ((p - lo) / (hi - lo) * 300).toFixed(1);
+    const y = (v) => (116 - v / max * 108).toFixed(1);
+    const area = (rows, edge) => {
+      if (!rows.length) return '';
+      let cum = 0, d = 'M' + x(rows[0].p) + ' 116';
+      rows.forEach((r) => { d += 'L' + x(r.p) + ' ' + y(cum); cum += r.a; d += 'L' + x(r.p) + ' ' + y(cum); });
+      return d + 'L' + x(edge) + ' ' + y(cum) + 'L' + x(edge) + ' 116Z';
+    };
+    svg.innerHTML = '<path d="' + area(bids, lo) + '" class="dp-bid"/><path d="' + area(asks, hi) + '" class="dp-ask"/>'
+      + '<line x1="150" x2="150" y1="0" y2="116" class="dp-midline" vector-effect="non-scaling-stroke"/>'; // yalnızca sayılardan üretilir
+    $('dp-lo').textContent = tl(lo);
+    $('dp-hi').textContent = tl(hi);
+    $('dp-mid').textContent = 'orta ' + tl(mid) + ' · ±%' + dpRange;
+    $('dp-bid').textContent = NF[0].format(sum(bids)) + ' RENDER';
+    $('dp-ask').textContent = NF[0].format(sum(asks)) + ' RENDER';
+    $('dp-bid-tl').textContent = '≈ ' + tl(sumTl(bids), 0) + ' · ' + bids.length + ' kademe';
+    $('dp-ask-tl').textContent = '≈ ' + tl(sumTl(asks), 0) + ' · ' + asks.length + ' kademe';
+    [['dp-wall-bid', bids], ['dp-wall-ask', asks]].forEach((w) => {
+      const box = $(w[0]);
+      box.textContent = '';
+      w[1].slice().sort((a, b) => b.a - a.a).slice(0, 3).forEach((r) => {
+        const li = el('li');
+        li.appendChild(el('strong', '', tl(r.p)));
+        li.appendChild(el('span', '', NF[0].format(r.a) + ' RENDER · ' + tl(r.a * r.p, 0) + ' · %' + NF[1].format(Math.abs(r.p / mid - 1) * 100) + ' uzakta'));
+        box.appendChild(li);
+      });
+    });
+  }
+
+  function btkTradesRender() {
+    const list = $('tr-list');
+    list.textContent = '';
+    const rows = btkTrades.filter((r) => r.p * r.a >= trMin).slice(0, 25);
+    if (!rows.length) { list.appendChild(el('li', 'empty', btkTrades.length ? 'Bu büyüklükte işlem yok; süzgeci küçült.' : 'İşlemler bekleniyor…')); return; }
+    rows.forEach((r) => {
+      const li = el('li', r.buy ? 'short' : 'long');
+      li.appendChild(el('time', '', new Date(r.t).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })));
+      li.appendChild(el('strong', '', tl(r.p)));
+      li.appendChild(el('span', 'lq-side', (r.buy ? 'alış' : 'satış') + ' · ' + NF[r.a >= 100 ? 0 : 2].format(r.a)));
+      li.appendChild(el('span', 'lq-usd', tl(r.p * r.a, 0)));
+      list.appendChild(li);
+    });
+  }
+
+  function initDepth() {
+    const rb = $('dp-range');
+    DP_RANGES.forEach((d) => {
+      const b = el('button', '', '±%' + d);
+      b.type = 'button';
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-selected', String(d === dpRange));
+      b.addEventListener('click', () => {
+        dpRange = d;
+        save('fp.dpr', String(d));
+        rb.querySelectorAll('button').forEach((z) => z.setAttribute('aria-selected', String(z === b)));
+        btkDepth();
+      });
+      rb.appendChild(b);
+    });
+    const fb = $('tr-filters');
+    TR_FILTERS.forEach((f) => {
+      const b = el('button', '', f[1]);
+      b.type = 'button';
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-selected', String(f[0] === trMin));
+      b.addEventListener('click', () => {
+        trMin = f[0];
+        save('fp.trm', String(f[0]));
+        fb.querySelectorAll('button').forEach((z) => z.setAttribute('aria-selected', String(z === b)));
+        btkTradesRender();
+      });
+      fb.appendChild(b);
+    });
+  }
+
   function btkConnect() {
     if (btk || document.hidden) return;
     let sock;
     try { sock = new WebSocket(BTK_WS); } catch (err) { return; }
     btk = sock;
     sock.onopen = () => {
-      ['ticker', 'orderbook'].forEach((ch) => sock.send(JSON.stringify([151, { type: 151, channel: ch, event: BTK_PAIR, join: true }])));
+      ['ticker', 'orderbook', 'trade'].forEach((ch) => sock.send(JSON.stringify([151, { type: 151, channel: ch, event: BTK_PAIR, join: true }])));
     };
     sock.onmessage = (ev) => {
       let d;
       try { d = JSON.parse(ev.data); } catch (err) { return; }
-      if (!Array.isArray(d) || !d[1] || d[1].PS !== BTK_PAIR) return;
-      if (d[0] === 402) btkTick = d[1];
+      if (!Array.isArray(d) || !d[1]) return;
+      if (d[0] === 421 && d[1].symbol === BTK_PAIR) btkAddTrades(d[1].items);
+      else if (d[1].PS !== BTK_PAIR) return;
+      else if (d[0] === 422) btkAddTrades(d[1]);
+      else if (d[0] === 402) btkTick = d[1];
       else if (d[0] === 431) btkBook = { asks: bookSide(d[1].AO, 1), bids: bookSide(d[1].BO, -1) };
       else return;
       btkLast = Date.now();
@@ -1398,6 +1502,7 @@
     }
     btkCalc();
     renderOzet();
+    if (page === 'sinyal') { btkDepth(); btkTradesRender(); }
   }
 
   // Yazılan tutar canlı emir defterinde yürütülseydi ortalama hangi fiyattan dolardı
@@ -2382,6 +2487,7 @@
     window.scrollTo(0, 0);
     if (p === 'ai') { renderAi(); loadAiData(); }
     if (p === 'grafik') { loadBasket(); renderWatchTable(); lq.dirty = true; lqRender(); }
+    if (p === 'sinyal') { btkDepth(); btkTradesRender(); }
   }
   function initNav() {
     document.querySelectorAll('[data-go]').forEach((b) => {
@@ -2918,6 +3024,7 @@
   loadOzPerf();
   setInterval(() => { if (!document.hidden) loadOzPerf(); }, 300000);
   initTape();
+  initDepth();
   initLq();
   renderTape();
   setInterval(renderTape, 2000);

@@ -721,3 +721,24 @@ i.cmp-b { background: var(--series-2); }
 .oz-ta-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .oz-fng-line b { color: var(--fg); }
 .oz-tile .oz-fng-line { white-space: normal; overflow: visible; }
+
+/* ---------- BtcTurk derinlik ve işlemler ---------- */
+.dp-svg { display: block; width: 100%; height: 150px; }
+.dp-bid { fill: var(--up-soft); stroke: var(--up); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.dp-ask { fill: var(--down-soft); stroke: var(--down); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.dp-midline { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
+.dp-axis { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--muted); margin-top: 4px; }
+.dp-axis strong { color: var(--fg); font-weight: 600; }
+.dp-sum { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+.dp-sum div { display: grid; gap: 2px; background: var(--surface-2); border-radius: 12px; padding: 10px 12px; min-width: 0; }
+.dp-sum strong { font-family: var(--font-display); font-size: 16px; }
+.dp-sum div:first-child strong { color: var(--up); }
+.dp-sum div:last-child strong { color: var(--down); }
+.dp-sum small { color: var(--muted); font-size: 12px; }
+.dp-label { margin: 14px 0 6px; }
+.dp-walls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.dp-walls ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; align-content: start; }
+.dp-walls li { display: grid; gap: 1px; padding: 8px 10px; border-radius: 10px; background: var(--surface-2); font-size: 12px; color: var(--muted); min-width: 0; }
+.dp-walls li strong { font-size: 14px; color: var(--fg); }
+#dp-wall-bid li { box-shadow: inset 2px 0 0 var(--up); }
+#dp-wall-ask li { box-shadow: inset 2px 0 0 var(--down); }
