@@ -1465,7 +1465,8 @@
     { id: 'genel', label: 'Genel', test: (n) => n.topic === 'genel' },
   ];
   let aiFilter = load('fp.aif', 'all');
-  if (!AI_FILTERS.some((f) => f.id === aiFilter)) aiFilter = 'all';
+  // Kaydedilenler süzgeci açılışta hatırlanmaz: liste boşsa gündem boş görünürdü
+  if (!AI_FILTERS.some((f) => f.id === aiFilter) || aiFilter === 'saved') aiFilter = 'all';
   let aiShown = 25;
   const aiSeen = +load('fp.aiSeen', '0') || 0;
   let aiSub = load('fp.aisub', 'gundem');
@@ -1482,7 +1483,7 @@
   const isSaved = (id) => saved.some((x) => x.id === id);
   function toggleSaved(n) {
     if (isSaved(n.id)) saved = saved.filter((x) => x.id !== n.id);
-    else saved.unshift({ id: n.id, title: String(n.title).slice(0, 240), url: n.url, source: n.source, ts: n.ts, topic: n.topic, kind: n.kind, official: !!n.official, n: n.n || 1 });
+    else saved.unshift({ id: n.id, title: String(n.title).slice(0, 240), url: n.url, source: n.source, ts: n.ts, topic: n.topic, kind: n.kind, official: !!n.official, n: n.n || 1, desc: String(n.desc || '').slice(0, 200) });
     saved = saved.slice(0, 100);
     save('fp.saved', JSON.stringify(saved));
   }
@@ -1671,6 +1672,7 @@
       if (aiSeen && n.ts > aiSeen) meta.appendChild(el('span', 'badge-new', 'YENİ'));
       body.appendChild(meta);
       body.appendChild(el('span', 'n-title', n.title));
+      if (n.desc) body.appendChild(el('span', 'n-desc', String(n.desc).slice(0, 200)));
       const tags = el('span', 'n-tags');
       tags.appendChild(el('span', n.topic === 'model' || n.topic === 'benchmark' ? 'hot' : '', AI_TOPICS[n.topic] || 'AI'));
       (n.also || []).slice(0, 3).forEach((s) => tags.appendChild(el('span', '', 'ayrıca ' + s)));
@@ -2760,6 +2762,7 @@
       if (seenBefore && n.ts > seenBefore) meta.appendChild(el('span', 'badge-new', 'YENİ'));
       body.appendChild(meta);
       body.appendChild(el('span', 'n-title', n.title));
+      if (n.desc) body.appendChild(el('span', 'n-desc', String(n.desc).slice(0, 200)));
       if (n.hot || n.tags.length) {
         const tags = el('span', 'n-tags');
         if (n.hot) tags.appendChild(el('span', 'hot', 'Önemli'));

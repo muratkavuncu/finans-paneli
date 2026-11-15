@@ -199,6 +199,25 @@ def parse_date(text):
         return None
 
 
+EXCERPT_MAX = 180
+
+
+def excerpt(text, title):
+    """Yayincinin akista verdigi kisa aciklamadan en fazla bir iki cumle. Tam metin alinmaz."""
+    text = re.sub(r"<[^>]+>", " ", str(text or ""))
+    text = re.sub(r"\s+", " ", html.unescape(text)).strip()
+    text = re.sub(r"\s*(The post .* appeared first on .*|Continue reading.*|Read more.*|\[…\]|\[\.\.\.\])\s*$", "", text).strip()
+    if len(text) < 40 or text.lower().startswith(title.lower()[:60]):
+        return ""
+    if len(text) <= EXCERPT_MAX:
+        return text
+    cut = text[:EXCERPT_MAX]
+    end = max(cut.rfind(". "), cut.rfind("! "), cut.rfind("? "))
+    if end >= 80:
+        return cut[:end + 1]
+    return cut[:cut.rfind(" ")].rstrip(",;:- ") + "…"
+
+
 def parse_feed(raw):
     # Varlık tanımı içeren XML işlenmez (bellek şişirme saldırılarına karşı)
     if b"<!ENTITY" in raw or b"<!entity" in raw:
@@ -207,7 +226,7 @@ def parse_feed(raw):
     for node in root.iter():
         if local(node.tag) not in ("item", "entry"):
             continue
-        title = link = date = None
+        title = link = date = desc = None
         for child in node:
             name = local(child.tag)
             if name == "title" and title is None:
@@ -219,8 +238,10 @@ def parse_feed(raw):
                 link = (href or child.text or "").strip()
             elif name in ("pubDate", "published", "updated", "date") and date is None:
                 date = parse_date(child.text)
+            elif name in ("description", "summary") and desc is None:
+                desc = (child.text or "")[:4000]  # "content" (tam metin) bilerek okunmaz
         if title and link and re.match(r"https?://[^\s\"'<>]+$", link):
-            yield title, link, date
+            yield title, link, date, excerpt(desc, title)
 
 
 def classify(title):
@@ -238,7 +259,7 @@ def read_feed(feed):
     name, url, cat, lang, tier, outlet = feed
     now = time.time()
     items = []
-    for title, link, ts in parse_feed(fetch(url)):
+    for title, link, ts, desc in parse_feed(fetch(url)):
         ts = min(ts or now, now)
         if SKIP_RE.search(title):
             continue  # tahmin, tanıtım ve sponsorlu içerik haber sayılmaz
@@ -259,6 +280,7 @@ def read_feed(feed):
             "tags": tags,
             "sent": sent,
             "hot": hot,
+            "desc": desc,
         })
     return items
 
@@ -356,12 +378,12 @@ def read_ai_feed(feed):
     name, url, kind = feed
     now = time.time()
     items = []
-    for title, link, ts in parse_feed(fetch(url)):
+    for title, link, ts, desc in parse_feed(fetch(url)):
         ts = min(ts or now, now)
         if now - ts > AI_MAX_AGE or SKIP_RE.search(title):
             continue
         items.append({"id": hashlib.sha1(link.encode("utf-8")).hexdigest()[:12], "title": title[:240], "url": link,
-                      "source": name, "kind": kind, "official": kind == "resmi", "ts": int(ts), "topic": ai_topic(title), "n": 1})
+                      "source": name, "kind": kind, "official": kind == "resmi", "ts": int(ts), "topic": ai_topic(title), "n": 1, "desc": desc})
     return items
 
 
