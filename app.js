@@ -1765,8 +1765,6 @@
     $('oz-sig').textContent = pilot.in ? 'İçeride' : 'Dışarıda';
     $('oz-sig').className = 'value ' + (pilot.in ? 'pos' : '');
     $('oz-sig-sub').textContent = s ? 'yeni sinyal: ' + s.side : pilot.in && pilot.open ? 'açık işlem ' + fmtPct(pilot.open.ret) : pilot.name;
-    ozVotes.sig = pilot.in ? 1 : -1;
-    renderGauge();
   }
 
   async function loadSignals() {
@@ -1834,37 +1832,24 @@
     }
   }
 
-  // RENDER ibresi: her işaret bir oy (+1 alış yönü, -1 satış yönü, 0 nötr). Ağırlık yok, yalnızca sayım.
-  const ozVotes = { ta: null, sig: null, news: null };
-  function renderGauge() {
-    const votes = (ozVotes.ta || []).concat(ozVotes.sig == null ? [] : [ozVotes.sig], ozVotes.news == null ? [] : [ozVotes.news]);
-    if (!ozVotes.ta || !votes.length) return;
-    const up = votes.filter((x) => x > 0).length, dn = votes.filter((x) => x < 0).length;
-    const score = (up - dn) / votes.length;
-    const lab = $('oz-g-label');
-    lab.textContent = score >= 0.6 ? 'Güçlü alış yönü' : score >= 0.25 ? 'Alış yönü' : score <= -0.6 ? 'Güçlü satış yönü' : score <= -0.25 ? 'Satış yönü' : 'Nötr';
-    lab.className = score >= 0.25 ? 'pos' : score <= -0.25 ? 'neg' : '';
-    $('oz-g-sub').textContent = up + ' alış · ' + dn + ' satış · ' + (votes.length - up - dn) + ' nötr';
-    $('oz-needle').style.transform = 'rotate(' + (score * 80).toFixed(1) + 'deg)';
-  }
-
   // RENDER'ın 4 saatlik mumlarından işaret sayımı; "Teknik görünüm" kartındaki sayımla aynı kurallar
   async function loadOzTa() {
     try {
       const rows = await binance('/api/v3/klines?symbol=RENDERUSDT&interval=4h&limit=400');
       const t = computeTA(rows.map((r) => toCandle(r[0], r[1], r[2], r[3], r[4])));
       const sg = [];
-      if (t.e50 != null) sg.push(t.price > t.e20 && t.e20 > t.e50 ? 1 : t.price < t.e20 && t.e20 < t.e50 ? -1 : 0);
-      if (t.rsi != null) sg.push(t.rsi >= 55 ? 1 : t.rsi <= 45 ? -1 : 0);
-      if (t.hist != null) sg.push(t.hist > 0 ? 1 : t.hist < 0 ? -1 : 0);
-      if (t.e200 != null) sg.push(t.price > t.e200 ? 1 : -1);
-      const up = sg.filter((x) => x > 0).length, dn = sg.filter((x) => x < 0).length;
+      if (t.e50 != null) sg.push(['Trend', t.price > t.e20 && t.e20 > t.e50 ? 1 : t.price < t.e20 && t.e20 < t.e50 ? -1 : 0]);
+      if (t.rsi != null) sg.push(['RSI ' + NF[0].format(t.rsi), t.rsi >= 55 ? 1 : t.rsi <= 45 ? -1 : 0]);
+      if (t.hist != null) sg.push(['MACD', t.hist > 0 ? 1 : t.hist < 0 ? -1 : 0]);
+      if (t.e200 != null) sg.push(['EMA 200', t.price > t.e200 ? 1 : -1]);
+      const up = sg.filter((x) => x[1] > 0).length, dn = sg.filter((x) => x[1] < 0).length;
       const v = $('oz-ta');
       v.textContent = up - dn >= 2 ? 'Yukarı' : dn - up >= 2 ? 'Aşağı' : 'Karışık';
       v.className = 'value ' + (up - dn >= 2 ? 'pos' : dn - up >= 2 ? 'neg' : '');
-      $('oz-ta-sub').textContent = up + ' yukarı · ' + dn + ' aşağı' + (t.rsi != null ? ' · RSI ' + NF[0].format(t.rsi) : '');
-      ozVotes.ta = sg;
-      renderGauge();
+      $('oz-ta-sub').textContent = up + ' yukarı · ' + dn + ' aşağı';
+      const pips = $('oz-pips');
+      pips.textContent = '';
+      sg.forEach((x) => pips.appendChild(el('span', 'ta-pip ' + (x[1] > 0 ? 'up' : x[1] < 0 ? 'dn' : 'flat'), (x[1] > 0 ? '▲ ' : x[1] < 0 ? '▼ ' : '• ') + x[0])));
     } catch (err) { /* bir sonraki turda yeniden denenir */ }
   }
 
@@ -1872,13 +1857,6 @@
     const box = $('oz-events');
     box.textContent = '';
     const now = Date.now() / 1000;
-    // İbrenin haber oyu: son 48 saatteki RENDER haberlerinin olumlu/olumsuz dengesi
-    const rn = (news.items || []).filter((n) => now - n.ts < 172800 && (n.tags || []).includes('RENDER'));
-    const bal = rn.reduce((s, n) => s + (n.sent > 0 ? 1 : n.sent < 0 ? -1 : 0), 0);
-    ozVotes.news = rn.length ? Math.sign(bal) : null;
-    $('oz-g-note').textContent = 'İbre bir işaret sayımıdır: 4 saatlik teknik göstergeler, sinyal pilotu ve son 48 saatin RENDER haberleri ('
-      + (rn.length ? rn.length + ' haber' : 'haber yok, sayılmadı') + '). Tavsiye değildir.';
-    renderGauge();
     const isR = (e) => (e.assets || []).includes('RENDER') || (e.tags || []).includes('RENDER');
     const list = (news.events || []).filter((e) => now - e.ts < 86400)
       .sort((a, b) => (isR(b) - isR(a)) || (b.score - a.score)).slice(0, 3);

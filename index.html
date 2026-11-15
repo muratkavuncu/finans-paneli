@@ -41,26 +41,8 @@
         <span class="oz-row"><span class="oz-price" id="oz-price">—</span><span class="chip" id="oz-pct">—</span></span>
         <span class="oz-sub"><span id="oz-tl">BtcTurk —</span><span id="oz-vs">BTC'ye göre —</span></span>
       </span>
-      <span class="oz-gauge">
-        <svg viewBox="0 0 120 70" aria-hidden="true">
-          <defs>
-            <linearGradient id="oz-grad" gradientUnits="userSpaceOnUse" x1="10" y1="0" x2="110" y2="0">
-              <stop offset="0" stop-color="var(--down)"/>
-              <stop offset=".5" stop-color="var(--muted)"/>
-              <stop offset="1" stop-color="var(--up)"/>
-            </linearGradient>
-          </defs>
-          <path d="M10 60 A50 50 0 0 1 110 60" fill="none" stroke="url(#oz-grad)" stroke-width="9" stroke-linecap="round"/>
-          <g id="oz-needle" style="transform: rotate(0deg)">
-            <line x1="60" y1="60" x2="60" y2="22" stroke="var(--fg)" stroke-width="3" stroke-linecap="round"/>
-          </g>
-          <circle cx="60" cy="60" r="5" fill="var(--fg)"/>
-        </svg>
-        <strong id="oz-g-label">—</strong>
-        <span id="oz-g-sub">hesaplanıyor…</span>
-      </span>
     </button>
-    <p class="hint oz-note" id="oz-g-note">İbre bir işaret sayımıdır: 4 saatlik teknik göstergeler, sinyal pilotu ve son 48 saatin RENDER haberleri. Tavsiye değildir.</p>
+    <div class="ta-pips oz-pips" id="oz-pips"></div>
     <div class="oz-grid">
       <button type="button" class="stat oz-tile" data-go="sinyal">
         <span class="label">Sinyal pilotu</span>
