@@ -762,3 +762,23 @@ i.cmp-b { background: var(--series-2); }
 }
 .search::placeholder { color: var(--muted); }
 .search:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* ---------- GitHub kısayolları ---------- */
+.gh-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 4px; }
+.gh-label { margin-top: 14px; }
+.gh-chip {
+  display: inline-flex; align-items: center; min-height: 36px; padding: 6px 12px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--surface-2); color: var(--fg); text-decoration: none; font-size: 13px; font-weight: 600; white-space: nowrap;
+}
+.gh-chip.star { color: var(--accent); }
+.gh-topics { list-style: none; margin: 6px 0 0; padding: 0; }
+.gh-topics li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
+.gh-topics li:first-child { border-top: 0; }
+.gh-name { display: grid; gap: 1px; min-width: 0; }
+.gh-name strong { font-size: 13.5px; }
+.gh-name small { color: var(--muted); font-size: 11.5px; overflow-wrap: anywhere; }
+@media (max-width: 400px) {
+  .gh-topics li { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .gh-name { grid-column: 1 / -1; }
+  .gh-chip { justify-content: center; }
+}
