@@ -2482,6 +2482,7 @@
       });
     $('ai-toprepos-more').hidden = tr.length <= topShown;
     renderOzAi();
+    renderQuote();
     renderArena();
     renderTimeline();
     renderCompare();
@@ -3142,6 +3143,17 @@
     ["İnsanın karakteri, onun kaderidir.", "Herakleitos · Fragman B119 · Yunan"],
   ];
   function renderQuote() {
+    const w = aiData && aiData.quote;
+    if (w && typeof w.text === 'string' && w.text && typeof w.by === 'string') {
+      $('oz-quote').textContent = '“' + w.text.slice(0, 420) + '”';
+      const by = $('oz-quote-by');
+      by.textContent = w.by.slice(0, 80) + ' · ';
+      const a = el('a', '', 'Vikisöz');
+      const u = safeUrl(w.url, 'tr.wikiquote.org');
+      if (u) { a.href = u; a.target = '_blank'; a.rel = 'noopener noreferrer'; by.appendChild(a); } else by.appendChild(el('span', '', 'Vikisöz'));
+      return;
+    }
+    // Veri gelmezse yedek liste
     const d = new Date();
     const day = Math.floor((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - Date.UTC(2026, 0, 1)) / 86400000);
     const q = QUOTES[((day % QUOTES.length) + QUOTES.length) % QUOTES.length];

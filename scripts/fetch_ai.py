@@ -14,6 +14,7 @@ import os
 import re
 import sys
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -231,8 +232,62 @@ def arena():
     return out
 
 
+# ---------- Günün sözü (Vikisöz, CC BY-SA). Daha önce gösterilen söz tekrar gösterilmez. ----------
+PREV = {}
+WQ = "https://tr.wikiquote.org/w/index.php?action=raw&title="
+
+
+def wiki_plain(t):
+    t = re.sub(r"\{\{[^{}]*\}\}", "", t)
+    t = re.sub(r"\[\[(?:[^\]|]*\|)?([^\]]*)\]\]", r"\1", t)
+    t = re.sub(r"\[https?://\S+ ([^\]]*)\]", r"\1", t)
+    t = re.sub(r"<[^>]*>|'{2,}", "", t)
+    return clean(t, 600)
+
+
+def quote_for(day):
+    title = "Vikisöz:Günün sözü/" + day
+    req = urllib.request.Request(WQ + urllib.parse.quote(title.replace(" ", "_")), headers={"User-Agent": UA})
+    try:
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            wt = resp.read(65536).decode("utf-8", "replace")
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            return None
+        raise
+    m = re.search(r"\|\s*söz\s*=(.*?)(?=\n\s*\||\n\}\})", wt, re.S)
+    b = re.search(r"\|\s*söyleyen\s*=(.*?)(?=\n\s*\||\n\}\})", wt, re.S)
+    text, by = wiki_plain(m.group(1)) if m else "", wiki_plain(b.group(1))[:80] if b else ""
+    if not (8 <= len(text) <= 420) or not by or BAD.search(text):
+        return None
+    return {"text": text, "by": by, "url": "https://tr.wikiquote.org/wiki/" + urllib.parse.quote(title.replace(" ", "_"))}
+
+
+def quote():
+    old = PREV.get("quote") if isinstance(PREV.get("quote"), dict) else {}
+    today = time.strftime("%Y/%m/%d", time.gmtime(time.time() + 3 * 3600))  # Türkiye saati
+    if old.get("date") == today and old.get("text"):
+        return old
+    seen = [s for s in old.get("seen", []) if isinstance(s, str)][-3000:]
+    key = lambda q: re.sub(r"\W+", "", q["text"].lower())[:80]
+    days = [today]
+    import random
+    start, now = time.mktime((2020, 1, 1, 0, 0, 0, 0, 0, -1)), time.time()
+    days += [time.strftime("%Y/%m/%d", time.gmtime(random.uniform(start, now - 86400))) for _ in range(8)]
+    for day in days:  # bugünün sözü daha önce gösterildiyse arşivden gösterilmemiş bir söz seçilir
+        time.sleep(1)  # Vikisöz çok sık istekte 429 döndürüyor
+        try:
+            q = quote_for(day)
+        except Exception as exc:
+            print("HATA soz", day, repr(exc)[:80], file=sys.stderr)
+            continue
+        if q and key(q) not in seen:
+            return dict(q, date=today, seen=seen + [key(q)])
+    raise ValueError("yeni soz bulunamadi")
+
+
 SECTIONS = [("models", new_models), ("hf_models", lambda: hf_list("models")), ("spaces", lambda: hf_list("spaces")),
-            ("papers", papers), ("repos", repos), ("showhn", show_hn), ("arena", arena), ("catalog", catalog), ("releases", releases), ("top_repos", top_repos)]
+            ("papers", papers), ("repos", repos), ("showhn", show_hn), ("arena", arena), ("catalog", catalog), ("releases", releases), ("top_repos", top_repos), ("quote", quote)]
 
 
 def main():
@@ -244,6 +299,7 @@ def main():
                 prev = json.load(fh)
     except Exception:
         prev = {}
+    PREV.update(prev)
     out = prev
     if time.time() - prev.get("updated", 0) > MAX_AGE or any(k not in prev for k, _ in SECTIONS):
         out, errors = {}, []
