@@ -782,3 +782,8 @@ i.cmp-b { background: var(--series-2); }
   .gh-name { grid-column: 1 / -1; }
   .gh-chip { justify-content: center; }
 }
+
+/* ---------- Günün sözü ---------- */
+.oz-quote { margin: 0; }
+.oz-quote blockquote { margin: 6px 0 6px; font-family: var(--font-display); font-size: 16px; line-height: 1.45; color: var(--fg); }
+.oz-quote figcaption { color: var(--muted); font-size: 12.5px; }

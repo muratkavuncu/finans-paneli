@@ -3111,6 +3111,44 @@
   }
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { loadNews(); loadMarkets(); } });
 
+  // ---------- Günün sözü: sabit, kaynağı belli liste; her gün sıradaki ----------
+  const QUOTES = [
+    ["Öğrenip de düşünmeyen boşa çalışır; düşünüp de öğrenmeyen tehlikededir.", "Konfüçyüs · Analektler 2.15 · Çin"],
+    ["Bin millik yolculuk tek bir adımla başlar.", "Laozi · Tao Te Ching 64 · Çin"],
+    ["Her şey başkasınındır; yalnızca zaman bizimdir.", "Seneca · Lucilius'a Mektuplar 1 · Roma"],
+    ["İşe engel olan, işi ilerletir; yolda duran, yol olur.", "Marcus Aurelius · Kendime Düşünceler 5.20 · Roma"],
+    ["Bazı şeyler bizim elimizdedir, bazıları değildir.", "Epiktetos · Enkheiridion 1 · Yunan"],
+    ["Aynı ırmağa iki kez girilmez.", "Herakleitos · Platon'un aktarımıyla · Yunan"],
+    ["Sorgulanmamış bir hayat yaşanmaya değmez.", "Sokrates · Platon, Sokrates'in Savunması 38a · Yunan"],
+    ["Gelin tanış olalım, işi kolay kılalım; sevelim sevilelim, dünya kimseye kalmaz.", "Yunus Emre · Anadolu"],
+    ["Düşmanını ve kendini tanırsan, yüz savaşta bile tehlikeye düşmezsin.", "Sun Tzu · Savaş Sanatı 3 · Çin"],
+    ["Yedi kez düş, sekiz kez kalk.", "Japon atasözü"],
+    ["Damlaya damlaya göl olur.", "Türk atasözü"],
+    ["Bir kırlangıçla bahar gelmez.", "Aristoteles · Nikomakhos'a Etik I.7 · Yunan"],
+    ["Günü yakala, yarına olabildiğince az güven.", "Horatius · Odlar I.11 · Roma"],
+    ["Hayat kısa, sanat uzun.", "Hipokrat · Aforizmalar 1.1 · Yunan"],
+    ["Bize kısa bir ömür verilmedi; biz onu kısaltıyoruz.", "Seneca · Hayatın Kısalığı Üzerine 1 · Roma"],
+    ["Kendine yapılmasını istemediğini başkasına yapma.", "Konfüçyüs · Analektler 15.24 · Çin"],
+    ["Başkalarını bilen bilgedir; kendini bilen aydınlanmıştır.", "Laozi · Tao Te Ching 33 · Çin"],
+    ["Kalbin, aklın bilmediği sebepleri vardır.", "Blaise Pascal · Düşünceler · Fransa"],
+    ["Bütün yüce şeyler, zor oldukları kadar nadirdir.", "Baruch Spinoza · Etika V · Hollanda"],
+    ["Yalnızca eyleme hakkın var, meyvelerine asla.", "Bhagavad Gita 2.47 · Hindistan"],
+    ["Âdemoğulları birbirinin uzuvlarıdır; çünkü yaratılışta aynı özdendirler.", "Sadi Şirazi · Gülistan · İran"],
+    ["Sapere aude: kendi aklını kullanma cesaretini göster.", "Immanuel Kant · Aydınlanma Nedir? · Almanya"],
+    ["Sakla samanı, gelir zamanı.", "Türk atasözü"],
+    ["Maymun bile ağaçtan düşer.", "Japon atasözü"],
+    ["Yavaş yavaş acele et.", "Augustus · Suetonius'un aktarımıyla · Roma"],
+    ["Hayatta en hakiki mürşit ilimdir.", "Mustafa Kemal Atatürk · Samsun konuşması, 1924"],
+    ["İnsanın karakteri, onun kaderidir.", "Herakleitos · Fragman B119 · Yunan"],
+  ];
+  function renderQuote() {
+    const d = new Date();
+    const day = Math.floor((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - Date.UTC(2026, 0, 1)) / 86400000);
+    const q = QUOTES[((day % QUOTES.length) + QUOTES.length) % QUOTES.length];
+    $('oz-quote').textContent = '“' + q[0] + '”';
+    $('oz-quote-by').textContent = q[1];
+  }
+
   // ---------- Başlat ----------
   // Her adım ayrı çalışır: bir bölüm hata verirse (ör. eksik öğe) geri kalan panel yine açılır
   const safe = (fn) => { try { fn(); } catch (err) { if (window.console) console.error('Başlatma hatası:', fn.name, err); } };
@@ -3153,6 +3191,7 @@
   safe(initFold);
   safe(initHelp);
   safe(initNav);
+  safe(renderQuote);
   safe(initModels);
   safe(initBasket);
   safe(loadAiData);
