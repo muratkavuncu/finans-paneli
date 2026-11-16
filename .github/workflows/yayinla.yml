@@ -103,6 +103,11 @@ jobs:
           test -s data/signals.json || curl -fsS "$SITE/signals.json" -o data/signals.json || echo '{}' > data/signals.json
           cp data/signals.json _site/data/
           cp index.html style.css app.js _site/
+          # Sürüm damgası: sayfa, kod ve stil aynı commit kimliğini taşır; önbellekten karışık sürüm gelmesini önler
+          SV="${GITHUB_SHA::12}"
+          sed -i "s|href=\"style.css\"|href=\"style.css?v=$SV\"|; s|src=\"app.js\"|src=\"app.js?v=$SV\"|; s|<meta charset=\"utf-8\">|<meta charset=\"utf-8\">\n<meta name=\"fp-build\" content=\"$SV\">|" _site/index.html
+          sed -i "s|const BUILD = 'dev';|const BUILD = '$SV';|" _site/app.js
+          grep -q "fp-build\" content=\"$SV\"" _site/index.html && grep -q "app.js?v=$SV" _site/index.html && grep -q "const BUILD = '$SV';" _site/app.js
           test -s data/daily.json || curl -fsS "$SITE/daily.json" -o data/daily.json || echo '{"updated":0,"symbols":{}}' > data/daily.json
           cp data/daily.json _site/data/
           cp data/news.json data/markets.json data/events_log.json data/notify_state.json _site/data/

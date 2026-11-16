@@ -1,6 +1,22 @@
 (() => {
   'use strict';
 
+  // ---------- Sürüm uyumu ----------
+  // Yayında BUILD ve sayfadaki fp-build etiketi aynı commit kimliğiyle damgalanır. Telefon önbelleğinden eski sayfa ile
+  // yeni kod (ya da tersi) gelirse ikisi tutmaz: önbelleği atlayarak dosyaları yeniden indirip bir kez yeniler.
+  const BUILD = 'dev';
+  (function checkBuild() {
+    const m = document.querySelector('meta[name="fp-build"]');
+    const want = m && m.content;
+    if (BUILD === 'dev' || !want || want === BUILD) return;
+    try {
+      if (sessionStorage.getItem('fp.rl') === want + BUILD) return; // aynı uyumsuzlukta ikinci kez yenileme
+      sessionStorage.setItem('fp.rl', want + BUILD);
+    } catch (err) { return; }
+    Promise.all(['./', 'app.js', 'style.css'].map((u) => fetch(u, { cache: 'reload' }).catch(() => null)))
+      .then(() => location.reload());
+  })();
+
   // ---------- Ayarlar ----------
   const REST_HOSTS = ['https://api.binance.com', 'https://data-api.binance.vision'];
   const WS_HOSTS = ['wss://stream.binance.com:9443', 'wss://data-stream.binance.vision'];
@@ -3075,55 +3091,57 @@
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { loadNews(); loadMarkets(); } });
 
   // ---------- Başlat ----------
-  buildUI();
-  buildIndexCells();
-  initChart();
-  applyTab();
-  loadNews();
-  loadMarkets();
+  // Her adım ayrı çalışır: bir bölüm hata verirse (ör. eksik öğe) geri kalan panel yine açılır
+  const safe = (fn) => { try { fn(); } catch (err) { if (window.console) console.error('Başlatma hatası:', fn.name, err); } };
+  safe(buildUI);
+  safe(buildIndexCells);
+  safe(initChart);
+  safe(applyTab);
+  safe(loadNews);
+  safe(loadMarkets);
   setInterval(loadNews, 120000);
-  loadSignals();
+  safe(loadSignals);
   setInterval(loadSignals, 120000);
   setInterval(() => { if (page === 'ai' && !document.hidden) loadAiData(); }, 300000);
-  loadOzTa();
-  loadOzPerf();
+  safe(loadOzTa);
+  safe(loadOzPerf);
   setInterval(() => { if (!document.hidden) loadOzPerf(); }, 300000);
-  initTape();
-  initSearch();
-  initDepth();
-  initLq();
-  renderTape();
+  safe(initTape);
+  safe(initSearch);
+  safe(initDepth);
+  safe(initLq);
+  safe(renderTape);
   setInterval(renderTape, 2000);
-  renderWatchTable();
+  safe(renderWatchTable);
   setInterval(() => { if (page === 'grafik' && tab === 'kripto' && !document.hidden) renderWatchTable(); }, 4000);
   setInterval(() => { if (!document.hidden) loadOzTa(); }, 300000);
   setInterval(loadMarkets, 120000);
   setInterval(() => { renderNews(); renderCalendar(); renderNextEvent(); }, 60000);
   loadSnapshot().catch(() => {});
-  loadSparks();
-  loadFutures();
-  loadMA();
-  loadAltStrength();
+  safe(loadSparks);
+  safe(loadFutures);
+  safe(loadMA);
+  safe(loadAltStrength);
   setInterval(() => { if (!document.hidden && tab === 'kripto') loadFutures(); }, 60000);
   setInterval(loadMA, 1800000);
-  loadVsBtc();
+  safe(loadVsBtc);
   setInterval(loadVsBtc, 600000);
-  initBt();
-  initBtk();
-  initAi();
-  initFold();
-  initHelp();
-  initNav();
-  initModels();
-  initBasket();
-  loadAiData();
+  safe(initBt);
+  safe(initBtk);
+  safe(initAi);
+  safe(initFold);
+  safe(initHelp);
+  safe(initNav);
+  safe(initModels);
+  safe(initBasket);
+  safe(loadAiData);
   setInterval(() => { if (page === 'ozet' && !document.hidden) loadAiData(); }, 900000);
   if (page === 'grafik') loadBasket();
   setInterval(() => { if (page === 'grafik' && !document.hidden) loadBasket(); }, 600000);
   setInterval(loadAltStrength, 3600000);
-  connect();
-  loadGlobal();
-  loadFng();
+  safe(connect);
+  safe(loadGlobal);
+  safe(loadFng);
   setInterval(loadGlobal, 120000);
   setInterval(loadSparks, 300000);
   setInterval(loadFng, 1800000);
