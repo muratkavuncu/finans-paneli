@@ -1951,6 +1951,9 @@
   const shortName = (r) => (r.name.indexOf(':') > 0 ? r.name.slice(r.name.indexOf(':') + 1).trim() : r.name);
   const catalog = () => (aiData && Array.isArray(aiData.catalog) ? aiData.catalog.filter((r) => r && r.name && safeUrl(r.url, 'openrouter.ai')) : []);
   let tlOrg = '', tlShown = 15, topShown = 10;
+  const TOP_FILTERS = [['', 'Tümü'], ['ai-agents', 'Ajanlar'], ['mcp', 'MCP'], ['llm', 'LLM'], ['rag', 'RAG'], ['local-llm', 'Yerel modeller'], ['machine-learning', 'Makine öğrenmesi']];
+  let topFilter = load('fp.topf', '');
+  if (!TOP_FILTERS.some((f) => f[0] === topFilter)) topFilter = '';
 
   function barButton(label, count, max, pressed, i, onClick) {
     const b = el('button', 'ai-topic lab');
@@ -2085,6 +2088,21 @@
   function initModels() {
     $('tl-more').addEventListener('click', () => { tlShown += 15; renderTimeline(); });
     $('ai-toprepos-more').addEventListener('click', () => { topShown += 15; renderAiData(); });
+    const tf = $('top-filters');
+    TOP_FILTERS.forEach((f) => {
+      const b = el('button', '', f[1]);
+      b.type = 'button';
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-selected', String(f[0] === topFilter));
+      b.addEventListener('click', () => {
+        topFilter = f[0];
+        topShown = 10;
+        save('fp.topf', f[0]);
+        tf.querySelectorAll('button').forEach((z) => z.setAttribute('aria-selected', String(z === b)));
+        renderAiData();
+      });
+      tf.appendChild(b);
+    });
     $('cmp-a').addEventListener('change', (e) => { cmpA = e.target.value; save('fp.cmpa', cmpA); renderCompare(); });
     $('cmp-b').addEventListener('change', (e) => { cmpB = e.target.value; save('fp.cmpb', cmpB); renderCompare(); });
     document.querySelectorAll('#ai-subs button').forEach((b) => {
@@ -2448,7 +2466,10 @@
     aiRows('ai-papers', d.papers, 'huggingface.co', (r) => r.title, (r) => when(r) + '▲ ' + r.votes + ' oy · arXiv ' + r.id, (r) => r.votes);
     aiRows('ai-repos', d.repos, 'github.com', (r) => r.id + (r.desc ? ' — ' + r.desc : ''),
       (r) => '★ ' + compact(r.stars) + (r.lang ? ' · ' + r.lang : '') + (r.ts ? ' · ' + ago(r.ts) + ' açıldı' : ''), (r) => r.stars);
-    const tr = Array.isArray(d.top_repos) ? d.top_repos : [];
+    const trAll = Array.isArray(d.top_repos) ? d.top_repos : [];
+    // Eski veri (groups/top alanı yok) gelirse hepsi "Tümü" sayılır
+    const tr = topFilter ? trAll.filter((r) => Array.isArray(r.groups) && r.groups.includes(topFilter))
+      : trAll.filter((r) => r.top !== false);
     aiRows('ai-toprepos', tr.slice(0, topShown), 'github.com', (r) => r.id,
       (r) => '★ ' + compact(r.stars) + (r.lang ? ' · ' + r.lang : '') + (r.ts ? ' · son güncelleme ' + ago(r.ts) : ''), (r) => r.stars,
       (r, body) => {

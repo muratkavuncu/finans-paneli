@@ -154,10 +154,14 @@ def repos():
 TOPIC = re.compile(r"^[a-z0-9-]{1,30}$")
 
 
+TOP_TOPICS = ("ai", "llm", "ai-agents", "mcp", "rag", "local-llm", "machine-learning")
+
+
 def top_repos():
     """GitHub'da en cok yildiz almis AI depolari (tum zamanlar). Aciklama deponun kendi yazdigi metindir."""
     seen = {}
-    for topic in ("ai", "llm", "machine-learning", "deep-learning", "generative-ai"):
+    # Her konu ayri aranir; panelde konu secici bu "groups" alanina gore suzer. Arama siniri dakikada 10 (anahtarsiz).
+    for topic in TOP_TOPICS:
         url = "https://api.github.com/search/repositories?q=topic:%s&sort=stars&order=desc&per_page=30" % topic
         try:
             items = get(url).get("items", [])
@@ -169,12 +173,19 @@ def top_repos():
             desc = clean(r.get("description"), 300)
             if not REPO_ID.match(name) or BAD.search(name + " " + desc) or r.get("fork") or r.get("archived"):
                 continue
-            seen[name] = {"id": name, "desc": desc, "stars": int(r.get("stargazers_count") or 0), "lang": clean(r.get("language"), 24),
+            if name in seen:
+                seen[name]["groups"].append(topic)
+                continue
+            seen[name] = {"id": name, "groups": [topic], "desc": desc, "stars": int(r.get("stargazers_count") or 0), "lang": clean(r.get("language"), 24),
                           "ts": stamp(r.get("pushed_at") or ""), "topics": [t for t in (r.get("topics") or []) if TOPIC.match(str(t))][:4],
                           "url": "https://github.com/" + name}
     if not seen:
         raise ValueError("populer depo verisi yok")
-    return sorted(seen.values(), key=lambda r: -r["stars"])[:25]
+    rows = sorted(seen.values(), key=lambda r: -r["stars"])
+    keep = set(r["id"] for r in rows[:25])
+    for topic in TOP_TOPICS:
+        keep.update([r["id"] for r in rows if topic in r["groups"]][:15])
+    return [dict(r, top=i < 25) for i, r in enumerate(rows) if r["id"] in keep]
 
 
 def show_hn():
