@@ -2860,6 +2860,22 @@
       new Date(ev.ts * 1000).toLocaleString('tr-TR', { weekday: 'short', hour: '2-digit', minute: '2-digit' });
   }
 
+  // ---------- RENDER'ın piyasa değeri sırası (CoinGecko) ----------
+  async function loadRank() {
+    try {
+      const r = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=render-token');
+      if (!r.ok) return;
+      const c = (await r.json())[0];
+      const rank = c && +c.market_cap_rank;
+      if (!(rank > 0 && rank < 100000)) return;
+      const b = $('oz-rank');
+      b.textContent = '#' + rank;
+      b.title = 'Kripto piyasa değeri sırası (CoinGecko)' + (c.market_cap > 0 ? ' · piyasa değeri ' + fmtBig(+c.market_cap) : '');
+      b.setAttribute('aria-label', 'Piyasa değeri sırası ' + rank);
+      b.hidden = false;
+    } catch (err) { /* bir sonraki turda yeniden denenir */ }
+  }
+
   // ---------- Piyasa özeti ----------
   async function loadGlobal() {
     try {
@@ -3241,6 +3257,8 @@
   setInterval(loadAltStrength, 3600000);
   safe(connect);
   safe(loadGlobal);
+  safe(loadRank);
+  setInterval(() => { if (!document.hidden) loadRank(); }, 600000);
   safe(loadFng);
   setInterval(loadGlobal, 120000);
   setInterval(loadSparks, 300000);
