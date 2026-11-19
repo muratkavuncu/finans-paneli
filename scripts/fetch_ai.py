@@ -226,7 +226,9 @@ def arena():
                 "hi": round(r.get("rating_upper") or r["rating"]), "votes": int(r.get("vote_count") or 0)} for r in rows[:8]]
         date = clean(rows[0].get("leaderboard_publish_date"), 10) if rows else ""
         if len(top) >= 3 and all(t["name"] for t in top):
-            out.append({"id": cfg, "date": date if re.match(r"^\d{4}-\d{2}-\d{2}$", date) else "", "rows": top})
+            # names: tablodaki tüm modeller (ilk 100); panel, henüz sıralamaya girmemiş yeni modelleri bununla bulur
+            names = [clean(r.get("model_name"), 60) for r in rows[:100] if r.get("model_name")]
+            out.append({"id": cfg, "date": date if re.match(r"^\d{4}-\d{2}-\d{2}$", date) else "", "rows": top, "names": names})
     if not out:
         raise ValueError("arena verisi yok")
     return out

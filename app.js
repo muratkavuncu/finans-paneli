@@ -1904,6 +1904,33 @@
     text_to_image: 'Görsel üretme', text_to_video: 'Video üretme' };
   let arenaTab = load('fp.arena', 'text');
 
+  // Sıralamada henüz yer almayan yeni modeller (OpenRouter kataloğu, son 21 gün)
+  const MAJOR_LABS = /^(openai|anthropic|google|meta|xai|x-ai|deepseek|qwen|alibaba|mistral|moonshot|moonshotai|z\.ai|zhipu|minimax|microsoft|amazon|nvidia)$/i;
+  const normName = (t) => String(t || '').toLowerCase().replace(/\([^)]*\)/g, '').replace(/[^a-z0-9.]+/g, '');
+  function renderArenaNew(all, cur) {
+    const box = $('ar-new'), list = $('ar-new-list');
+    list.textContent = '';
+    if (!['text', 'webdev', 'vision', 'search'].includes(cur.id)) { box.hidden = true; return; }
+    box.querySelector('.label').textContent = 'Yeni çıktı, bu tabloda henüz yok';
+    // Yalnızca bu tablo: bir model metin tablosunda yokken webdev'de olabilir
+    const ranked = (Array.isArray(cur.names) ? cur.names : cur.rows.map((r) => r.name)).map(normName);
+    const since = Date.now() / 1000 - 35 * 86400;
+    const fresh = catalog().filter((r) => r.ts > since && MAJOR_LABS.test(orgOf(r))).sort((a, b) => b.ts - a.ts).filter((r) => {
+      const k = normName(shortName(r));
+      return k.length >= 3 && !ranked.some((n) => n === k || n.startsWith(k) || k.startsWith(n) && n.length >= 6);
+    }).slice(0, 8);
+    box.hidden = !fresh.length;
+    fresh.forEach((r) => {
+      const a = el('a', 'ar-new-item');
+      a.href = safeUrl(r.url, 'openrouter.ai');
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.appendChild(el('strong', '', shortName(r)));
+      a.appendChild(el('small', '', orgOf(r) + ' · ' + ago(r.ts)));
+      list.appendChild(a);
+    });
+  }
+
   function renderArena() {
     const all = aiData && Array.isArray(aiData.arena) ? aiData.arena.filter((a) => ARENA_LABELS[a.id] && Array.isArray(a.rows) && a.rows.length) : [];
     const tabs = $('ar-tabs'), box = $('ar-list');
@@ -1944,6 +1971,7 @@
       row.appendChild(track);
       box.appendChild(row);
     });
+    renderArenaNew(all, cur);
   }
 
   // ---------- Model zaman çizelgesi, karşılaştırma, proje sürümleri ----------

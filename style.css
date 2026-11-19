@@ -788,3 +788,10 @@ i.cmp-b { background: var(--series-2); }
 .oz-quote blockquote { margin: 6px 0 6px; font-family: var(--font-display); font-size: 16px; line-height: 1.45; color: var(--fg); }
 .oz-quote figcaption { color: var(--muted); font-size: 12.5px; }
 .oz-quote figcaption a { color: inherit; }
+
+/* ---------- Sıralamada henüz olmayan yeni modeller ---------- */
+.ar-new { margin-top: 12px; }
+.ar-new-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.ar-new-item { display: grid; gap: 1px; padding: 7px 11px; border-radius: 10px; background: var(--surface-2); border: 1px dashed var(--line); color: var(--fg); text-decoration: none; min-width: 0; }
+.ar-new-item strong { font-size: 13px; }
+.ar-new-item small { color: var(--muted); font-size: 11.5px; }
