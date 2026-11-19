@@ -398,6 +398,42 @@ def read_ai_feed(feed):
     return items
 
 
+# AI haberlerinde aynı olayı yayınlar farklı sözcüklerle yazar; ortak özel adlar (şirket, model, kişi) ile eşleştirilir
+AI_GENERIC = {"ai", "the", "a", "an", "how", "why", "what", "new", "this", "it", "is", "in", "on", "for", "with", "and", "to",
+              "its", "your", "you", "we", "i", "here", "after", "now", "can", "will", "says", "report", "ceo", "us", "inc",
+              "more", "first", "at", "of", "by", "as", "from", "be", "are", "has", "our", "my", "up", "no", "all", "big", "ainews"}
+
+
+def ai_entities(title):
+    t = re.sub(r"[‐-―−]", "-", title)
+    toks = re.findall(r"[A-Za-z][\w.\-]*\d[\w.\-]*|[A-Z][\w\-]+", t)
+    return {w.lower().strip(".-") for w in toks if w.lower() not in AI_GENERIC and len(w) > 1}
+
+
+def ai_clusters(items):
+    ents = [ai_entities(i["title"]) for i in items]
+    keys = [impact.keywords(re.sub(r"[‐-―−]", "-", i["title"])) for i in items]
+    parent = list(range(len(items)))
+
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    for a in range(len(items)):
+        for b in range(a + 1, len(items)):
+            if items[a]["source"] == items[b]["source"] or abs(items[a]["ts"] - items[b]["ts"]) > 36 * 3600:
+                continue
+            ce, ck = len(ents[a] & ents[b]), len(keys[a] & keys[b])
+            if (ce >= 2 and ck >= 3) or (ce >= 1 and ck >= 4):
+                parent[find(a)] = find(b)
+    groups = {}
+    for idx, item in enumerate(items):
+        groups.setdefault(find(idx), []).append(item)
+    return list(groups.values())
+
+
 def merge_ai(fresh, previous):
     """Aynı haberi yazan yayınları tek satırda toplar; resmi duyuru varsa o öne alınır."""
     cutoff = time.time() - AI_MAX_AGE
@@ -410,7 +446,7 @@ def merge_ai(fresh, previous):
         pool.append(item)
     old_n = {i["id"]: i.get("n", 1) for i in previous}
     out = []
-    for group in impact.clusters(pool):
+    for group in ai_clusters(pool):
         group.sort(key=lambda i: i["ts"])
         lead = ([i for i in group if i.get("official")] or group)[0]
         names = []
