@@ -303,7 +303,7 @@
       if (isFinite(ratio)) $('g-ethbtc').textContent = NF[5].format(ratio);
     }
     if (sym === 'RENDER' || sym === 'BTC') renderOzet();
-    if (sym === 'RENDER') renderOzRange();
+    if (sym === 'RENDER' || sym === 'BTC') renderOzRange(sym);
     if (sym === selected && tab === 'kripto') {
       const big = $('chart-price');
       big.textContent = priceText;
@@ -2238,7 +2238,7 @@
   }
 
   // ---------- Canlı fiyat şeridi (her sayfada üstte) ----------
-  const TAPE = [['RENDER', 'c'], ['BTC', 'c'], ['ETH', 'c'], ['SOL', 'c'], ['NDX', 'm', 'Nasdaq'], ['DXY', 'm', 'Dolar endeksi'], ['TRY', 't', 'USD/TRY']];
+  const TAPE = [['RENDER', 'c'], ['BTC', 'c'], ['ETH', 'c'], ['SOL', 'c'], ['NDX', 'm', 'Nasdaq'], ['DXY', 'm', 'Dolar endeksi'], ['GOLD', 'm', 'Altın ons'], ['TRY', 't', 'USD/TRY']];
   const tapeEls = {};
   function initTape() {
     const box = $('tape');
@@ -2266,33 +2266,44 @@
     });
   }
 
-  // ---------- Özet: gün aralığı ve dönem getirileri ----------
-  function renderOzRange() {
-    const r = state.RENDER;
-    if (r.price == null || !isFinite(r.high) || !isFinite(r.low) || r.high <= r.low) return;
-    $('oz-lo').textContent = fmtPrice(r.low);
-    $('oz-hi').textContent = fmtPrice(r.high);
-    $('oz-range-dot').style.left = Math.max(0, Math.min(100, (r.price - r.low) / (r.high - r.low) * 100)).toFixed(1) + '%';
+  // ---------- Özet: gün aralığı ve dönem getirileri (RENDER, BTC; altın ayrı) ----------
+  const HERO = { RENDER: 'oz', BTC: 'ob' };
+  function heroRange(px, price, lo, hi, fmt) {
+    if (!(price > 0) || !isFinite(hi) || !isFinite(lo) || hi <= lo) return;
+    $(px + '-lo').textContent = fmt(lo);
+    $(px + '-hi').textContent = fmt(hi);
+    $(px + '-range-dot').style.left = Math.max(0, Math.min(100, (price - lo) / (hi - lo) * 100)).toFixed(1) + '%';
+  }
+  function heroPerf(px, cells) {
+    const box = $(px + '-perf');
+    box.textContent = '';
+    cells.forEach((x) => {
+      if (!isFinite(x[1])) return;
+      const cell = el('span', 'oz-perf-cell');
+      cell.appendChild(el('span', '', x[0]));
+      cell.appendChild(el('strong', signClass(x[1]), fmtPct(x[1])));
+      box.appendChild(cell);
+    });
+  }
+  function renderOzRange(sym) {
+    const key = sym || 'RENDER';
+    const r = state[key], px = HERO[key];
+    if (r && px) heroRange(px, r.price, r.low, r.high, fmtPrice);
   }
   async function loadOzPerf() {
-    try {
-      const [h, d] = await Promise.all([
-        binance('/api/v3/klines?symbol=RENDERUSDT&interval=1h&limit=25'),
-        binance('/api/v3/klines?symbol=RENDERUSDT&interval=1d&limit=91'),
-      ]);
-      drawSpark($('oz-spark'), h.map((r) => +r[4]));
-      const last = +h[h.length - 1][4];
-      const back = (rows, n) => (rows.length > n ? (last / +rows[rows.length - 1 - n][4] - 1) * 100 : NaN);
-      const box = $('oz-perf');
-      box.textContent = '';
-      [['1 sa', back(h, 1)], ['24 sa', back(h, 24)], ['7 g', back(d, 7)], ['30 g', back(d, 30)], ['90 g', back(d, 90)]].forEach((x) => {
-        if (!isFinite(x[1])) return;
-        const cell = el('span', 'oz-perf-cell');
-        cell.appendChild(el('span', '', x[0]));
-        cell.appendChild(el('strong', signClass(x[1]), fmtPct(x[1])));
-        box.appendChild(cell);
-      });
-    } catch (err) { /* bir sonraki turda yeniden denenir */ }
+    for (const sym of Object.keys(HERO)) {
+      try {
+        const px = HERO[sym];
+        const [h, d] = await Promise.all([
+          binance('/api/v3/klines?symbol=' + sym + 'USDT&interval=1h&limit=25'),
+          binance('/api/v3/klines?symbol=' + sym + 'USDT&interval=1d&limit=91'),
+        ]);
+        drawSpark($(px + '-spark'), h.map((r) => +r[4]));
+        const last = +h[h.length - 1][4];
+        const back = (rows, n) => (rows.length > n ? (last / +rows[rows.length - 1 - n][4] - 1) * 100 : NaN);
+        heroPerf(px, [['1 sa', back(h, 1)], ['24 sa', back(h, 24)], ['7 g', back(d, 7)], ['30 g', back(d, 30)], ['90 g', back(d, 90)]]);
+      } catch (err) { /* bir sonraki turda yeniden denenir */ }
+    }
   }
 
   // ---------- Likidasyon akışı (Binance vadeli, herkese açık akış) ----------
@@ -2584,9 +2595,6 @@
       tr.appendChild(li);
     });
     $('sig-updated').textContent = 'son mum: ' + dt(sig.candle);
-    $('oz-sig').textContent = pilot.in ? 'İçeride' : 'Dışarıda';
-    $('oz-sig').className = 'value ' + (pilot.in ? 'pos' : '');
-    $('oz-sig-sub').textContent = s ? 'yeni sinyal: ' + s.side : pilot.in && pilot.open ? 'açık işlem ' + fmtPct(pilot.open.ret) : pilot.name;
   }
 
   async function loadSignals() {
@@ -2645,9 +2653,11 @@
       else if (usdtTry) $('oz-tl').textContent = '≈ ' + tl(r.price * usdtTry);
     }
     if (b.price != null) {
-      $('oz-btc').textContent = fmtPrice(b.price);
-      $('oz-btc-sub').textContent = '24 sa ' + fmtPct(b.pct);
-      setSigned($('oz-btc-sub'), 'sub', b.pct);
+      $('ob-price').textContent = fmtPrice(b.price);
+      $('ob-pct').textContent = fmtPct(b.pct);
+      setSigned($('ob-pct'), 'chip', b.pct);
+      const e = state.ETH && state.ETH.price / b.price;
+      if (isFinite(e)) $('ob-vs').textContent = 'ETH/BTC ' + NF[5].format(e);
     }
     if (isFinite(r.pct) && isFinite(b.pct)) {
       const rel = ((1 + r.pct / 100) / (1 + b.pct / 100) - 1) * 100;
@@ -2835,21 +2845,39 @@
     } catch (err) { setTimeout(() => { dailyBusy = false; }, 60000); }
   }
 
-  // ---------- Özet: altın (COMEX vadeli ons) ve TL karşılığı (canlı USDT/TRY ile) ----------
+  // ---------- Özet: altın (COMEX vadeli ons, Yahoo; gram TL canlı USDT/TRY ile hesaplanır) ----------
   const OZ_GRAM = 31.1034768;
+  let goldDaily = null;
   function renderOzGold() {
     const g = markets && markets.symbols && markets.symbols.GOLD;
     if (!g || !(g.price > 0)) return;
-    $('oz-gold').textContent = '$' + NF[0].format(g.price);
-    const sub = $('oz-gold-sub');
-    sub.textContent = 'ons · USD' + (Number.isFinite(g.pct) ? ' · ' + fmtPct(g.pct) : '');
-    if (Number.isFinite(g.pct)) setSigned(sub, 'sub', g.pct);
-    if (usdtTry > 0) {
-      $('oz-gold-tl').textContent = '₺' + NF[0].format(g.price * usdtTry);
-      $('oz-gold-gr').textContent = '₺' + NF[0].format(g.price * usdtTry / OZ_GRAM);
+    $('og-price').textContent = '$' + NF[0].format(g.price);
+    if (Number.isFinite(g.pct)) { $('og-pct').textContent = fmtPct(g.pct); setSigned($('og-pct'), 'chip', g.pct); }
+    if (usdtTry > 0) $('og-gr').textContent = 'gram ≈ ₺' + NF[0].format(g.price * usdtTry / OZ_GRAM) + ' (hesaplama, kuyumcu fiyatı değil)';
+    $('og-note').textContent = 'COMEX vadeli · ' + (g.open ? 'piyasa açık' : 'piyasa kapalı') + (g.time ? ' · ' + ago(g.time) + ' fiyatı' : '');
+    const bars = Array.isArray(g.bars) ? g.bars.filter((x) => Array.isArray(x) && x[4] > 0) : [];
+    if (bars.length > 2) {
+      const lastT = bars[bars.length - 1][0];
+      const day = bars.filter((x) => x[0] > lastT - 86400);
+      drawSpark($('og-spark'), day.map((x) => x[4]));
+      heroRange('og', g.price, Math.min(...day.map((x) => x[3])), Math.max(...day.map((x) => x[2])), (v) => '$' + NF[0].format(v));
+      $('og-range-t').textContent = 'son 24 saatlik işlem aralığı';
     }
-    $('oz-gold-note').textContent = (g.open ? 'piyasa açık' : 'piyasa kapalı') + ' · ' + (g.time ? ago(g.time) + ' fiyatı' : '')
-      + ' · TL karşılığı hesaplamadır, kuyumcu fiyatı değildir';
+    const at = (rows, sec) => {
+      if (!rows.length) return NaN;
+      const t = rows[rows.length - 1][0] - sec;
+      const r = rows.filter((x) => x[0] <= t).pop();
+      return r ? (g.price / r[4] - 1) * 100 : NaN;
+    };
+    const dly = goldDaily || [];
+    heroPerf('og', [['1 sa', at(bars, 3600)], ['24 sa', g.pct], ['7 g', at(dly.length ? dly : bars, 7 * 86400)], ['30 g', at(dly, 30 * 86400)], ['90 g', at(dly, 90 * 86400)]]);
+  }
+  async function loadGoldDaily() {
+    try {
+      const r = await fetch('data/daily.json?t=' + Math.floor(Date.now() / 3600000), { cache: 'no-store' });
+      const d = await r.json();
+      if (d && d.symbols && Array.isArray(d.symbols.GOLD)) { goldDaily = d.symbols.GOLD; renderOzGold(); }
+    } catch (err) { /* yalnızca 30/90 gün eksik kalır */ }
   }
 
   async function loadMarkets() {
@@ -3277,6 +3305,7 @@
   safe(connect);
   safe(loadGlobal);
   safe(loadRank);
+  safe(loadGoldDaily);
   setInterval(() => { if (!document.hidden) loadRank(); }, 600000);
   safe(loadFng);
   setInterval(loadGlobal, 120000);

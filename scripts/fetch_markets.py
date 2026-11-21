@@ -112,7 +112,7 @@ def update_daily():
                 prev = json.load(fh)
     except Exception:
         prev = {}
-    stocks = [e for e in SYMBOLS if e[3] == "hisse"]
+    stocks = [e for e in SYMBOLS if e[3] in ("hisse", "emtia")]  # altının 30/90 günlük getirisi için
     old = prev.get("symbols", {})
     out = prev
     if time.time() - prev.get("updated", 0) > DAILY_MAX_AGE or any(e[0] not in old for e in stocks):

@@ -52,32 +52,38 @@
       </span>
       <span class="oz-perf" id="oz-perf"></span>
     </button>
-    <div class="oz-grid">
-      <button type="button" class="stat oz-tile" data-go="sinyal">
-        <span class="label">Sinyal pilotu</span>
-        <span class="value" id="oz-sig">—</span>
-        <span class="sub" id="oz-sig-sub">&nbsp;</span>
-      </button>
-      <button type="button" class="stat oz-tile" data-go="grafik" data-sym="BTC">
+    <button type="button" class="oz-hero" data-go="grafik" data-sym="BTC">
+      <span class="oz-main">
         <span class="label">Bitcoin</span>
-        <span class="value" id="oz-btc">—</span>
-        <span class="sub" id="oz-btc-sub">&nbsp;</span>
-        <span class="sub oz-fng-line">korku endeksi <b id="oz-fng">—</b> · <span id="oz-fng-sub"></span></span>
-      </button>
+        <span class="oz-row"><span class="oz-price" id="ob-price">—</span><span class="chip" id="ob-pct">—</span></span>
+        <span class="oz-sub"><span>korku endeksi <b id="oz-fng">—</b> · <span id="oz-fng-sub"></span></span><span id="ob-vs">ETH/BTC —</span></span>
+      </span>
+      <svg class="oz-spark" id="ob-spark" viewBox="0 0 100 34" preserveAspectRatio="none" aria-hidden="true"></svg>
+      <span class="oz-range">
+        <span class="oz-range-bar"><i id="ob-range-dot"></i></span>
+        <span class="oz-range-ends"><span id="ob-lo">—</span><span id="ob-range-t">24 saatlik aralık</span><span id="ob-hi">—</span></span>
+      </span>
+      <span class="oz-perf" id="ob-perf"></span>
+    </button>
+    <div class="oz-hero">
+      <span class="oz-main">
+        <span class="label">Altın · ons</span>
+        <span class="oz-row"><span class="oz-price" id="og-price">—</span><span class="chip" id="og-pct">—</span></span>
+        <span class="oz-sub"><span id="og-gr">gram —</span><span id="og-note">COMEX vadeli · yaklaşık 15 dk gecikmeli</span></span>
+      </span>
+      <svg class="oz-spark" id="og-spark" viewBox="0 0 100 34" preserveAspectRatio="none" aria-hidden="true"></svg>
+      <span class="oz-range">
+        <span class="oz-range-bar"><i id="og-range-dot"></i></span>
+        <span class="oz-range-ends"><span id="og-lo">—</span><span id="og-range-t">24 saatlik aralık</span><span id="og-hi">—</span></span>
+      </span>
+      <span class="oz-perf" id="og-perf"></span>
+    </div>
+    <div class="oz-grid">
       <button type="button" class="stat oz-tile oz-wide" data-go="grafik" data-sym="RENDER">
         <span class="label">RENDER teknik · 4 saat</span>
         <span class="oz-ta-row"><span class="value" id="oz-ta">—</span><span class="sub" id="oz-ta-sub">&nbsp;</span></span>
         <span class="ta-pips oz-pips" id="oz-pips"></span>
       </button>
-      <div class="stat oz-tile oz-wide oz-gold">
-        <span class="label">Altın</span>
-        <span class="oz-gold-row">
-          <span><span class="value" id="oz-gold">—</span><span class="sub" id="oz-gold-sub">ons · USD</span></span>
-          <span><span class="value" id="oz-gold-tl">—</span><span class="sub">ons · TL</span></span>
-          <span><span class="value" id="oz-gold-gr">—</span><span class="sub">gram · TL</span></span>
-        </span>
-        <span class="sub oz-gold-note" id="oz-gold-note"></span>
-      </div>
     </div>
     <div class="oz-box">
       <div class="oz-box-head"><h2>Bugünün önemlileri</h2><button type="button" class="oz-link" data-go="haber">Tümü ›</button></div>
@@ -227,6 +233,7 @@
       <a class="site c5" href="https://huggingface.co/models?sort=trending" target="_blank" rel="noopener noreferrer"><i aria-hidden="true">HF</i><span><strong>Hugging Face · Trend</strong><small>Şu an ilgi gören açık modeller</small></span></a>
       <a class="site c5" href="https://huggingface.co/papers" target="_blank" rel="noopener noreferrer"><i aria-hidden="true">HF</i><span><strong>Hugging Face · Makaleler</strong><small>Günün öne çıkan makaleleri</small></span></a>
       <a class="site c6" href="https://github.com/trending" target="_blank" rel="noopener noreferrer"><i aria-hidden="true">GH</i><span><strong>GitHub Trending</strong><small>Yükselen açık kaynak projeler</small></span></a>
+      <a class="site c6 wide" href="https://companiesmarketcap.com/assets-by-market-cap/" target="_blank" rel="noopener noreferrer"><i aria-hidden="true">$</i><span><strong>Dünyanın en değerli varlıkları</strong><small>Altın, şirketler, kripto: piyasa değerine göre tek liste (companiesmarketcap.com)</small></span></a>
     </div>
     <p class="hint events-note">Artificial Analysis ve diğer sitelerin çoğu verisini anahtarsız, açık bir akışla paylaşmıyor; bu yüzden rakamlarını panele kopyalamıyorum, doğrudan siteye yönlendiriyorum. Açık veri yayımlayan LMArena'nın sıralaması aşağıda grafik olarak var.</p>
   </section>
