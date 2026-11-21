@@ -352,6 +352,7 @@
   function renderTry(price, pct) {
     usdtTry = price;
     $('g-try').textContent = '₺' + NF[2].format(price);
+    renderOzGold();
     const el = $('g-try-chg');
     el.textContent = '24s ' + fmtPct(pct);
     setSigned(el, 'sub', pct);
@@ -2834,6 +2835,23 @@
     } catch (err) { setTimeout(() => { dailyBusy = false; }, 60000); }
   }
 
+  // ---------- Özet: altın (COMEX vadeli ons) ve TL karşılığı (canlı USDT/TRY ile) ----------
+  const OZ_GRAM = 31.1034768;
+  function renderOzGold() {
+    const g = markets && markets.symbols && markets.symbols.GOLD;
+    if (!g || !(g.price > 0)) return;
+    $('oz-gold').textContent = '$' + NF[0].format(g.price);
+    const sub = $('oz-gold-sub');
+    sub.textContent = 'ons · USD' + (Number.isFinite(g.pct) ? ' · ' + fmtPct(g.pct) : '');
+    if (Number.isFinite(g.pct)) setSigned(sub, 'sub', g.pct);
+    if (usdtTry > 0) {
+      $('oz-gold-tl').textContent = '₺' + NF[0].format(g.price * usdtTry);
+      $('oz-gold-gr').textContent = '₺' + NF[0].format(g.price * usdtTry / OZ_GRAM);
+    }
+    $('oz-gold-note').textContent = (g.open ? 'piyasa açık' : 'piyasa kapalı') + ' · ' + (g.time ? ago(g.time) + ' fiyatı' : '')
+      + ' · TL karşılığı hesaplamadır, kuyumcu fiyatı değildir';
+  }
+
   async function loadMarkets() {
     try {
       const r = await fetch('data/markets.json?t=' + Math.floor(Date.now() / 60000), { cache: 'no-store' });
@@ -2841,6 +2859,7 @@
       markets = await r.json();
       renderIndexCells();
       renderStocks();
+      renderOzGold();
       if (markets.updated !== marketsStamp) {
         marketsStamp = markets.updated;
         if (tab === 'tek') loadChart();

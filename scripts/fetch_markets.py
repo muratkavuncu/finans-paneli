@@ -40,6 +40,7 @@ SYMBOLS = [
     ("VIX", "^VIX", "VIX", "endeks"),
     ("DXY", "DX-Y.NYB", "Dolar endeksi", "endeks"),
     ("US10Y", "^TNX", "ABD 10 yıllık faiz", "endeks"),
+    ("GOLD", "GC=F", "Altın (ons)", "emtia"),
 ]
 
 

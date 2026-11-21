@@ -69,6 +69,15 @@
         <span class="oz-ta-row"><span class="value" id="oz-ta">—</span><span class="sub" id="oz-ta-sub">&nbsp;</span></span>
         <span class="ta-pips oz-pips" id="oz-pips"></span>
       </button>
+      <div class="stat oz-tile oz-wide oz-gold">
+        <span class="label">Altın</span>
+        <span class="oz-gold-row">
+          <span><span class="value" id="oz-gold">—</span><span class="sub" id="oz-gold-sub">ons · USD</span></span>
+          <span><span class="value" id="oz-gold-tl">—</span><span class="sub">ons · TL</span></span>
+          <span><span class="value" id="oz-gold-gr">—</span><span class="sub">gram · TL</span></span>
+        </span>
+        <span class="sub oz-gold-note" id="oz-gold-note"></span>
+      </div>
     </div>
     <div class="oz-box">
       <div class="oz-box-head"><h2>Bugünün önemlileri</h2><button type="button" class="oz-link" data-go="haber">Tümü ›</button></div>
@@ -708,44 +717,45 @@
   </div>
 
   <footer class="foot">
-    <div class="refs" data-page="ozet">
-      <h2>Bu sayfadaki veriler</h2>
+    <details class="refs" data-page="ozet">
+      <summary>Bu sayfadaki verilerin kaynakları</summary>
     <ul>
       <li><span>RENDER ve Bitcoin fiyatı, 24 saat aralığı, performans:</span> <a href="https://www.binance.com/" target="_blank" rel="noopener noreferrer">Binance</a></li>
       <li><span>TL fiyatı:</span> <a href="https://www.btcturk.com/" target="_blank" rel="noopener noreferrer">BtcTurk</a></li>
+      <li><span>Altın (COMEX vadeli ons, yaklaşık 15 dk gecikmeli):</span> <a href="https://finance.yahoo.com/" target="_blank" rel="noopener noreferrer">Yahoo Finance</a>; TL karşılığı Binance USDT/TRY kuruyla hesaplanır</li>
       <li><span>Piyasa değeri sırası:</span> <a href="https://www.coingecko.com/" target="_blank" rel="noopener noreferrer">CoinGecko</a></li>
       <li><span>Korku ve Açgözlülük endeksi:</span> <a href="https://alternative.me/crypto/fear-and-greed-index/" target="_blank" rel="noopener noreferrer">alternative.me</a></li>
       <li><span>Önemli veriler takvimi:</span> <a href="https://www.forexfactory.com/calendar" target="_blank" rel="noopener noreferrer">Forex Factory</a></li>
       <li><span>Günün sözü:</span> <a href="https://tr.wikiquote.org/" target="_blank" rel="noopener noreferrer">Vikisöz</a></li>
       <li><span>Haber ve AI kutuları:</span> <button type="button" class="ref-go" data-go="haber">Haber</button> ve <button type="button" class="ref-go" data-go="ai">AI</button> sayfalarının altında</li>
     </ul>
-    </div>
-    <div class="refs" data-page="grafik" hidden>
-      <h2>Bu sayfadaki veriler</h2>
+    </details>
+    <details class="refs" data-page="grafik" hidden>
+      <summary>Bu sayfadaki verilerin kaynakları</summary>
     <ul>
       <li><span>Kripto fiyat, mum, fonlama oranı, açık pozisyon, likidasyonlar (spot ve vadeli):</span> <a href="https://www.binance.com/" target="_blank" rel="noopener noreferrer">Binance</a></li>
       <li><span>Hisse ve endeksler (yaklaşık 15 dk gecikmeli):</span> <a href="https://finance.yahoo.com/" target="_blank" rel="noopener noreferrer">Yahoo Finance</a></li>
       <li><span>Piyasa özeti:</span> <a href="https://www.coingecko.com/" target="_blank" rel="noopener noreferrer">CoinGecko</a></li>
       <li><span>Grafik çizimi:</span> <a href="https://github.com/tradingview/lightweight-charts" target="_blank" rel="noopener noreferrer">TradingView Lightweight Charts</a></li>
     </ul>
-    </div>
-    <div class="refs" data-page="sinyal" hidden>
-      <h2>Bu sayfadaki veriler</h2>
+    </details>
+    <details class="refs" data-page="sinyal" hidden>
+      <summary>Bu sayfadaki verilerin kaynakları</summary>
     <ul>
       <li><span>Göstergelerin hesaplandığı mum verisi:</span> <a href="https://www.binance.com/" target="_blank" rel="noopener noreferrer">Binance</a></li>
       <li><span>Emir defteri, derinlik, son işlemler, TL fiyatı:</span> <a href="https://www.btcturk.com/" target="_blank" rel="noopener noreferrer">BtcTurk</a></li>
     </ul>
-    </div>
-    <div class="refs" data-page="haber" hidden>
-      <h2>Bu sayfadaki veriler</h2>
+    </details>
+    <details class="refs" data-page="haber" hidden>
+      <summary>Bu sayfadaki verilerin kaynakları</summary>
     <ul>
       <li><span>Haber başlıkları (RSS):</span> <a href="https://www.federalreserve.gov/" target="_blank" rel="noopener noreferrer">Fed</a>, <a href="https://www.bloomberg.com/" target="_blank" rel="noopener noreferrer">Bloomberg</a>, <a href="https://www.wsj.com/" target="_blank" rel="noopener noreferrer">WSJ</a>, <a href="https://www.ft.com/" target="_blank" rel="noopener noreferrer">Financial Times</a>, <a href="https://www.cnbc.com/" target="_blank" rel="noopener noreferrer">CNBC</a>, <a href="https://www.nytimes.com/" target="_blank" rel="noopener noreferrer">New York Times</a>, <a href="https://www.bbc.com/" target="_blank" rel="noopener noreferrer">BBC</a>, <a href="https://www.theguardian.com/" target="_blank" rel="noopener noreferrer">The Guardian</a>, <a href="https://www.investing.com/" target="_blank" rel="noopener noreferrer">Investing.com</a>, <a href="https://www.coindesk.com/" target="_blank" rel="noopener noreferrer">CoinDesk</a>, <a href="https://www.theblock.co/" target="_blank" rel="noopener noreferrer">The Block</a>, <a href="https://cointelegraph.com/" target="_blank" rel="noopener noreferrer">Cointelegraph</a>, <a href="https://decrypt.co/" target="_blank" rel="noopener noreferrer">Decrypt</a>, <a href="https://bitcoinmagazine.com/" target="_blank" rel="noopener noreferrer">Bitcoin Magazine</a>, <a href="https://techcrunch.com/" target="_blank" rel="noopener noreferrer">TechCrunch</a>, <a href="https://www.theverge.com/" target="_blank" rel="noopener noreferrer">The Verge</a>, <a href="https://arstechnica.com/" target="_blank" rel="noopener noreferrer">Ars Technica</a>, <a href="https://www.bloomberght.com/" target="_blank" rel="noopener noreferrer">Bloomberg HT</a>, <a href="https://www.aa.com.tr/" target="_blank" rel="noopener noreferrer">Anadolu Ajansı</a></li>
       <li><span>Ekonomik takvim:</span> <a href="https://www.forexfactory.com/calendar" target="_blank" rel="noopener noreferrer">Forex Factory</a></li>
       <li><span>Piyasa nabzı:</span> <a href="https://www.coingecko.com/" target="_blank" rel="noopener noreferrer">CoinGecko</a>, <a href="https://alternative.me/crypto/fear-and-greed-index/" target="_blank" rel="noopener noreferrer">alternative.me</a>, <a href="https://finance.yahoo.com/" target="_blank" rel="noopener noreferrer">Yahoo Finance</a></li>
     </ul>
-    </div>
-    <div class="refs" data-page="ai" hidden>
-      <h2>Bu sayfadaki veriler</h2>
+    </details>
+    <details class="refs" data-page="ai" hidden>
+      <summary>Bu sayfadaki verilerin kaynakları</summary>
     <ul>
       <li><span>AI haberleri (RSS):</span> <a href="https://openai.com/" target="_blank" rel="noopener noreferrer">OpenAI</a>, <a href="https://deepmind.google/" target="_blank" rel="noopener noreferrer">Google DeepMind</a>, <a href="https://blog.google/" target="_blank" rel="noopener noreferrer">Google</a>, <a href="https://github.blog/" target="_blank" rel="noopener noreferrer">GitHub</a>, <a href="https://www.theverge.com/" target="_blank" rel="noopener noreferrer">The Verge</a>, <a href="https://techcrunch.com/" target="_blank" rel="noopener noreferrer">TechCrunch</a>, <a href="https://arstechnica.com/" target="_blank" rel="noopener noreferrer">Ars Technica</a>, <a href="https://www.wired.com/" target="_blank" rel="noopener noreferrer">Wired</a>, <a href="https://www.technologyreview.com/" target="_blank" rel="noopener noreferrer">MIT Technology Review</a>, <a href="https://spectrum.ieee.org/" target="_blank" rel="noopener noreferrer">IEEE Spectrum</a>, <a href="https://the-decoder.com/" target="_blank" rel="noopener noreferrer">The Decoder</a>, <a href="https://simonwillison.net/" target="_blank" rel="noopener noreferrer">Simon Willison</a>, <a href="https://huggingface.co/" target="_blank" rel="noopener noreferrer">Hugging Face</a>, <a href="https://research.google/" target="_blank" rel="noopener noreferrer">Google Research</a>, <a href="https://www.microsoft.com/" target="_blank" rel="noopener noreferrer">Microsoft Research</a>, <a href="https://bair.berkeley.edu/" target="_blank" rel="noopener noreferrer">BAIR (Berkeley)</a>, <a href="https://www.latent.space/" target="_blank" rel="noopener noreferrer">Latent Space</a>, <a href="https://jack-clark.net/" target="_blank" rel="noopener noreferrer">Import AI</a>, <a href="https://www.oneusefulthing.org/" target="_blank" rel="noopener noreferrer">One Useful Thing</a>, <a href="https://www.interconnects.ai/" target="_blank" rel="noopener noreferrer">Interconnects</a>, <a href="https://magazine.sebastianraschka.com/" target="_blank" rel="noopener noreferrer">Ahead of AI</a></li>
       <li><span>Model sıralamaları:</span> <a href="https://huggingface.co/datasets/lmarena-ai/leaderboard-dataset" target="_blank" rel="noopener noreferrer">LMArena (Hugging Face açık veri, CC BY 4.0)</a></li>
@@ -754,7 +764,7 @@
       <li><span>Depolar ve sürümler:</span> <a href="https://github.com/" target="_blank" rel="noopener noreferrer">GitHub</a></li>
       <li><span>Show HN:</span> <a href="https://news.ycombinator.com/" target="_blank" rel="noopener noreferrer">Hacker News</a></li>
     </ul>
-    </div>
+    </details>
     <p>Haber başlıkları ve açıklamaları kaynakların kendi akışlarından değiştirilmeden alınır. Bir başlık, haberin doğru olduğunu kanıtlamaz; işlem öncesi haberin aslını oku. Bu panel bilgi amaçlıdır, yatırım tavsiyesi değildir.</p>
   </footer>
 </div>
