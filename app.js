@@ -3089,7 +3089,7 @@
     if (live) {
       rows = rk.rows.map((c) => {
         const v = +c.price_change_percentage_24h_in_currency;
-        return { c, sym: String(c.symbol || '').toUpperCase(), rank: c._r, d: c._d1, ap: isFinite(v) ? v : +c.price_change_percentage_24h, tp: NaN };
+        return { c, sym: String(c.symbol || '').toUpperCase(), rank: c._r, d: c._d1, ap: isFinite(v) ? v : +c.price_change_percentage_24h, tp: +c.current_price }; // Dün: altta anlık fiyat
       });
     } else if (rk.now) {
       rows = Object.entries(rk.now.coins).map(([sym, v]) => {
@@ -3119,7 +3119,7 @@
       tr.appendChild(el('td', 'rk-m', c ? fmtBig(+c.market_cap).replace(' ', '') : '—'));
       const p = x.ap;
       const pc = el('td', 'rk-p ' + signClass(p), !isFinite(p) ? '—' : Math.abs(p) >= 1000 ? (p > 0 ? '+' : '') + NF[0].format(p) + '%' : fmtPct(p));
-      if (!live) pc.appendChild(el('small', 'rk-tp', x.tp > 0 ? rkPrice(x.tp) : ' ')); // o tarihteki fiyat
+      pc.appendChild(el('small', 'rk-tp', x.tp > 0 ? rkPrice(x.tp) : ' ')); // geçmişte o tarihteki, Dün'de anlık fiyat
       tr.appendChild(pc);
       const d = x.d;
       const txt = d === 'new' ? 'yeni' : !isFinite(d) ? '—' : d > 0 ? '▲' + d : d < 0 ? '▼' + -d : '–';
@@ -3152,7 +3152,7 @@
     }
     const t = new Date(rk.at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
     $('rk-note').textContent = live
-      ? 'Sıra ve dünkü sıra CoinGecko\'dan (24 saatlik piyasa değeri değişimiyle). Stablecoinler dahildir · ' + t
+      ? 'Sıra ve dünkü sıra CoinGecko\'dan (24 saatlik piyasa değeri değişimiyle); yüzdenin altındaki fiyat anlık fiyattır. Stablecoinler dahildir · ' + t
       : rk.now
         ? 'Sıralar ve fiyatlar CoinMarketCap\'in Internet Archive\'daki kopyalarından: bugün ' + tsDate(rk.now.ts) + ', karşılaştırılan ' + tsDate(mo.ts) + '. Yüzde, iki tarih arasındaki fiyat değişimi; altındaki fiyat o tarihteki fiyat. "yeni": o tarihte ilk 100\'de değildi. Değer CoinGecko\'dan.'
         : 'Bugünkü arşiv sırası henüz yok.';
