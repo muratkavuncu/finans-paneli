@@ -36,7 +36,7 @@ def fetch(url, accept="*/*"):
     if not url.startswith("https://"):
         raise ValueError("yalnızca https")
     req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": accept, "Accept-Encoding": "gzip"})
-    with urllib.request.urlopen(req, timeout=60) as resp:
+    with urllib.request.urlopen(req, timeout=120) as resp:
         data = resp.read(MAX_BYTES + 1)
     if len(data) > MAX_BYTES:
         raise ValueError("yanıt çok büyük")
@@ -105,8 +105,15 @@ def parse(html):
 def snapshot(ts, cache):
     if ts in cache:
         return cache[ts]
-    time.sleep(2)  # arşive nazik ol
-    data = parse(fetch("https://web.archive.org/web/%sid_/https://coinmarketcap.com/" % ts, "text/html"))
+    url = "https://web.archive.org/web/%sid_/https://coinmarketcap.com/" % ts
+    for attempt in range(2):  # arşiv GitHub sunucularına karşı bazen yavaş: bir kez daha dene
+        time.sleep(2 + attempt * 8)  # arşive nazik ol
+        try:
+            data = parse(fetch(url, "text/html"))
+            break
+        except Exception:
+            if attempt:
+                raise
     if len(data) < 80:  # eksik/bozuk kopya: kullanma
         raise ValueError("kopyada yeterli sıra yok (%d)" % len(data))
     cache[ts] = data
