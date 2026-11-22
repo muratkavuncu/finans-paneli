@@ -3283,10 +3283,13 @@
       ptr.style.opacity = String(Math.min(1, v / 30));
     };
     const ticksFor = (p) => ticks.forEach((t, i) => { t.style.opacity = i < Math.ceil(p * 8) ? '1' : '0'; });
+    // çektikçe kollar dolar ve halka çekmeyle birlikte döner; eşikte tam halka olarak durur (dönme yalnız yenilemede)
+    const pose = (p) => { p = Math.min(1, Math.max(0, p)); ticksFor(p); svg.style.transform = 'rotate(' + Math.round(p * 270) + 'deg)'; };
     const refresh = () => {
       busy = true; pulling = false; on = false;
       // iOS: saat yönünde dönerken öndeki kol en koyu, arkadakiler kademeli soluk
       ticks.forEach((t, i) => { t.style.opacity = String(0.3 + 0.7 * (i / 7)); });
+      svg.style.transform = '';
       ptr.classList.add('spin');
       setOff(HOLD, 300);
       setTimeout(() => location.reload(), 650);
@@ -3313,10 +3316,7 @@
       const raw = Math.max(0, t.clientY - y0);
       const v = raw < TH ? raw * 0.9 : TH * 0.9 + (raw - TH) * 0.35; // iOS lastik direnci
       setOff(v);
-      if (v < TH * 0.9) ticksFor(v / (TH * 0.9));
-      // eşik geçilince gösterge dönmeye başlar; yenileme parmak bırakılınca (geri çekilirse iptal)
-      if (v >= TH * 0.9 && !ptr.classList.contains('spin')) ticks.forEach((t, i) => { t.style.opacity = String(0.3 + 0.7 * (i / 7)); });
-      ptr.classList.toggle('spin', v >= TH * 0.9);
+      pose(v / (TH * 0.9)); // yenileme parmak bırakılınca (geri çekilirse iptal)
     }, { passive: false });
     const end = () => {
       if (!on && !pulling) return;
@@ -3326,7 +3326,7 @@
       if (off >= TH * 0.9) { refresh(); return; }
       ptr.classList.remove('spin');
       setOff(0, 350);
-      setTimeout(() => { if (!busy) { ptr.classList.remove('on'); ticksFor(0); } }, 360);
+      setTimeout(() => { if (!busy) { ptr.classList.remove('on'); pose(0); } }, 360);
     };
     document.addEventListener('touchend', end, { passive: true });
     document.addEventListener('touchcancel', end, { passive: true });
@@ -3343,18 +3343,16 @@
         ptr.style.transition = 'none';
         ptr.style.transform = 'translate(-50%,' + Math.round(-y / 2 - 17) + 'px)';
         ptr.style.opacity = String(Math.min(1, -y / 30));
-        if (-y < TH * 0.9) ticksFor(-y / (TH * 0.9));
-        if (-y >= TH * 0.9 && !ptr.classList.contains('spin')) ticks.forEach((t, i) => { t.style.opacity = String(0.3 + 0.7 * (i / 7)); });
-        ptr.classList.toggle('spin', -y >= TH * 0.9);
+        pose(-y / (TH * 0.9));
       } else if (y >= 0 && !touching && ptr.classList.contains('on') && !busy) {
-        ptr.classList.remove('on', 'spin'); ptr.style.opacity = ''; ticksFor(0);
+        ptr.classList.remove('on', 'spin'); ptr.style.opacity = ''; pose(0);
       }
     }, { passive: true });
     const bounceEnd = () => {
       touching = false;
       if (busy || pulling) return;
       if (window.scrollY < 0 && -window.scrollY >= TH * 0.9) { refresh(); return; }
-      if (window.scrollY >= 0) { ptr.classList.remove('on', 'spin'); ptr.style.opacity = ''; ticksFor(0); }
+      if (window.scrollY >= 0) { ptr.classList.remove('on', 'spin'); ptr.style.opacity = ''; pose(0); }
     };
     document.addEventListener('touchend', bounceEnd, { passive: true });
     document.addEventListener('touchcancel', bounceEnd, { passive: true });
