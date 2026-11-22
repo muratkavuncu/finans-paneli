@@ -965,3 +965,4 @@ html.sheet-on, html.sheet-on body { overflow: hidden; }
 .nav button[aria-current="page"] svg { stroke-width: 2.2; }
 .nav button:active { transform: scale(.92); }
 @media (prefers-reduced-motion: reduce) { .nav button:active { transform: none; } }
+.nav { background: color-mix(in srgb, var(--surface) 55%, transparent); -webkit-backdrop-filter: saturate(180%) blur(24px); backdrop-filter: saturate(180%) blur(24px); }
