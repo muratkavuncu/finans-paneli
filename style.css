@@ -905,4 +905,4 @@ html, body { overscroll-behavior-x: none; }
 .swipe-arrow.on { opacity: 1; }
 .swipe-arrow.r { right: 0; transform: translate(calc(100% - var(--p) * (100% + 14px)), -50%) scale(calc(.7 + var(--p) * .3)); }
 .swipe-arrow.l { left: 0; transform: translate(calc(-100% + var(--p) * (100% + 14px)), -50%) scale(calc(.7 + var(--p) * .3)); }
-body.swiping { overflow: hidden; touch-action: none; }
+body.swiping { touch-action: none; overflow-anchor: none; }

@@ -2964,7 +2964,7 @@
       tr.appendChild(el('td', 'rk-d ' + (d > 0 ? 'pos' : d < 0 ? 'neg' : ''), d > 0 ? '▲' + d : d < 0 ? '▼' + -d : '–'));
       tb.appendChild(tr);
     });
-    $('rk-note').textContent = 'Dün sırası, CoinGecko\'nun 24 saatlik piyasa değeri değişiminden hesaplanır; stablecoinler dahildir · M milyon, B milyar, T trilyon · ' + new Date(rk.at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+    $('rk-note').textContent = 'Dün sırası, CoinGecko\'nun 24 saatlik piyasa değeri değişiminden hesaplanır; stablecoinler dahildir · ' + new Date(rk.at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
   }
   function initRk() {
     const d = $('rk');
@@ -2987,7 +2987,7 @@
     let decided = false, sx = 0, sy = 0, st = 0, on = false, drag = false, dir = 0, target = null, busy = false, nodes = [], ghost = null;
     // Hedef sayfanın görünür parçalarını bir anlığına açıp kopyalar (boyama olmadan geri döner); kopya parmakla birlikte gelir.
     function makeGhost() {
-      const keep = page;
+      const keep = page, y = window.scrollY;
       page = target; applyPage();
       const src = parts();
       const clones = src.map((n) => {
@@ -2999,6 +2999,7 @@
         return c;
       });
       page = keep; applyPage();
+      window.scrollTo(0, y); // gizle/göster sırasında sayfa boyu değişip kaydırma kaymasın
       const tape = document.querySelector('.tape');
       const top = tape ? Math.max(0, tape.getBoundingClientRect().bottom) : 0;
       const g = el('div', 'swipe-ghost');
