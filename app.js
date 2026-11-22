@@ -2939,7 +2939,7 @@
       rk.at = Date.now();
       renderRk();
     } catch (err) {
-      if (!rk.rows) { const tb = $('rk-body'); tb.textContent = ''; const tr = el('tr'); const td = el('td', 'hint', 'Veri alınamadı, biraz sonra yeniden dene.'); td.colSpan = 4; tr.appendChild(td); tb.appendChild(tr); }
+      if (!rk.rows) { const tb = $('rk-body'); tb.textContent = ''; const tr = el('tr'); const td = el('td', 'hint', 'Veri alınamadı, biraz sonra yeniden dene.'); td.colSpan = 5; tr.appendChild(td); tb.appendChild(tr); }
     }
   }
   function renderRk() {
@@ -2958,6 +2958,7 @@
       tr.appendChild(nm);
       const d = c._d;
       tr.appendChild(el('td', 'rk-d ' + (d > 0 ? 'pos' : d < 0 ? 'neg' : ''), d > 0 ? '▲' + d : d < 0 ? '▼' + -d : '–'));
+      tr.appendChild(el('td', 'rk-m', fmtBig(+c.market_cap).replace('$', '')));
       const p = +c.price_change_percentage_24h;
       tr.appendChild(el('td', 'rk-p ' + signClass(p), isFinite(p) ? fmtPct(p) : '—'));
       tb.appendChild(tr);
