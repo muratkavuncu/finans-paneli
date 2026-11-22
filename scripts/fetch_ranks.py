@@ -9,7 +9,8 @@ Coinler CoinMarketCap'in sabit sayısal kimliğiyle eşleşir (RNDR→RENDER gib
 
 Çıktı (data/ranks.json):
 {"updated": ts, "source": "...", "now": {"ts": "YYYYMMDDhhmmss", "coins": {"SYM": [id, rank], ...}},
- "spans": {"d7": {"ts": "...", "ranks": {"id": rank, ...}}, ...}}
+ "spans": {"d7": {"ts": "...", "ranks": {"id": rank, ...}, "prices": {"id": usd, ...}}, ...}}
+"now.coins" değerleri [id, rank, usd] biçimindedir; fiyat o kopyadaki CoinMarketCap USD fiyatıdır.
 """
 import gzip
 import json
@@ -24,14 +25,23 @@ OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join("data", "ranks.json")
 PREV_URL = os.environ.get("PREV_RANKS_URL", "")
 UA = "finans-paneli/1.0 (kisisel, ticari degil)"
 TARGET = "coinmarketcap.com/"
-SPANS = {"d7": 7, "d30": 30, "m3": 91, "m6": 182, "y1": 365, "y2": 730, "y3": 1095, "y5": 1826}
-TOL = {"d7": 1, "d30": 3, "m3": 5, "m6": 7, "y1": 10, "y2": 15, "y3": 15, "y5": 20}  # kabul edilen sapma (gün)
+SPANS = {"d7": 7, "d30": 30, "m3": 91, "m6": 182, "y1": 365, "y2": 730, "y3": 1095, "y4": 1461, "y5": 1826}
+TOL = {"d7": 1, "d30": 3, "m3": 5, "m6": 7, "y1": 10, "y2": 15, "y3": 15, "y4": 20, "y5": 20}  # kabul edilen sapma (gün)
 REFRESH = 20 * 3600  # günde bir yenile
 BUDGET = 240  # bu adım en fazla 4 dk sürsün (yayın zinciri beklemesin); kalan dönemler önceki veriyle
 T0 = time.time()
 MAX_BYTES = 8 * 1024 * 1024
 
 NEW_RE = re.compile(r'"id":(\d+),"name":"[^"]*","symbol":"([^"\\]{1,20})","slug":"[^"]*","cmcRank":(\d+)')
+USD_RE = re.compile(r'"name":"USD","price":(-?[0-9.]+(?:[eE][-+]?\d+)?)')
+
+
+def num(v):
+    try:
+        f = float(v)
+        return float("%.6g" % f) if 0 < f < 1e9 else None
+    except Exception:
+        return None
 
 
 def fetch(url, accept="*/*"):
@@ -74,13 +84,16 @@ def cdx_near(want, tol_days):
 
 
 def parse(html):
-    """{cmc_id: (rank, symbol)} — iki biçim: 2021-2024 keysArr dizisi, 2025+ nesne listesi."""
+    """{cmc_id: (rank, symbol, usd)} — iki biçim: 2021-2024 keysArr dizisi, 2025+ nesne listesi."""
     s = html.decode("utf-8", "replace")
     out = {}
-    for m in NEW_RE.finditer(s):
+    ms = list(NEW_RE.finditer(s))
+    for k, m in enumerate(ms):
         cid, sym, rank = int(m.group(1)), m.group(2), int(m.group(3))
+        seg = s[m.end():ms[k + 1].start() if k + 1 < len(ms) else m.end() + 20000]
+        pm = USD_RE.search(seg)
         if 1 <= rank <= 100:
-            out.setdefault(cid, (rank, sym))
+            out.setdefault(cid, (rank, sym, num(pm.group(1)) if pm else None))
     if len(out) >= 50:
         return out
     m = re.search(r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>', s, re.S)
@@ -94,13 +107,14 @@ def parse(html):
     if rows and isinstance(rows[0], dict) and "keysArr" in rows[0]:
         keys = rows[0]["keysArr"]
         ii, ir, isy = keys.index("id"), keys.index("cmcRank"), keys.index("symbol")
+        ip = keys.index("quote.USD.price") if "quote.USD.price" in keys else -1
         for r in rows[1:]:
             try:
                 cid, rank, sym = int(r[ii]), int(r[ir]), str(r[isy])[:20]
             except Exception:
                 continue
             if 1 <= rank <= 100:
-                out.setdefault(cid, (rank, sym))
+                out.setdefault(cid, (rank, sym, num(r[ip]) if ip >= 0 and ip < len(r) else None))
     return out
 
 
@@ -168,8 +182,8 @@ def main():
         raise SystemExit("güncel arşiv kopyası yok")
     res = {"updated": int(now), "source": "Internet Archive · coinmarketcap.com kopyaları",
            "now": {"ts": t_now, "coins": {}}, "spans": {}}
-    for cid, (rank, sym) in sorted(cur.items(), key=lambda x: x[1][0]):
-        res["now"]["coins"].setdefault(sym.upper(), [cid, rank])
+    for cid, (rank, sym, usd) in sorted(cur.items(), key=lambda x: x[1][0]):
+        res["now"]["coins"].setdefault(sym.upper(), [cid, rank, usd])
     pspans = prev.get("spans", {})
     for key, days in SPANS.items():
         want = ts_sec(t_now) - days * 86400
@@ -191,7 +205,7 @@ def main():
             if not cands:
                 raise ValueError("yakın tarihli kopya yok")
             p = pspans.get(key)
-            if p and p.get("ts") in cands[:1]:  # aynı kopya: yeniden indirme
+            if p and p.get("ts") in cands[:1] and "prices" in p:  # aynı kopya: yeniden indirme
                 res["spans"][key] = p
                 continue
             last = None
@@ -200,7 +214,8 @@ def main():
                     break
                 try:
                     snap = snapshot(t, cache)
-                    res["spans"][key] = {"ts": t, "ranks": {str(cid): r for cid, (r, _s) in snap.items()}}
+                    res["spans"][key] = {"ts": t, "ranks": {str(cid): r for cid, (r, _s, _u) in snap.items()},
+                                         "prices": {str(cid): u for cid, (_r, _s, u) in snap.items() if u}}
                     break
                 except Exception as e:
                     last = e

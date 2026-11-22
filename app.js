@@ -3031,7 +3031,7 @@
     d30: { lab: '30 gün', pf: 'price_change_percentage_30d_in_currency' },
     m3: { lab: '3 ay' }, m6: { lab: '6 ay' },
     y1: { lab: '1 yıl', pf: 'price_change_percentage_1y_in_currency' },
-    y2: { lab: '2 yıl' }, y3: { lab: '3 yıl' }, y5: { lab: '5 yıl' },
+    y2: { lab: '2 yıl' }, y3: { lab: '3 yıl' }, y4: { lab: '4 yıl' }, y5: { lab: '5 yıl' },
   };
   const rk = { rows: null, bySym: null, hist: null, sort: 'rank', span: 'd1', at: 0 };
   async function loadRk() {
@@ -3057,13 +3057,16 @@
       if (!rk.rows) { const tb = $('rk-body'); tb.textContent = ''; const tr = el('tr'); const td = el('td', 'hint', 'Veri alınamadı, biraz sonra yeniden dene.'); td.colSpan = 5; tr.appendChild(td); tb.appendChild(tr); }
     }
   }
+  // dar sütun için kısa fiyat: ≥1000 kuruşsuz, ≥1 iki hane, altı iki anlamlı basamak (0,0000012 → $0,0000012)
+  const rkPrice = (p) => '$' + (p >= 1000 ? NF[0].format(p) : p >= 1 ? NF[2].format(p) : p.toPrecision(2).replace('.', ','));
   const tsDate = (t) => (t ? t.slice(6, 8) + '.' + t.slice(4, 6) + '.' + t.slice(0, 4) : '');
   function renderRk() {
     if (!rk.rows) return;
     const sp = RK_SPANS[rk.span];
     const arch = rk.span !== 'd1';
     const hs = arch && rk.hist ? rk.hist.spans[rk.span] : null;
-    $('rk-pct-h').textContent = sp.pf ? sp.lab.replace(' saat', ' sa').replace(' gün', ' g') : 'Fiyat';
+    const hp = hs && hs.prices ? hs.prices : null; // o tarihteki USD fiyatları (arşiv kopyasından)
+    $('rk-pct-h').textContent = sp.lab.replace(' saat', ' sa').replace(' gün', ' g');
     // Satırlar: 24 sa → CoinGecko ilk 100; arşiv dönemleri → arşivdeki bugünkü ilk 100 (değerler CoinGecko'dan)
     let rows;
     if (!arch) {
@@ -3071,14 +3074,15 @@
     } else if (hs) {
       rows = Object.entries(rk.hist.now.coins).map(([sym, v]) => {
         const then = hs.ranks[String(v[0])];
-        return { c: rk.bySym[sym] || null, sym, rank: v[1], d: then ? then - v[1] : 'new' };
+        const tp = hp ? +hp[String(v[0])] : NaN, np = +v[2];
+        return { c: rk.bySym[sym] || null, sym, rank: v[1], d: then ? then - v[1] : 'new', tp, ap: tp > 0 && np > 0 ? (np / tp - 1) * 100 : NaN };
       }).sort((a, b) => a.rank - b.rank);
     } else {
       rows = [];
     }
-    const pv = (x) => { if (!x.c || !sp.pf) return NaN; const v = +x.c[sp.pf]; return isFinite(v) ? v : (rk.span === 'd1' ? +x.c.price_change_percentage_24h : NaN); };
+    const pv = (x) => { if (arch && hp) return x.ap; if (!x.c || !sp.pf) return NaN; const v = +x.c[sp.pf]; return isFinite(v) ? v : (rk.span === 'd1' ? +x.c.price_change_percentage_24h : NaN); };
     const dv = (x) => (x.d === 'new' ? 1000 : isFinite(x.d) ? x.d : NaN);
-    const key = sp.pf ? pv : dv;
+    const key = sp.pf || hp ? pv : dv;
     if (rk.sort === 'up') rows.sort((a, b) => (isFinite(key(b)) ? key(b) : -Infinity) - (isFinite(key(a)) ? key(a) : -Infinity) || a.rank - b.rank);
     if (rk.sort === 'down') rows.sort((a, b) => (isFinite(key(a)) ? key(a) : Infinity) - (isFinite(key(b)) ? key(b) : Infinity) || a.rank - b.rank);
     const tb = $('rk-body');
@@ -3096,7 +3100,9 @@
       tr.appendChild(nm);
       tr.appendChild(el('td', 'rk-m', c ? fmtBig(+c.market_cap).replace(' ', '') : '—'));
       const p = pv(x);
-      tr.appendChild(el('td', 'rk-p ' + signClass(p), isFinite(p) ? fmtPct(p) : '—'));
+      const pc = el('td', 'rk-p ' + signClass(p), isFinite(p) ? fmtPct(p) : '—');
+      if (arch && hp) pc.appendChild(el('small', 'rk-tp', x.tp > 0 ? rkPrice(x.tp) : ' ')); // o günkü fiyat
+      tr.appendChild(pc);
       const d = x.d;
       const txt = d === 'new' ? 'yeni' : !isFinite(d) ? '—' : d > 0 ? '▲' + d : d < 0 ? '▼' + -d : '–';
       tr.appendChild(el('td', 'rk-d ' + (d === 'new' || d > 0 ? 'pos' : d < 0 ? 'neg' : ''), txt));
@@ -3106,7 +3112,7 @@
     $('rk-note').textContent = !arch
       ? 'Sıra ve dünkü sıra CoinGecko\'dan (24 saatlik piyasa değeri değişimiyle, kesin). Stablecoinler dahildir · ' + t
       : hs
-        ? 'Sıralar CoinMarketCap\'in Internet Archive\'daki kopyalarından: bugün ' + tsDate(rk.hist.now.ts) + ', karşılaştırılan ' + tsDate(hs.ts) + '. "yeni": o tarihte ilk 100\'de değildi. Değer ve fiyat değişimi CoinGecko\'dan' + (sp.pf ? '' : ' (bu dönem için fiyat değişimi verisi yok)') + '.'
+        ? 'Sıralar CoinMarketCap\'in Internet Archive\'daki kopyalarından: bugün ' + tsDate(rk.hist.now.ts) + ', karşılaştırılan ' + tsDate(hs.ts) + '. "yeni": o tarihte ilk 100\'de değildi. ' + (hp ? 'Yüzdenin altındaki fiyat o tarihteki fiyattır; yüzde, iki arşiv tarihi arasındaki fiyat değişimidir. Değer CoinGecko\'dan.' : 'Değer ve fiyat değişimi CoinGecko\'dan' + (sp.pf ? '' : ' (bu dönem için fiyat değişimi verisi yok)') + '.')
         : 'Arşiv verisi henüz yok.';
   }
   // iOS tarzı alttan açılan sayfalar (sheet): tutamaktan/başlıktan aşağı çekince, arkaya dokununca ya da Bitti ile kapanır
