@@ -27,6 +27,8 @@ TARGET = "coinmarketcap.com/"
 SPANS = {"d7": 7, "d30": 30, "m3": 91, "m6": 182, "y1": 365, "y2": 730, "y3": 1095, "y5": 1826}
 TOL = {"d7": 1, "d30": 3, "m3": 5, "m6": 7, "y1": 10, "y2": 15, "y3": 15, "y5": 20}  # kabul edilen sapma (gün)
 REFRESH = 20 * 3600  # günde bir yenile
+BUDGET = 240  # bu adım en fazla 4 dk sürsün (yayın zinciri beklemesin); kalan dönemler önceki veriyle
+T0 = time.time()
 MAX_BYTES = 8 * 1024 * 1024
 
 NEW_RE = re.compile(r'"id":(\d+),"name":"[^"]*","symbol":"([^"\\]{1,20})","slug":"[^"]*","cmcRank":(\d+)')
@@ -171,6 +173,11 @@ def main():
     pspans = prev.get("spans", {})
     for key, days in SPANS.items():
         want = ts_sec(t_now) - days * 86400
+        if time.time() - T0 > BUDGET:
+            errors.append("%s: süre doldu" % key)
+            if key in pspans:
+                res["spans"][key] = pspans[key]
+            continue
         try:
             cands = []
             try:
@@ -189,6 +196,8 @@ def main():
                 continue
             last = None
             for t in cands[:4]:  # bir kopya zaman aşımına düşerse sıradaki yakın kopyayı dene
+                if time.time() - T0 > BUDGET:
+                    break
                 try:
                     snap = snapshot(t, cache)
                     res["spans"][key] = {"ts": t, "ranks": {str(cid): r for cid, (r, _s) in snap.items()}}
