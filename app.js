@@ -2981,20 +2981,20 @@
     const EDGE = 24;
     const name = (p) => { const b = document.querySelector('#nav [data-go="' + p + '"] span'); return b ? b.textContent : p; };
     const parts = () => Array.from(document.querySelectorAll('.page > :not(.top):not(.tape)')).filter((n) => !n.hidden && n.offsetParent !== null);
-    // Geçiş işareti (tasarım 2): alt çubuğun üstünde sayfa noktaları; etkin nokta çektikçe hedefe doğru uzayıp kayar
-    const pill = el('div', 'swipe-dots');
+    // Geçiş işareti (tasarım 3): fiyat şeridinin altında ince çizgi ve hedef sayfa adı; çizgi çektikçe çekilen yandan dolar
+    const pill = el('div', 'swipe-line');
     pill.setAttribute('aria-hidden', 'true');
-    PAGES.forEach(() => pill.appendChild(el('i')));
-    const bar = el('b');
-    pill.appendChild(bar);
+    const bar = el('b'), lab = el('span');
+    pill.appendChild(bar); pill.appendChild(lab);
     document.body.appendChild(pill);
-    const GAP = 16, DOT = 6;
     function dots(p) {
-      const a = PAGES.indexOf(page), b = PAGES.indexOf(target);
-      const lead = a + (b - a) * Math.min(1, p * 2), tail = a + (b - a) * Math.max(0, p * 2 - 1);
-      const lo = Math.min(lead, tail), hi = Math.max(lead, tail);
-      bar.style.left = (lo * GAP) + 'px';
-      bar.style.width = ((hi - lo) * GAP + DOT) + 'px';
+      if (p === 0) {
+        const tape = document.querySelector('.tape');
+        pill.style.top = (tape ? Math.max(0, tape.getBoundingClientRect().bottom) : 0) + 'px';
+        pill.classList.toggle('l', dir < 0);
+        lab.textContent = dir > 0 ? name(target) + ' ›' : '‹ ' + name(target);
+      }
+      bar.style.transform = 'scaleX(' + p.toFixed(3) + ')';
       pill.style.setProperty('--p', p.toFixed(3));
     }
     let decided = false, sx = 0, sy = 0, st = 0, on = false, drag = false, dir = 0, target = null, busy = false, nodes = [], ghost = null;
