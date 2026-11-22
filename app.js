@@ -2978,13 +2978,13 @@
 
   // ---------- Kenardan çekerek sayfa geçişi (parmağı izleyen animasyonla) ----------
   function initSwipe() {
-    const EDGE = 32;
+    const EDGE = 24;
     const name = (p) => { const b = document.querySelector('#nav [data-go="' + p + '"] span'); return b ? b.textContent : p; };
     const parts = () => Array.from(document.querySelectorAll('.page > :not(.top):not(.tape)')).filter((n) => !n.hidden && n.offsetParent !== null);
     const pill = el('div', 'swipe-arrow');
     pill.setAttribute('aria-hidden', 'true');
     document.body.appendChild(pill);
-    let sx = 0, sy = 0, st = 0, on = false, drag = false, dir = 0, target = null, busy = false, nodes = [], ghost = null;
+    let decided = false, sx = 0, sy = 0, st = 0, on = false, drag = false, dir = 0, target = null, busy = false, nodes = [], ghost = null;
     // Hedef sayfanın görünür parçalarını bir anlığına açıp kopyalar (boyama olmadan geri döner); kopya parmakla birlikte gelir.
     function makeGhost() {
       const keep = page;
@@ -3032,7 +3032,7 @@
       pill.style.setProperty('--p', '0');
     }
     document.addEventListener('touchstart', (e) => {
-      on = drag = false;
+      on = drag = decided = false;
       if (busy || e.touches.length !== 1) return;
       const t = e.touches[0];
       if (t.clientX > EDGE && t.clientX < w() - EDGE) return;
@@ -3044,11 +3044,15 @@
     }, { passive: true });
     document.addEventListener('touchmove', (e) => {
       if (!on) return;
-      // iOS dikey kaydırmayı ilk harekette başlatır; kenar şeridinden başlayan dokunuşta baştan engellenir
-      if (e.cancelable) e.preventDefault();
       const t = e.touches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+      // iOS kaydırmaya ilk harekette karar verir: ilk hareket dikeyse sayfa normal kayar, yataysa kaydırma kilitlenir
+      if (!drag && !decided) {
+        if (Math.abs(dx) < 2 && Math.abs(dy) < 2) return;
+        decided = true;
+        if (Math.abs(dy) >= Math.abs(dx)) { on = false; return; }
+      }
+      if (e.cancelable) e.preventDefault();
       if (!drag) {
-        if (Math.abs(dy) > 24 && Math.abs(dy) > Math.abs(dx) * 1.5) return;
         if (Math.abs(dx) < 10 || Math.sign(dx) !== -dir) return;
         drag = true;
         document.body.classList.add('swiping');
