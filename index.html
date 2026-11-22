@@ -797,24 +797,17 @@
       <span class="sheet-grab" aria-hidden="true"></span>
       <div class="sheet-bar"><h2 id="rk-title">İlk 100</h2><button type="button" class="sheet-x" data-close aria-label="Kapat">Bitti</button></div>
     </div>
-    <nav class="chips" id="rk-span" role="tablist" aria-label="Dönem">
-      <button type="button" role="tab" data-k="d1" aria-selected="true">24 saat</button>
-      <button type="button" role="tab" data-k="d7" aria-selected="false">7 gün</button>
-      <button type="button" role="tab" data-k="d30" aria-selected="false">30 gün</button>
-      <button type="button" role="tab" data-k="m3" aria-selected="false">3 ay</button>
-      <button type="button" role="tab" data-k="m6" aria-selected="false">6 ay</button>
-      <button type="button" role="tab" data-k="y1" aria-selected="false">1 yıl</button>
-      <button type="button" role="tab" data-k="y2" aria-selected="false">2 yıl</button>
-      <button type="button" role="tab" data-k="y3" aria-selected="false">3 yıl</button>
-      <button type="button" role="tab" data-k="y4" aria-selected="false">4 yıl</button>
-      <button type="button" role="tab" data-k="y5" aria-selected="false">5 yıl</button>
-    </nav>
+    <div class="rk-when">
+      <div class="rk-when-t"><b id="rk-when">Dün</b><span id="rk-when-s">24 saatlik değişim · CoinGecko</span></div>
+      <input type="range" id="rk-slider" min="0" max="0" step="1" value="0" aria-label="Karşılaştırılacak tarih">
+      <div class="rk-when-ends" aria-hidden="true"><span>4 yıl önce</span><span>Dün</span></div>
+    </div>
     <nav class="chips" id="rk-sort" role="tablist" aria-label="Sıralama">
       <button type="button" role="tab" data-k="rank" aria-selected="true">Sıraya göre</button>
       <button type="button" role="tab" data-k="up" aria-selected="false">En çok yükselen</button>
       <button type="button" role="tab" data-k="down" aria-selected="false">En çok düşen</button>
     </nav>
-    <div class="rk-wrap"><table class="rk-table"><thead><tr><th>Sıra</th><th>Coin</th><th>Değer</th><th id="rk-pct-h">24 sa</th><th>Sıra ±</th></tr></thead><tbody id="rk-body"><tr><td colspan="5" class="hint">Yükleniyor…</td></tr></tbody></table></div>
+    <div class="rk-wrap"><table class="rk-table"><thead><tr><th>Sıra</th><th>Coin</th><th>Değer</th><th id="rk-pct-h">24 sa</th><th>Sıra ±</th></tr></thead><tbody id="rk-body"><tr><td colspan="5" class="hint">Yükleniyor…</td></tr></tbody></table><section class="rk-gone" id="rk-gone" hidden><h3 id="rk-gone-h"></h3><div id="rk-gone-list"></div></section></div>
     <p class="hint" id="rk-note">Dün sırası, CoinGecko'nun 24 saatlik piyasa değeri değişiminden hesaplanır; stablecoinler dahildir.</p>
   </div>
 </div>

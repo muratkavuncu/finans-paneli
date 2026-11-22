@@ -107,7 +107,7 @@ jobs:
         run: |
           mkdir -p _site/data
           cp data/ai.json _site/data/
-          cp data/ranks.json _site/data/
+          cp data/ranks.json hist/cmc_monthly.json _site/data/
           test -s data/signals.json || curl -fsS "$SITE/signals.json" -o data/signals.json || echo '{}' > data/signals.json
           cp data/signals.json _site/data/
           cp index.html style.css app.js apple-touch-icon.png _site/

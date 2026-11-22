@@ -1,16 +1,10 @@
-"""Kripto ilk 100 için gerçek tarihsel sıralar (Internet Archive / Wayback Machine).
+"""Kripto ilk 100: bugünün CoinMarketCap sırası ve fiyatı (Internet Archive / Wayback Machine, günde bir istek).
 
-Kaynak: Internet Archive'ın arşivlediği coinmarketcap.com ana sayfası kopyaları. CoinMarketCap'e
-doğrudan bağlanılmaz; arşivin resmi arayüzü (availability API + "id_" ham kopya) kullanılır.
-Her dönem için o tarihe en yakın tek kopya okunur (günde ~10 istek, aralarda bekleme).
+CoinMarketCap'e doğrudan bağlanılmaz; arşivin resmi arayüzü (availability/CDX API + "id_" ham kopya) kullanılır.
+Geçmiş aylar hist/cmc_monthly.json'da sabittir (build_monthly.py ile bir kez çekildi); burada yalnız "bugün" alınır.
+Coinler CoinMarketCap'in sabit sayısal kimliğiyle eşleşir.
 
-Karşılaştırma tutarlı olsun diye "bugün" de aynı kaynağın en yeni arşiv kopyasından alınır.
-Coinler CoinMarketCap'in sabit sayısal kimliğiyle eşleşir (RNDR→RENDER gibi ad değişikliklerinde bozulmaz).
-
-Çıktı (data/ranks.json):
-{"updated": ts, "source": "...", "now": {"ts": "YYYYMMDDhhmmss", "coins": {"SYM": [id, rank], ...}},
- "spans": {"d7": {"ts": "...", "ranks": {"id": rank, ...}, "prices": {"id": usd, ...}}, ...}}
-"now.coins" değerleri [id, rank, usd] biçimindedir; fiyat o kopyadaki CoinMarketCap USD fiyatıdır.
+Çıktı (data/ranks.json): {"updated": ts, "source": "...", "now": {"ts": "YYYYMMDDhhmmss", "coins": {"SYM": [id, rank, usd]}}}
 """
 import gzip
 import json
@@ -25,9 +19,7 @@ OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join("data", "ranks.json")
 PREV_URL = os.environ.get("PREV_RANKS_URL", "")
 UA = "finans-paneli/1.0 (kisisel, ticari degil)"
 TARGET = "coinmarketcap.com/"
-SPANS = {"d7": 7, "d30": 30, "m3": 91, "m6": 182, "y1": 365, "y2": 730, "y3": 1095, "y4": 1461, "y5": 1826}
-TOL = {"d7": 1, "d30": 3, "m3": 5, "m6": 7, "y1": 10, "y2": 15, "y3": 15, "y4": 20, "y5": 20}  # kabul edilen sapma (gün)
-REFRESH = 20 * 3600  # günde bir yenile
+REFRESH = 20 * 3600  # günde bir yenile (başarısızsa updated değişmez, sonraki turda yeniden dener)
 BUDGET = 240  # bu adım en fazla 4 dk sürsün (yayın zinciri beklemesin); kalan dönemler önceki veriyle
 T0 = time.time()
 MAX_BYTES = 8 * 1024 * 1024
@@ -145,6 +137,7 @@ def ts_sec(ts):
 
 
 def main():
+    """Yalnızca bugünün ilk 100'ü (günde bir istek). Geçmiş aylar hist/cmc_monthly.json'da sabittir."""
     prev = {}
     if PREV_URL.startswith("https://"):
         try:
@@ -152,15 +145,11 @@ def main():
         except Exception:
             prev = {}
     now = time.time()
-    full = len(prev.get("spans", {})) >= len(SPANS)
-    age = now - prev.get("updated", 0)
-    # tamsa günde bir; eksik dönem varsa saatte bir yeniden dene (arşiv bazen zaman aşımına düşer)
-    if prev.get("now") and (age < 3600 or (full and age < REFRESH)):
+    if prev.get("now") and (now - prev.get("updated", 0) < REFRESH or now - prev.get("tried", 0) < 3600):
         json.dump(prev, open(OUT, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
-        print("sıralar güncel, önceki kullanıldı")
+        print("bugünkü sıra güncel, önceki kullanıldı")
         return
-    cache, errors = {}, []
-    cands = []
+    cache, cands = {}, []
     try:
         t = closest(ymd(now))
         if t and now - ts_sec(t) <= 3 * 86400:
@@ -173,71 +162,26 @@ def main():
         pass
     cur, t_now = None, ""
     for t in cands[:4]:
+        if time.time() - T0 > BUDGET:
+            break
         try:
             cur, t_now = snapshot(t, cache), t
             break
         except Exception:
             continue
     if not cur:
+        # arşiv ulaşılamaz: önceki günü koru (bir sonraki turda yeniden denenir)
+        if prev.get("now"):
+            prev["tried"] = int(now)  # saatte birden sık yeniden deneme
+            json.dump(prev, open(OUT, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
+            print("arşive ulaşılamadı, önceki gün kullanıldı")
+            return
         raise SystemExit("güncel arşiv kopyası yok")
-    res = {"updated": int(now), "source": "Internet Archive · coinmarketcap.com kopyaları",
-           "now": {"ts": t_now, "coins": {}}, "spans": {}}
+    res = {"updated": int(now), "source": "Internet Archive · coinmarketcap.com kopyaları", "now": {"ts": t_now, "coins": {}}}
     for cid, (rank, sym, usd) in sorted(cur.items(), key=lambda x: x[1][0]):
         res["now"]["coins"].setdefault(sym.upper(), [cid, rank, usd])
-    pspans = dict(prev.get("spans", {}))
-    # Yedek: arşiv GitHub sunucularını bazen reddediyor. Depodaki elle alınmış kopya (ranks_seed.json),
-    # önceki veride eksik ya da fiyatsız olan dönemleri doldurur (yalnız hedef tarihe tolerans içinde yakınsa).
-    try:
-        seed = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "ranks_seed.json"), encoding="utf-8")).get("spans", {})
-    except Exception:
-        seed = {}
-    for k, v in seed.items():
-        if k in SPANS and "prices" in v and "prices" not in pspans.get(k, {}) and                 abs(ts_sec(v["ts"]) - (ts_sec(t_now) - SPANS[k] * 86400)) <= TOL[k] * 86400 * 3:
-            pspans[k] = v
-    for key, days in SPANS.items():
-        want = ts_sec(t_now) - days * 86400
-        if time.time() - T0 > BUDGET:
-            errors.append("%s: süre doldu" % key)
-            if key in pspans:
-                res["spans"][key] = pspans[key]
-            continue
-        try:
-            cands = []
-            try:
-                t = closest(ymd(want))
-                if t and abs(ts_sec(t) - want) <= TOL[key] * 86400:
-                    cands.append(t)
-            except Exception:
-                pass
-            if not cands:
-                cands = cdx_list(want, TOL[key])[:4]
-            if not cands:
-                raise ValueError("yakın tarihli kopya yok")
-            p = pspans.get(key)
-            if p and p.get("ts") in cands[:1] and "prices" in p:  # aynı kopya: yeniden indirme
-                res["spans"][key] = p
-                continue
-            last = None
-            for t in cands[:4]:  # bir kopya zaman aşımına düşerse sıradaki yakın kopyayı dene
-                if time.time() - T0 > BUDGET:
-                    break
-                try:
-                    snap = snapshot(t, cache)
-                    res["spans"][key] = {"ts": t, "ranks": {str(cid): r for cid, (r, _s, _u) in snap.items()},
-                                         "prices": {str(cid): u for cid, (_r, _s, u) in snap.items() if u}}
-                    break
-                except Exception as e:
-                    last = e
-            else:
-                raise last or ValueError("kopya okunamadı")
-        except Exception as e:
-            errors.append("%s: %s" % (key, e))
-            if key in pspans:
-                res["spans"][key] = pspans[key]
-    if errors:
-        res["errors"] = errors
     json.dump(res, open(OUT, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
-    print("sıralar:", ", ".join("%s=%s" % (k, v["ts"][:8]) for k, v in res["spans"].items()), "|", errors)
+    print("bugünkü sıra:", t_now)
 
 
 if __name__ == "__main__":
