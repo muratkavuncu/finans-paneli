@@ -120,7 +120,10 @@ def main():
         except Exception:
             prev = {}
     now = time.time()
-    if prev.get("updated", 0) > now - REFRESH and prev.get("now") and len(prev.get("spans", {})) >= 6:
+    full = len(prev.get("spans", {})) >= len(SPANS)
+    age = now - prev.get("updated", 0)
+    # tamsa günde bir; eksik dönem varsa saatte bir yeniden dene (arşiv bazen zaman aşımına düşer)
+    if prev.get("now") and (age < 3600 or (full and age < REFRESH)):
         json.dump(prev, open(OUT, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
         print("sıralar güncel, önceki kullanıldı")
         return
