@@ -16,6 +16,21 @@
     Promise.all(['./', 'app.js', 'style.css'].map((u) => fetch(u, { cache: 'reload' }).catch(() => null)))
       .then(() => location.reload());
   })();
+  // Ana ekran uygulaması eski HTML'i önbellekten açabilir: açılışta ve uygulamaya dönüldüğünde yayındaki sürüme bakılır.
+  async function checkLatest() {
+    if (BUILD === 'dev') return;
+    try {
+      const r = await fetch('./?nv=' + Date.now(), { cache: 'no-store' });
+      const m = (await r.text()).match(/name="fp-build" content="([0-9a-f]+)"/);
+      if (!m || m[1] === BUILD) return;
+      if (sessionStorage.getItem('fp.nv') === m[1]) return;
+      sessionStorage.setItem('fp.nv', m[1]);
+      await Promise.all(['./', 'app.js?v=' + m[1], 'style.css?v=' + m[1]].map((u) => fetch(u, { cache: 'reload' }).catch(() => null)));
+      location.replace(location.pathname + '?v=' + m[1] + location.hash);
+    } catch (err) { /* çevrimdışıysa mevcut sürümle devam */ }
+  }
+  checkLatest();
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkLatest(); });
 
   // ---------- Ayarlar ----------
   const REST_HOSTS = ['https://api.binance.com', 'https://data-api.binance.vision'];
