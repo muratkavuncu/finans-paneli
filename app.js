@@ -3312,13 +3312,16 @@
       const v = raw < TH ? raw * 0.9 : TH * 0.9 + (raw - TH) * 0.35; // iOS lastik direnci
       setOff(v);
       ticksFor(Math.min(1, v / (TH * 0.9)));
-      if (v >= TH * 0.9) refresh(); // iOS'ta eşik geçilince bırakmayı beklemeden yenilenir
+      // eşik geçilince gösterge dönmeye başlar; yenileme parmak bırakılınca (geri çekilirse iptal)
+      ptr.classList.toggle('spin', v >= TH * 0.9);
     }, { passive: false });
     const end = () => {
       if (!on && !pulling) return;
       on = false;
       if (busy || !pulling) return;
       pulling = false;
+      if (off >= TH * 0.9) { refresh(); return; }
+      ptr.classList.remove('spin');
       setOff(0, 350);
       setTimeout(() => { if (!busy) { ptr.classList.remove('on'); ticksFor(0); } }, 360);
     };
