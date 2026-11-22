@@ -184,7 +184,16 @@ def main():
            "now": {"ts": t_now, "coins": {}}, "spans": {}}
     for cid, (rank, sym, usd) in sorted(cur.items(), key=lambda x: x[1][0]):
         res["now"]["coins"].setdefault(sym.upper(), [cid, rank, usd])
-    pspans = prev.get("spans", {})
+    pspans = dict(prev.get("spans", {}))
+    # Yedek: arşiv GitHub sunucularını bazen reddediyor. Depodaki elle alınmış kopya (ranks_seed.json),
+    # önceki veride eksik ya da fiyatsız olan dönemleri doldurur (yalnız hedef tarihe tolerans içinde yakınsa).
+    try:
+        seed = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "ranks_seed.json"), encoding="utf-8")).get("spans", {})
+    except Exception:
+        seed = {}
+    for k, v in seed.items():
+        if k in SPANS and "prices" in v and "prices" not in pspans.get(k, {}) and                 abs(ts_sec(v["ts"]) - (ts_sec(t_now) - SPANS[k] * 86400)) <= TOL[k] * 86400 * 3:
+            pspans[k] = v
     for key, days in SPANS.items():
         want = ts_sec(t_now) - days * 86400
         if time.time() - T0 > BUDGET:
