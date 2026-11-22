@@ -1019,3 +1019,9 @@ html.sheet-on, html.sheet-on body { overflow: hidden; }
 .topbar[data-state="live"] .tb-dot { background: var(--up); }
 .topbar[data-state="down"] .tb-dot { background: var(--down); }
 .tape { top: calc(44px + env(safe-area-inset-top, 0px)); }
+.top { margin-top: 0; }
+.page { padding-top: calc(6px + env(safe-area-inset-top, 0px)); }
+.top { flex-wrap: nowrap; }
+.top .status { min-width: 0; max-width: 60%; white-space: nowrap; overflow: hidden; }
+.top .status #status-text { overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 560px) { .top .status-time { display: none; } }
