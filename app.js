@@ -2966,9 +2966,79 @@
     });
     $('rk-note').textContent = 'Dün sırası, CoinGecko\'nun 24 saatlik piyasa değeri değişiminden hesaplanır; stablecoinler dahildir · ' + new Date(rk.at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
   }
+  // iOS tarzı alttan açılan sayfa (sheet): tutamaktan/başlıktan aşağı çekince ya da arkaya dokununca kapanır
+  const sheet = { el: null, card: null, open: false };
+  const SHEET_EASE = 'cubic-bezier(.32,.72,0,1)';
+  function openSheet() {
+    const sh = sheet.el;
+    sh.hidden = false;
+    document.documentElement.classList.add('sheet-on');
+    sheet.card.style.transition = 'none';
+    sheet.card.style.transform = 'translateY(100%)';
+    sh.classList.remove('show');
+    sheet.card.offsetHeight;
+    sheet.card.style.transition = 'transform .45s ' + SHEET_EASE;
+    sheet.card.style.transform = '';
+    sh.classList.add('show');
+    sheet.open = true;
+    loadRk();
+  }
+  function closeSheet() {
+    if (!sheet.open) return;
+    sheet.open = false;
+    sheet.card.style.transition = 'transform .35s ' + SHEET_EASE;
+    sheet.card.style.transform = 'translateY(100%)';
+    sheet.el.classList.remove('show');
+    setTimeout(() => {
+      if (sheet.open) return;
+      sheet.el.hidden = true;
+      sheet.card.style.transform = '';
+      document.documentElement.classList.remove('sheet-on');
+      $('rk-open').focus({ preventScroll: true });
+    }, 360);
+  }
+  function initSheet() {
+    sheet.el = $('rk-sheet');
+    sheet.card = sheet.el.querySelector('.sheet-card');
+    $('rk-open').addEventListener('click', openSheet);
+    sheet.el.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', closeSheet));
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSheet(); });
+    // Aşağı çekme: başlıktan her zaman; tablo en üstteyken tablodan da
+    const wrap = sheet.el.querySelector('.rk-wrap');
+    let y0 = 0, t0 = 0, dragging = false, cand = false;
+    sheet.card.addEventListener('touchstart', (e) => {
+      if (e.touches.length !== 1) return;
+      const inHead = !!e.target.closest('.sheet-head');
+      cand = inHead || (wrap.contains(e.target) && wrap.scrollTop <= 0) || !wrap.contains(e.target);
+      if (e.target.closest('.chips')) cand = false;
+      dragging = false; y0 = e.touches[0].clientY; t0 = Date.now();
+    }, { passive: true });
+    sheet.card.addEventListener('touchmove', (e) => {
+      if (!cand) return;
+      const dy = e.touches[0].clientY - y0;
+      if (!dragging) {
+        if (dy < 6) { if (dy < -4) cand = false; return; }
+        dragging = true;
+        sheet.card.style.transition = 'none';
+      }
+      if (e.cancelable) e.preventDefault();
+      sheet.card.style.transform = 'translateY(' + Math.max(0, dy) + 'px)';
+      sheet.el.style.setProperty('--dim', String(Math.max(0, 1 - dy / sheet.card.offsetHeight)));
+    }, { passive: false });
+    const end = (e) => {
+      if (!dragging) { cand = false; return; }
+      dragging = cand = false;
+      const dy = e.changedTouches[0].clientY - y0, h = sheet.card.offsetHeight;
+      const fast = dy > 60 && Date.now() - t0 < 300;
+      sheet.el.style.removeProperty('--dim');
+      if (dy > h * 0.5 || fast) closeSheet();
+      else { sheet.card.style.transition = 'transform .35s ' + SHEET_EASE; sheet.card.style.transform = ''; }
+    };
+    sheet.card.addEventListener('touchend', end, { passive: true });
+    sheet.card.addEventListener('touchcancel', end, { passive: true });
+  }
   function initRk() {
-    const d = $('rk');
-    d.addEventListener('toggle', () => { if (d.open) loadRk(); });
+    initSheet();
     $('rk-sort').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
       rk.sort = b.dataset.k;
       $('rk-sort').querySelectorAll('button').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
@@ -3047,7 +3117,7 @@
     }
     document.addEventListener('touchstart', (e) => {
       on = drag = decided = false;
-      if (busy || e.touches.length !== 1) return;
+      if (busy || sheet.open || e.touches.length !== 1) return;
       const t = e.touches[0];
       if (t.clientX > EDGE && t.clientX < w() - EDGE) return;
       dir = t.clientX <= EDGE ? -1 : 1; // -1: önceki sayfa (soldan çek), 1: sonraki

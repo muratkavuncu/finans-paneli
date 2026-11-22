@@ -829,14 +829,7 @@ body::before {
 .oz-gold .sub { white-space: normal; overflow: visible; text-overflow: clip; }
 
 /* İlk 100 sıra değişimi */
-.rk summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 10px; min-height: 32px; }
-.rk summary::-webkit-details-marker { display: none; }
-.rk summary > span { display: flex; flex-direction: column; gap: 2px; }
-.rk summary b { font-size: 16px; }
-.rk summary::after { content: "＋"; color: var(--muted); }
-.rk[open] summary::after { content: "－"; }
-.rk[open] summary { margin-bottom: 10px; }
-.rk-wrap { max-height: 60vh; overflow-y: auto; -webkit-overflow-scrolling: touch; border-top: 1px solid var(--line); }
+.rk-wrap { overflow-y: auto; -webkit-overflow-scrolling: touch; border-top: 1px solid var(--line); }
 .rk-table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
 .rk-table th { position: sticky; top: 0; background: var(--surface); color: var(--muted); font-weight: 500; text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); }
 .rk-table td { padding: 8px 6px; border-bottom: 1px solid var(--line); }
@@ -927,3 +920,33 @@ body.swiping { touch-action: none; overflow-anchor: none; }
 .swipe-line.l b { transform-origin: left center; }
 .swipe-line span { position: absolute; top: 8px; right: 14px; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; color: color-mix(in srgb, var(--accent) calc(var(--p) * 100%), var(--muted)); background: color-mix(in srgb, var(--surface-2) 65%, transparent); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
 .swipe-line.l span { right: auto; left: 14px; }
+
+/* İlk 100 açma satırı (iOS liste hücresi gibi) */
+.rk-open { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: left; color: var(--fg); font: inherit; cursor: pointer; min-height: 56px; }
+.rk-open > span { display: flex; flex-direction: column; gap: 2px; }
+.rk-open b { font-size: 16px; }
+.rk-open svg { width: 18px; height: 18px; flex: none; fill: none; stroke: var(--muted); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.rk-open:active { background: var(--surface-2); }
+
+/* Alttan açılan sayfa (iOS sheet) */
+html.sheet-on, html.sheet-on body { overflow: hidden; }
+.sheet { --dim: 1; position: fixed; inset: 0; z-index: 60; }
+.sheet-dim { position: absolute; inset: 0; background: rgba(0, 0, 0, .45); opacity: 0; transition: opacity .35s; }
+.sheet.show .sheet-dim { opacity: var(--dim); }
+.sheet-card {
+  position: absolute; left: 0; right: 0; bottom: 0; max-width: 720px; margin: 0 auto;
+  height: calc(100% - max(44px, env(safe-area-inset-top, 0px) + 16px));
+  display: flex; flex-direction: column;
+  background: var(--surface); border-radius: 14px 14px 0 0; border: 1px solid var(--line); border-bottom: 0;
+  padding: 0 14px calc(10px + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, .35);
+  will-change: transform;
+}
+.sheet-head { flex: none; padding-top: 6px; touch-action: none; }
+.sheet-grab { display: block; width: 36px; height: 5px; border-radius: 3px; margin: 0 auto 4px; background: color-mix(in srgb, var(--muted) 60%, transparent); }
+.sheet-bar { display: flex; align-items: center; justify-content: space-between; min-height: 44px; margin-bottom: 6px; }
+.sheet-bar h2 { margin: 0; font-size: 17px; }
+.sheet-x { min-height: 44px; min-width: 44px; padding: 0 4px; background: none; border: 0; color: var(--accent); font: inherit; font-weight: 600; font-size: 16px; cursor: pointer; }
+.sheet .chips { flex: none; }
+.sheet .rk-wrap { flex: 1; min-height: 0; overscroll-behavior: contain; }
+.sheet #rk-note { flex: none; }
