@@ -2981,9 +2981,22 @@
     const EDGE = 24;
     const name = (p) => { const b = document.querySelector('#nav [data-go="' + p + '"] span'); return b ? b.textContent : p; };
     const parts = () => Array.from(document.querySelectorAll('.page > :not(.top):not(.tape)')).filter((n) => !n.hidden && n.offsetParent !== null);
-    const pill = el('div', 'swipe-arrow');
+    // Geçiş işareti (tasarım 2): alt çubuğun üstünde sayfa noktaları; etkin nokta çektikçe hedefe doğru uzayıp kayar
+    const pill = el('div', 'swipe-dots');
     pill.setAttribute('aria-hidden', 'true');
+    PAGES.forEach(() => pill.appendChild(el('i')));
+    const bar = el('b');
+    pill.appendChild(bar);
     document.body.appendChild(pill);
+    const GAP = 16, DOT = 6;
+    function dots(p) {
+      const a = PAGES.indexOf(page), b = PAGES.indexOf(target);
+      const lead = a + (b - a) * Math.min(1, p * 2), tail = a + (b - a) * Math.max(0, p * 2 - 1);
+      const lo = Math.min(lead, tail), hi = Math.max(lead, tail);
+      bar.style.left = (lo * GAP) + 'px';
+      bar.style.width = ((hi - lo) * GAP + DOT) + 'px';
+      pill.style.setProperty('--p', p.toFixed(3));
+    }
     let decided = false, sx = 0, sy = 0, st = 0, on = false, drag = false, dir = 0, target = null, busy = false, nodes = [], ghost = null;
     // Hedef sayfanın görünür parçalarını bir anlığına açıp kopyalar (boyama olmadan geri döner); kopya parmakla birlikte gelir.
     function makeGhost() {
@@ -3061,15 +3074,13 @@
         nodes.forEach((n) => { n.style.willChange = 'transform'; });
         ghost = makeGhost();
         trans(0);
-        pill.className = 'swipe-arrow ' + (dir > 0 ? 'r' : 'l');
-        pill.textContent = dir > 0 ? '›' : '‹';
-        pill.setAttribute('title', name(target));
+        dots(0);
         pill.classList.add('on');
       }
       if (e.cancelable) e.preventDefault(); // çekme sürerken sayfa dikey kaymasın
       const x = Math.sign(dx) === -dir ? dx : 0;
       move(x);
-      pill.style.setProperty('--p', Math.min(1, Math.abs(x) / (w() * 0.25)).toFixed(3));
+      dots(Math.min(1, Math.abs(x) / (w() * 0.25)));
     }, { passive: false });
     const end = async (e) => {
       if (!on) return;

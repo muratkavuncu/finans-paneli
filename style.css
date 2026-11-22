@@ -906,3 +906,17 @@ html, body { overscroll-behavior-x: none; }
 .swipe-arrow.r { right: 0; transform: translate(calc(100% - var(--p) * (100% + 14px)), -50%) scale(calc(.7 + var(--p) * .3)); }
 .swipe-arrow.l { left: 0; transform: translate(calc(-100% + var(--p) * (100% + 14px)), -50%) scale(calc(.7 + var(--p) * .3)); }
 body.swiping { touch-action: none; overflow-anchor: none; }
+/* Geçiş işareti (tasarım 2): sayfa noktaları */
+.swipe-dots {
+  --p: 0;
+  position: fixed; left: 50%; z-index: 25; pointer-events: none;
+  bottom: calc(74px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%) translateY(6px);
+  display: flex; gap: 10px; padding: 7px 10px; border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-2) 65%, transparent);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  opacity: 0; transition: opacity .15s, transform .15s;
+}
+.swipe-dots.on { opacity: 1; transform: translateX(-50%) translateY(0); }
+.swipe-dots i { width: 6px; height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--muted) 55%, transparent); }
+.swipe-dots b { position: absolute; top: 7px; height: 6px; border-radius: 3px; margin-left: 10px; background: color-mix(in srgb, var(--accent) calc(55% + var(--p) * 45%), var(--muted)); }
