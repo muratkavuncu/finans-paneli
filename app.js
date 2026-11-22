@@ -3119,6 +3119,32 @@
     }));
   }
 
+  // ---------- iOS segmented control: az seçenekli gruplar tek kutu, seçili parçada kayan "başparmak" ----------
+  const SEG_IDS = ['maintabs', 'ai-subs', 'intervals', 'btk-side', 'dp-range', 'tr-filters', 'bk-range', 'lq-filters', 'bt-intervals', 'rk-sort'];
+  function initSeg() {
+    SEG_IDS.forEach((id) => {
+      const box = $(id);
+      if (!box) return;
+      box.classList.add('seg');
+      const thumb = el('i', 'seg-thumb');
+      thumb.setAttribute('aria-hidden', 'true');
+      box.insertBefore(thumb, box.firstChild);
+      let first = true;
+      const place = () => {
+        const b = box.querySelector('button[aria-selected="true"]');
+        if (!b || !box.offsetWidth) { thumb.style.opacity = '0'; return; }
+        if (first) thumb.style.transition = 'none';
+        thumb.style.opacity = '1';
+        thumb.style.transform = 'translateX(' + b.offsetLeft + 'px)';
+        thumb.style.width = b.offsetWidth + 'px';
+        if (first) { thumb.offsetWidth; thumb.style.transition = ''; first = false; }
+      };
+      new MutationObserver(place).observe(box, { subtree: true, attributes: true, attributeFilter: ['aria-selected'] });
+      if (window.ResizeObserver) new ResizeObserver(() => { first = true; place(); }).observe(box);
+      place();
+    });
+  }
+
   // ---------- Kenardan çekerek sayfa geçişi (parmağı izleyen animasyonla) ----------
   function initSwipe() {
     const EDGE = 24;
@@ -3646,6 +3672,7 @@
   safe(loadGlobal);
   safe(loadRank);
   safe(initTapeAuto);
+  safe(initSeg);
   safe(initRk);
   safe(initSwipe);
   safe(loadGoldDaily);

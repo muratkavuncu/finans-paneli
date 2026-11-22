@@ -1065,3 +1065,27 @@ html.head-stuck body::before { background: var(--surface); }
 .tapebar { align-items: flex-end; }
 .tapebar .tape { min-height: 0; padding-top: 0; padding-bottom: 5px; align-items: flex-end; }
 .tapebar .tape-title { align-self: flex-end; padding-bottom: 3px; }
+
+/* ===== iOS segmented control ===== */
+.seg.seg {
+  position: relative; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 0;
+  padding: 2px; border: 0; border-radius: 9px; overflow: visible;
+  background: color-mix(in srgb, var(--fg) 9%, transparent); margin-bottom: 10px;
+}
+.seg.seg > button {
+  position: relative; z-index: 1; min-height: 32px; min-width: 0; padding: 0 6px; margin: 0;
+  border: 0; border-radius: 7px; background: transparent; box-shadow: none;
+  color: var(--fg); font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  -webkit-tap-highlight-color: transparent; transition: opacity .15s;
+}
+.seg.seg > button[aria-selected="true"] { background: transparent; color: var(--fg); font-weight: 600; border: 0; }
+.seg.seg > button:active { opacity: .55; }
+.seg.seg > button::after { content: none; }
+.seg-thumb {
+  position: absolute; z-index: 0; top: 2px; bottom: 2px; left: 0; width: 0; border-radius: 7px;
+  background: color-mix(in srgb, var(--fg) 20%, var(--surface));
+  box-shadow: 0 3px 8px rgba(0,0,0,.12), 0 3px 1px rgba(0,0,0,.04);
+  transition: transform .32s cubic-bezier(.32,.72,0,1), width .32s cubic-bezier(.32,.72,0,1);
+}
+@media (prefers-color-scheme: light) { .seg-thumb { background: #fff; } }
+@media (prefers-reduced-motion: reduce) { .seg-thumb { transition: none; } }
