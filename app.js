@@ -2945,8 +2945,9 @@
   function renderRk() {
     if (!rk.rows) return;
     const rows = rk.rows.slice();
-    if (rk.sort === 'up') rows.sort((a, b) => b._d - a._d || a._r - b._r);
-    if (rk.sort === 'down') rows.sort((a, b) => a._d - b._d || a._r - b._r);
+    const pc = (c) => (isFinite(+c.price_change_percentage_24h) ? +c.price_change_percentage_24h : 0);
+    if (rk.sort === 'up') rows.sort((a, b) => pc(b) - pc(a));
+    if (rk.sort === 'down') rows.sort((a, b) => pc(a) - pc(b));
     const tb = $('rk-body');
     tb.textContent = '';
     rows.forEach((c) => {
