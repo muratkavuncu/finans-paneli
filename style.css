@@ -992,3 +992,8 @@ html.sheet-on, html.sheet-on body { overflow: hidden; }
 @media (prefers-color-scheme: light) {
   .nav { border-color: color-mix(in srgb, #000 8%, transparent); box-shadow: 0 8px 28px rgba(0, 0, 0, .14), inset 0 1px 0 rgba(255, 255, 255, .7); background: color-mix(in srgb, var(--surface) 62%, transparent); }
 }
+/* Sekme simgeleri (SF Symbols mantığı): seçili değilken çizgi, seçiliyken dolu */
+.nav svg .fl { fill: transparent; transition: fill .2s; }
+.nav button[aria-current="page"] svg .fl { fill: currentColor; }
+.nav button[aria-current="page"] svg .cut { stroke: var(--surface); }
+.nav button[aria-current="page"] svg { stroke-width: 1.7; }
