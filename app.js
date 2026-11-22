@@ -2981,7 +2981,7 @@
     const EDGE = 32;
     const name = (p) => { const b = document.querySelector('#nav [data-go="' + p + '"] span'); return b ? b.textContent : p; };
     const parts = () => Array.from(document.querySelectorAll('.page > :not(.top):not(.tape)')).filter((n) => !n.hidden && n.offsetParent !== null);
-    const pill = el('div', 'swipe-pill');
+    const pill = el('div', 'swipe-arrow');
     pill.setAttribute('aria-hidden', 'true');
     document.body.appendChild(pill);
     let sx = 0, sy = 0, st = 0, on = false, drag = false, dir = 0, target = null, busy = false, nodes = [], ghost = null;
@@ -3052,7 +3052,9 @@
         nodes.forEach((n) => { n.style.willChange = 'transform'; });
         ghost = makeGhost();
         trans(0);
-        pill.textContent = (dir < 0 ? '‹ ' : '') + name(target) + (dir > 0 ? ' ›' : '');
+        pill.className = 'swipe-arrow ' + (dir > 0 ? 'r' : 'l');
+        pill.textContent = dir > 0 ? '›' : '‹';
+        pill.setAttribute('title', name(target));
         pill.classList.add('on');
       }
       const x = Math.sign(dx) === -dir ? dx : 0;

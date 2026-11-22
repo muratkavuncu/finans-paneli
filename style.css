@@ -888,3 +888,20 @@ html, body { overscroll-behavior-x: none; }
 .rk-table th:nth-child(4), .rk-table td:nth-child(4) { padding-left: 8px; }
 .swipe-ghost { position: fixed; left: 0; right: 0; bottom: 0; z-index: 15; overflow: hidden; pointer-events: none; opacity: 0; will-change: transform, opacity; }
 .swipe-ghost > .page { padding-top: 0; }
+/* Geçiş işareti (tasarım 1): çekilen kenarda yuvarlak ok; çektikçe içeri girer, büyür ve turuncuya döner */
+.swipe-arrow {
+  --p: 0;
+  position: fixed; top: 50%; z-index: 50; pointer-events: none;
+  width: 44px; height: 44px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 26px; font-weight: 600; line-height: 1; padding-bottom: 3px;
+  color: color-mix(in srgb, var(--accent) calc(var(--p) * 100%), var(--muted));
+  background: color-mix(in srgb, var(--accent) calc(var(--p) * 18%), color-mix(in srgb, var(--surface-2) 70%, transparent));
+  border: 1px solid color-mix(in srgb, var(--accent) calc(var(--p) * 70%), var(--line));
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  opacity: 0;
+  transition: opacity .15s;
+}
+.swipe-arrow.on { opacity: 1; }
+.swipe-arrow.r { right: 0; transform: translate(calc(100% - var(--p) * (100% + 14px)), -50%) scale(calc(.7 + var(--p) * .3)); }
+.swipe-arrow.l { left: 0; transform: translate(calc(-100% + var(--p) * (100% + 14px)), -50%) scale(calc(.7 + var(--p) * .3)); }
