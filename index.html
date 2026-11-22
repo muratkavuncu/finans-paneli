@@ -818,6 +818,47 @@
   </div>
 </div>
 
+<div class="sheet" id="gen-sheet" role="dialog" aria-modal="true" aria-labelledby="gs-title" hidden>
+  <div class="sheet-dim" data-close></div>
+  <div class="sheet-card fit">
+    <div class="sheet-head">
+      <span class="sheet-grab" aria-hidden="true"></span>
+      <div class="sheet-bar"><h2 id="gs-title"></h2><button type="button" class="sheet-x" data-close aria-label="Kapat">Bitti</button></div>
+    </div>
+    <div class="sheet-body" id="gs-body"></div>
+  </div>
+</div>
+
+<div class="sheet" id="coin-sheet" role="dialog" aria-modal="true" aria-labelledby="cs-title" hidden>
+  <div class="sheet-dim" data-close></div>
+  <div class="sheet-card fit">
+    <div class="sheet-head">
+      <span class="sheet-grab" aria-hidden="true"></span>
+      <div class="sheet-bar"><h2 id="cs-title"></h2><button type="button" class="sheet-x" data-close aria-label="Kapat">Bitti</button></div>
+    </div>
+    <div class="sheet-body">
+      <div class="oz-hero cs-hero">
+        <span class="oz-main">
+          <span class="label" id="cs-sym"></span>
+          <span class="oz-row"><span class="oz-price" id="cs-price">—</span><span class="chip" id="cs-pct">—</span></span>
+          <span class="oz-sub" id="cs-sub"></span>
+        </span>
+        <svg class="oz-spark" id="cs-spark" viewBox="0 0 100 34" preserveAspectRatio="none" aria-hidden="true"></svg>
+        <span class="oz-range">
+          <span class="oz-range-bar"><i id="cs-range-dot"></i></span>
+          <span class="oz-range-ends"><span id="cs-lo">—</span><span id="cs-range-t">24 saatlik aralık</span><span id="cs-hi">—</span></span>
+        </span>
+        <span class="oz-perf" id="cs-perf"></span>
+      </div>
+      <dl class="cs-facts" id="cs-facts"></dl>
+      <button type="button" class="cs-go" id="cs-go">Grafiği aç</button>
+    </div>
+  </div>
+</div>
+
+<div class="ptr" id="ptr" aria-hidden="true"><svg viewBox="0 0 24 24"></svg></div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden><i class="tb-dot"></i><span id="toast-t"></span><small id="toast-d"></small></div>
+
 <script src="https://unpkg.com/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js"
         integrity="sha384-stKllnUqA9AD0gsKCuUtf5XlqAW7PwIgDagoNsTWkjkBmJ/GZ/uHTgEBxdLV2VSK" crossorigin="anonymous"></script>
 <script src="app.js"></script>

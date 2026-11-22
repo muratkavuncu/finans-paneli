@@ -167,10 +167,7 @@
       t.className = 'tile';
       t.title = c.name;
       t.innerHTML = '<b>' + c.s + (c.ai ? ' <span class="tag">AI</span>' : '') + '</b><span>—</span><small>—</small>';
-      t.addEventListener('click', () => {
-        selectSymbol(c.s);
-        document.querySelector('.chart-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
+      t.addEventListener('click', () => openCoin(c.s, t));
       heat.appendChild(t);
       e.tile = t;
       e.tilePct = t.querySelector(':scope > span');
@@ -905,8 +902,11 @@
     $('status').dataset.state = state;
     $('topbar').dataset.state = state;
     $('tapebar').dataset.state = state;
-    $('status-text').textContent = text;
-    $('status-time').textContent = detail;
+    $('status-text').textContent = { live: 'Canlı', late: 'Gecikmeli', down: 'Kesinti' }[state] || 'Bağlanıyor';
+    $('status-time').textContent = '';
+    $('status').title = text + (detail ? ' · ' + detail : '');
+    $('status').dataset.full = text + (detail ? ' · ' + detail : '');
+    statusToast(state, text, detail);
   }
 
   function connect() {
@@ -2478,11 +2478,7 @@
       row.appendChild(el('span', '', isFinite(r.price) && r.price ? fmtPrice(r.price) : '—'));
       row.appendChild(el('strong', signClass(r.pct), isFinite(r.pct) ? fmtPct(r.pct) : '—'));
       row.appendChild(el('span', 'wt-vol', isFinite(r.qvol) && r.qvol ? fmtBig(r.qvol) : '—'));
-      row.addEventListener('click', () => {
-        selectSymbol(r.s);
-        renderWatchTable();
-        document.querySelector('.chart-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
+      row.addEventListener('click', () => openCoin(r.s, row));
       box.appendChild(row);
     });
   }
@@ -2806,14 +2802,43 @@
     document.querySelectorAll('.panel').forEach((panel) => {
       const head = panel.querySelector(':scope > .panel-head');
       if (!head || !panel.querySelector('.events-note, .ind > p')) return;
-      const b = el('button', 'help-btn', '?');
+      const b = el('button', 'info-btn');
       b.type = 'button';
-      b.title = 'Açıklamayı göster ya da gizle';
       b.setAttribute('aria-label', 'Açıklama');
-      b.setAttribute('aria-pressed', 'false');
-      b.addEventListener('click', () => b.setAttribute('aria-pressed', String(panel.classList.toggle('help'))));
+      b.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.25"/><path d="M12 11v5.5"/><circle class="dot" cx="12" cy="7.6" r="1.1"/></svg>';
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const h = head.querySelector('h2');
+        const notes = Array.from(panel.querySelectorAll('.events-note, .ind > p')).map((n) => {
+          const c = n.cloneNode(true);
+          c.removeAttribute('id');
+          c.querySelectorAll('[id]').forEach((x) => x.removeAttribute('id'));
+          c.className = 'info-p';
+          return c;
+        });
+        openInfo(h ? h.textContent.replace(/[▾▸]/g, '').trim() : 'Açıklama', notes, b);
+      });
       head.appendChild(b);
     });
+  }
+
+  // ---------- Kaynaklar: sayfa sonunda liste satırı, içerik sheet'te ----------
+  function initRefs() {
+    document.querySelectorAll('details.refs').forEach((d) => {
+      const row = el('button', 'list-row refs-row');
+      row.type = 'button';
+      row.dataset.page = d.dataset.page;
+      row.appendChild(el('span', '', 'Bu sayfadaki verilerin kaynakları'));
+      row.insertAdjacentHTML('beforeend', '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>');
+      row.addEventListener('click', () => {
+        const ul = d.querySelector('ul');
+        openInfo('Kaynaklar', ul ? [ul.cloneNode(true)] : [], row);
+      });
+      d.parentNode.insertBefore(row, d);
+      delete d.dataset.page;
+      d.classList.add('refs-src');
+    });
+    applyPage();
   }
 
   // ---------- Katlanır bölümler ----------
@@ -3084,79 +3109,236 @@
         ? 'Sıralar CoinMarketCap\'in Internet Archive\'daki kopyalarından: bugün ' + tsDate(rk.hist.now.ts) + ', karşılaştırılan ' + tsDate(hs.ts) + '. "yeni": o tarihte ilk 100\'de değildi. Değer ve fiyat değişimi CoinGecko\'dan' + (sp.pf ? '' : ' (bu dönem için fiyat değişimi verisi yok)') + '.'
         : 'Arşiv verisi henüz yok.';
   }
-  // iOS tarzı alttan açılan sayfa (sheet): tutamaktan/başlıktan aşağı çekince ya da arkaya dokununca kapanır
-  const sheet = { el: null, card: null, open: false };
+  // iOS tarzı alttan açılan sayfalar (sheet): tutamaktan/başlıktan aşağı çekince, arkaya dokununca ya da Bitti ile kapanır
+  const SHEETS = [];
   const SHEET_EASE = 'cubic-bezier(.32,.72,0,1)';
-  function openSheet() {
-    const sh = sheet.el;
-    sh.hidden = false;
-    document.documentElement.classList.add('sheet-on');
-    sheet.card.style.transition = 'none';
-    sheet.card.style.transform = 'translateY(100%)';
-    sh.classList.remove('show');
-    sheet.card.offsetHeight;
-    sheet.card.style.transition = 'transform .45s ' + SHEET_EASE;
-    sheet.card.style.transform = '';
-    sh.classList.add('show');
-    sheet.open = true;
-    loadRk();
-  }
-  function closeSheet() {
-    if (!sheet.open) return;
-    sheet.open = false;
-    sheet.card.style.transition = 'transform .35s ' + SHEET_EASE;
-    sheet.card.style.transform = 'translateY(100%)';
-    sheet.el.classList.remove('show');
-    setTimeout(() => {
-      if (sheet.open) return;
-      sheet.el.hidden = true;
-      sheet.card.style.transform = '';
-      document.documentElement.classList.remove('sheet-on');
-      $('rk-open').focus({ preventScroll: true });
-    }, 360);
-  }
-  function initSheet() {
-    sheet.el = $('rk-sheet');
-    sheet.card = sheet.el.querySelector('.sheet-card');
-    $('rk-open').addEventListener('click', openSheet);
-    sheet.el.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', closeSheet));
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSheet(); });
-    // Aşağı çekme: başlıktan her zaman; tablo en üstteyken tablodan da
-    const wrap = sheet.el.querySelector('.rk-wrap');
+  const anySheet = () => SHEETS.some((x) => x.open);
+  function makeSheet(root, scrollSel, onOpen) {
+    const sh = { el: root, card: root.querySelector('.sheet-card'), open: false, opener: null };
+    const card = sh.card;
+    sh.show = (opener) => {
+      sh.opener = opener || null;
+      root.hidden = false;
+      document.documentElement.classList.add('sheet-on');
+      card.style.transition = 'none';
+      card.style.transform = 'translateY(100%)';
+      root.classList.remove('show');
+      card.offsetHeight;
+      card.style.transition = 'transform .45s ' + SHEET_EASE;
+      card.style.transform = '';
+      root.classList.add('show');
+      sh.open = true;
+      const sc = root.querySelector(scrollSel);
+      if (sc) sc.scrollTop = 0;
+      if (onOpen) onOpen();
+    };
+    sh.hide = (after) => {
+      if (!sh.open) return;
+      sh.open = false;
+      card.style.transition = 'transform .35s ' + SHEET_EASE;
+      card.style.transform = 'translateY(100%)';
+      root.classList.remove('show');
+      setTimeout(() => {
+        if (sh.open) return;
+        root.hidden = true;
+        card.style.transform = '';
+        if (!anySheet()) document.documentElement.classList.remove('sheet-on');
+        if (typeof after === 'function') after();
+        else if (sh.opener && sh.opener.focus) sh.opener.focus({ preventScroll: true });
+      }, 360);
+    };
+    root.querySelectorAll('[data-close]').forEach((x) => x.addEventListener('click', () => sh.hide()));
+    // Aşağı çekme: başlıktan her zaman; içerik en üstteyken içerikten de
     let y0 = 0, t0 = 0, dragging = false, cand = false;
-    sheet.card.addEventListener('touchstart', (e) => {
+    card.addEventListener('touchstart', (e) => {
       if (e.touches.length !== 1) return;
+      const sc = root.querySelector(scrollSel);
       const inHead = !!e.target.closest('.sheet-head');
-      cand = inHead || (wrap.contains(e.target) && wrap.scrollTop <= 0) || !wrap.contains(e.target);
-      if (e.target.closest('.chips')) cand = false;
+      cand = inHead || !sc || !sc.contains(e.target) || sc.scrollTop <= 0;
+      if (e.target.closest('.chips, .seg')) cand = false;
       dragging = false; y0 = e.touches[0].clientY; t0 = Date.now();
     }, { passive: true });
-    sheet.card.addEventListener('touchmove', (e) => {
+    card.addEventListener('touchmove', (e) => {
       if (!cand) return;
       const dy = e.touches[0].clientY - y0;
       if (!dragging) {
         if (dy < 6) { if (dy < -4) cand = false; return; }
         dragging = true;
-        sheet.card.style.transition = 'none';
+        card.style.transition = 'none';
       }
       if (e.cancelable) e.preventDefault();
-      sheet.card.style.transform = 'translateY(' + Math.max(0, dy) + 'px)';
-      sheet.el.style.setProperty('--dim', String(Math.max(0, 1 - dy / sheet.card.offsetHeight)));
+      card.style.transform = 'translateY(' + Math.max(0, dy) + 'px)';
+      root.style.setProperty('--dim', String(Math.max(0, 1 - dy / card.offsetHeight)));
     }, { passive: false });
     const end = (e) => {
       if (!dragging) { cand = false; return; }
       dragging = cand = false;
-      const dy = e.changedTouches[0].clientY - y0, h = sheet.card.offsetHeight;
+      const dy = e.changedTouches[0].clientY - y0, h = card.offsetHeight;
       const fast = dy > 60 && Date.now() - t0 < 300;
-      sheet.el.style.removeProperty('--dim');
-      if (dy > h * 0.5 || fast) closeSheet();
-      else { sheet.card.style.transition = 'transform .35s ' + SHEET_EASE; sheet.card.style.transform = ''; }
+      root.style.removeProperty('--dim');
+      if (dy > h * 0.5 || fast) sh.hide();
+      else { card.style.transition = 'transform .35s ' + SHEET_EASE; card.style.transform = ''; }
     };
-    sheet.card.addEventListener('touchend', end, { passive: true });
-    sheet.card.addEventListener('touchcancel', end, { passive: true });
+    card.addEventListener('touchend', end, { passive: true });
+    card.addEventListener('touchcancel', end, { passive: true });
+    SHEETS.push(sh);
+    return sh;
   }
+  let rkSheet = null, genSheet = null, coinSheet = null;
+  function openInfo(title, nodes, opener) {
+    $('gs-title').textContent = title;
+    const body = $('gs-body');
+    body.textContent = '';
+    nodes.forEach((n) => body.appendChild(n));
+    genSheet.show(opener);
+  }
+  function initSheet() {
+    rkSheet = makeSheet($('rk-sheet'), '.rk-wrap', loadRk);
+    genSheet = makeSheet($('gen-sheet'), '.sheet-body');
+    coinSheet = makeSheet($('coin-sheet'), '.sheet-body');
+    $('rk-open').addEventListener('click', () => rkSheet.show($('rk-open')));
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') SHEETS.forEach((x) => x.hide()); });
+    // Sheet içindeki sayfa bağlantıları (kaynaklardaki "Haber", "AI" düğmeleri)
+    $('gs-body').addEventListener('click', (e) => {
+      const g = e.target.closest('[data-go]');
+      if (!g) return;
+      const go = g.dataset.go;
+      genSheet.hide(() => setPage(go));
+    });
+    $('cs-go').addEventListener('click', () => {
+      const sym = coin.sym;
+      coinSheet.hide(() => {
+        if (tab !== 'kripto') { tab = 'kripto'; save('fp.tab', tab); applyTab(); }
+        if (sym !== selected) selectSymbol(sym);
+        if (page !== 'grafik') setPage('grafik');
+        renderWatchTable();
+        document.querySelector('.chart-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+  }
+
+  // ---------- Coin ayrıntı sheet'i (ısı haritası ve takip tablosundan; bulunduğun yer korunur) ----------
+  const coin = { sym: null, seq: 0 };
+  function fact(dl, k, v) {
+    if (v == null || v === '') return;
+    dl.appendChild(el('dt', '', k));
+    dl.appendChild(el('dd', '', v));
+  }
+  function openCoin(sym, opener) {
+    const c = bySym[sym], st = state[sym];
+    if (!c || !st) return;
+    coin.sym = sym;
+    const seq = ++coin.seq;
+    $('cs-title').textContent = c.name;
+    $('cs-sym').textContent = sym + '/USDT' + (c.ai ? ' · AI' : '');
+    $('cs-price').textContent = st.price != null ? fmtPrice(st.price) : '—';
+    $('cs-pct').textContent = isFinite(st.pct) ? fmtPct(st.pct) : '—';
+    setSigned($('cs-pct'), 'chip', st.pct);
+    $('cs-sub').textContent = sym === 'RENDER' && btkTick ? 'BtcTurk ' + tl(+btkTick.LA)
+      : usdtTry > 0 && st.price != null ? '≈ ' + tl(st.price * usdtTry) : '';
+    $('cs-spark').textContent = '';
+    $('cs-perf').textContent = '';
+    $('cs-lo').textContent = '—'; $('cs-hi').textContent = '—';
+    heroRange('cs', st.price, st.low, st.high, fmtPrice);
+    const dl = $('cs-facts');
+    dl.textContent = '';
+    fact(dl, '24 sa hacim', isFinite(st.qvol) && st.qvol ? fmtBig(st.qvol) : '');
+    fact(dl, '24 sa en yüksek', isFinite(st.high) ? fmtPrice(st.high) : '');
+    fact(dl, '24 sa en düşük', isFinite(st.low) ? fmtPrice(st.low) : '');
+    $('cs-go').textContent = sym + ' grafiğini aç';
+    coinSheet.show(opener);
+    Promise.all([
+      binance('/api/v3/klines?symbol=' + sym + 'USDT&interval=1h&limit=25'),
+      binance('/api/v3/klines?symbol=' + sym + 'USDT&interval=1d&limit=91'),
+    ]).then(([hh, d]) => {
+      if (seq !== coin.seq) return;
+      drawSpark($('cs-spark'), hh.map((r) => +r[4]));
+      const last = +hh[hh.length - 1][4];
+      const back = (rows, n) => (rows.length > n ? (last / +rows[rows.length - 1 - n][4] - 1) * 100 : NaN);
+      heroPerf('cs', [['1 sa', back(hh, 1)], ['24 sa', back(hh, 24)], ['7 g', back(d, 7)], ['30 g', back(d, 30)], ['90 g', back(d, 90)]]);
+    }).catch(() => { /* getiriler boş kalır */ });
+  }
+
+  // ---------- Aşağı çekip yenileme (iOS: sayfanın en üstündeyken) ----------
+  function initPullRefresh() {
+    const ptr = $('ptr'), svg = ptr.querySelector('svg');
+    for (let i = 0; i < 8; i++) {
+      const r = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      r.setAttribute('x', '11'); r.setAttribute('y', '2.5'); r.setAttribute('width', '2'); r.setAttribute('height', '5.5'); r.setAttribute('rx', '1');
+      r.setAttribute('transform', 'rotate(' + i * 45 + ' 12 12)');
+      svg.appendChild(r);
+    }
+    const ticks = Array.from(svg.children);
+    const TH = 72;
+    let y0 = 0, x0 = 0, on = false, pulling = false, dist = 0, busy = false;
+    const paint = () => {
+      const p = Math.min(1, dist / TH);
+      ptr.style.transform = 'translate(-50%,' + Math.round(Math.min(dist, TH * 1.3) * 0.6) + 'px)';
+      ptr.style.opacity = String(Math.min(1, dist / 24));
+      ticks.forEach((t, i) => { t.style.opacity = i < Math.round(p * 8) ? '1' : '.15'; });
+      ptr.classList.toggle('ready', p >= 1);
+    };
+    document.addEventListener('touchstart', (e) => {
+      on = pulling = false;
+      if (busy || anySheet() || e.touches.length !== 1 || window.scrollY > 0) return;
+      const t = e.touches[0];
+      if (t.clientX < 28 || t.clientX > window.innerWidth - 28) return; // kenar şeridi sayfa geçişine ait
+      if (e.target.closest('.chart-panel, .tapebar, .nav, .rk-wrap')) return;
+      on = true; y0 = t.clientY; x0 = t.clientX; dist = 0;
+    }, { passive: true });
+    document.addEventListener('touchmove', (e) => {
+      if (!on) return;
+      const t = e.touches[0], dy = t.clientY - y0, dx = t.clientX - x0;
+      if (!pulling) {
+        if (Math.abs(dx) > Math.abs(dy) || dy < 0 || window.scrollY > 0) { if (Math.abs(dx) > 8 || dy < -4) on = false; return; }
+        if (dy < 8) return;
+        pulling = true;
+        ptr.classList.add('on');
+      }
+      if (e.cancelable) e.preventDefault();
+      dist = Math.max(0, dy - 8) * 0.75;
+      paint();
+    }, { passive: false });
+    const end = () => {
+      if (!on) return;
+      on = false;
+      if (!pulling) return;
+      pulling = false;
+      if (dist >= TH) {
+        busy = true;
+        ptr.classList.add('spin');
+        ptr.style.transform = 'translate(-50%,' + Math.round(TH * 0.6) + 'px)';
+        setTimeout(() => location.reload(), 350);
+      } else {
+        ptr.classList.remove('on');
+        ptr.style.transform = ''; ptr.style.opacity = '';
+      }
+    };
+    document.addEventListener('touchend', end, { passive: true });
+    document.addEventListener('touchcancel', end, { passive: true });
+  }
+
+  // ---------- Bağlantı uyarısı: iOS tarzı kısa bildirim şeridi ----------
+  let toastTimer = 0, lastStatus = '';
+  function toast(state, text, detail, ms) {
+    const t = $('toast');
+    t.dataset.state = state;
+    $('toast-t').textContent = text;
+    $('toast-d').textContent = detail || '';
+    t.hidden = false;
+    requestAnimationFrame(() => t.classList.add('on'));
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.classList.remove('on'); setTimeout(() => { if (!t.classList.contains('on')) t.hidden = true; }, 400); }, ms || 4500);
+  }
+  function statusToast(state, text, detail) {
+    const prev = lastStatus;
+    lastStatus = state;
+    if (!prev || prev === state) return;
+    if (state === 'down' || state === 'late') toast(state, text, detail, 5000);
+    else if (state === 'live' && (prev === 'down' || prev === 'late')) toast('live', 'Bağlantı yeniden kuruldu', '', 2500);
+  }
+
   function initRk() {
-    initSheet();
     $('rk-span').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
       rk.span = b.dataset.k;
       $('rk-span').querySelectorAll('button').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
@@ -3277,7 +3459,7 @@
     }
     document.addEventListener('touchstart', (e) => {
       on = drag = decided = false;
-      if (busy || sheet.open || e.touches.length !== 1) return;
+      if (busy || anySheet() || e.touches.length !== 1) return;
       const t = e.touches[0];
       if (t.clientX > EDGE && t.clientX < w() - EDGE) return;
       dir = t.clientX <= EDGE ? -1 : 1; // -1: önceki sayfa (soldan çek), 1: sonraki
@@ -3720,6 +3902,9 @@
   safe(initAi);
   safe(initFold);
   safe(initHelp);
+  safe(initSheet);
+  safe(initRefs);
+  safe(initPullRefresh);
   safe(initNav);
   safe(renderQuote);
   safe(initModels);
