@@ -2270,6 +2270,39 @@
       tapeEls[t[0]] = { v, p };
     });
   }
+  // Şerit kendi kendine yavaşça döner (iOS: yavaş, dokununca durur, "Hareketi Azalt" açıksa durur).
+  // Baştaki öğe tamamen çıkınca sona taşınır; böylece kesintisiz döner ve öğelerin canlı güncellemesi bozulmaz.
+  function initTapeAuto() {
+    const box = $('tape');
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const SPEED = 28; // px/sn
+    let pos = box.scrollLeft, last = 0, holdUntil = 0, held = false;
+    const hold = () => { held = true; };
+    const release = () => { held = false; holdUntil = performance.now() + 4000; };
+    box.addEventListener('touchstart', hold, { passive: true });
+    box.addEventListener('touchend', release, { passive: true });
+    box.addEventListener('touchcancel', release, { passive: true });
+    box.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse') hold(); });
+    box.addEventListener('pointerup', (e) => { if (e.pointerType === 'mouse') release(); });
+    box.addEventListener('mouseleave', () => { if (held) release(); });
+    const step = (t) => {
+      const dt = last ? Math.min(0.1, (t - last) / 1000) : 0;
+      last = t;
+      if (held || t < holdUntil || document.hidden) {
+        pos = box.scrollLeft;
+      } else if (box.scrollWidth > box.clientWidth + 4) {
+        pos += SPEED * dt;
+        const first = box.firstElementChild;
+        if (first) {
+          const w = first.getBoundingClientRect().width + parseFloat(getComputedStyle(box).columnGap || 16);
+          if (pos >= w) { box.appendChild(first); pos -= w; }
+        }
+        box.scrollLeft = pos;
+      }
+      requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
   function renderTape() {
     TAPE.forEach((t) => {
       const e = tapeEls[t[0]];
@@ -3612,6 +3645,7 @@
   safe(connect);
   safe(loadGlobal);
   safe(loadRank);
+  safe(initTapeAuto);
   safe(initRk);
   safe(initSwipe);
   safe(loadGoldDaily);
