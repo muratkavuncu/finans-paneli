@@ -2957,7 +2957,7 @@
       nm.appendChild(el('b', '', String(c.symbol || '').toUpperCase()));
       nm.appendChild(el('span', '', String(c.name || '')));
       tr.appendChild(nm);
-      tr.appendChild(el('td', 'rk-m', fmtBig(+c.market_cap).replace('$', '')));
+      tr.appendChild(el('td', 'rk-m', fmtBig(+c.market_cap).replace(' ', '')));
       const p = +c.price_change_percentage_24h;
       tr.appendChild(el('td', 'rk-p ' + signClass(p), isFinite(p) ? fmtPct(p) : '—'));
       const d = c._d;
