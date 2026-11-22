@@ -53,6 +53,15 @@ def closest(ts):
     return t if c.get("available") and str(c.get("status")) == "200" and re.fullmatch(r"\d{14}", t) else ""
 
 
+def cdx_list(want, tol_days):
+    """Pencere içindeki 200 kodlu kopyalar, hedefe yakınlığa göre sıralı."""
+    q = urllib.parse.urlencode({"url": TARGET, "from": ymd(want - tol_days * 86400), "to": ymd(want + tol_days * 86400),
+                                "filter": "statuscode:200", "fl": "timestamp", "output": "json", "limit": "300", "collapse": "timestamp:8"})
+    rows = json.loads(fetch("https://web.archive.org/cdx/search/cdx?" + q, "application/json") or b"[]")
+    ts = [r[0] for r in rows[1:] if r and re.fullmatch(r"\d{14}", str(r[0]))]
+    return sorted(ts, key=lambda t: abs(ts_sec(t) - want))
+
+
 def cdx_near(want, tol_days):
     """Hızlı arama uzak tarih döndürürse: dizinde pencere içindeki 200 kodlu kopyalardan hedefe en yakını."""
     q = urllib.parse.urlencode({"url": TARGET, "from": ymd(want - tol_days * 86400), "to": ymd(want + tol_days * 86400),
@@ -128,10 +137,26 @@ def main():
         print("sıralar güncel, önceki kullanıldı")
         return
     cache, errors = {}, []
-    t_now = closest(ymd(now))
-    if not t_now or now - ts_sec(t_now) > 3 * 86400:
+    cands = []
+    try:
+        t = closest(ymd(now))
+        if t and now - ts_sec(t) <= 3 * 86400:
+            cands.append(t)
+    except Exception:
+        pass
+    try:
+        cands += [t for t in cdx_list(now - 86400, 3) if t not in cands]
+    except Exception:
+        pass
+    cur, t_now = None, ""
+    for t in cands[:4]:
+        try:
+            cur, t_now = snapshot(t, cache), t
+            break
+        except Exception:
+            continue
+    if not cur:
         raise SystemExit("güncel arşiv kopyası yok")
-    cur = snapshot(t_now, cache)
     res = {"updated": int(now), "source": "Internet Archive · coinmarketcap.com kopyaları",
            "now": {"ts": t_now, "coins": {}}, "spans": {}}
     for cid, (rank, sym) in sorted(cur.items(), key=lambda x: x[1][0]):
@@ -140,17 +165,31 @@ def main():
     for key, days in SPANS.items():
         want = ts_sec(t_now) - days * 86400
         try:
-            t = closest(ymd(want))
-            if not t or abs(ts_sec(t) - want) > TOL[key] * 86400:
-                t = cdx_near(want, TOL[key])
-            if not t:
+            cands = []
+            try:
+                t = closest(ymd(want))
+                if t and abs(ts_sec(t) - want) <= TOL[key] * 86400:
+                    cands.append(t)
+            except Exception:
+                pass
+            if not cands:
+                cands = cdx_list(want, TOL[key])[:4]
+            if not cands:
                 raise ValueError("yakın tarihli kopya yok")
             p = pspans.get(key)
-            if p and p.get("ts") == t:  # aynı kopya: yeniden indirme
+            if p and p.get("ts") in cands[:1]:  # aynı kopya: yeniden indirme
                 res["spans"][key] = p
                 continue
-            snap = snapshot(t, cache)
-            res["spans"][key] = {"ts": t, "ranks": {str(cid): r for cid, (r, _s) in snap.items()}}
+            last = None
+            for t in cands[:4]:  # bir kopya zaman aşımına düşerse sıradaki yakın kopyayı dene
+                try:
+                    snap = snapshot(t, cache)
+                    res["spans"][key] = {"ts": t, "ranks": {str(cid): r for cid, (r, _s) in snap.items()}}
+                    break
+                except Exception as e:
+                    last = e
+            else:
+                raise last or ValueError("kopya okunamadı")
         except Exception as e:
             errors.append("%s: %s" % (key, e))
             if key in pspans:
