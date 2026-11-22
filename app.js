@@ -3261,22 +3261,33 @@
 
   // ---------- Aşağı çekip yenileme (iOS: sayfanın en üstündeyken) ----------
   function initPullRefresh() {
-    const ptr = $('ptr'), svg = ptr.querySelector('svg');
+    // iOS UIRefreshControl gibi: sayfa parmakla aşağı iner (direnciyle), açılan boşlukta etkinlik göstergesi
+    // çizgileri çektikçe tek tek belirir; eşik geçilince gösterge dönmeye başlar ve yenileme tetiklenir.
+    const ptr = $('ptr'), svg = ptr.querySelector('svg'), pg = document.querySelector('.page');
     for (let i = 0; i < 8; i++) {
       const r = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      r.setAttribute('x', '11'); r.setAttribute('y', '2.5'); r.setAttribute('width', '2'); r.setAttribute('height', '5.5'); r.setAttribute('rx', '1');
+      r.setAttribute('x', '11'); r.setAttribute('y', '2'); r.setAttribute('width', '2.2'); r.setAttribute('height', '6'); r.setAttribute('rx', '1.1');
       r.setAttribute('transform', 'rotate(' + i * 45 + ' 12 12)');
       svg.appendChild(r);
     }
     const ticks = Array.from(svg.children);
-    const TH = 72;
-    let y0 = 0, x0 = 0, on = false, pulling = false, dist = 0, busy = false;
-    const paint = () => {
-      const p = Math.min(1, dist / TH);
-      ptr.style.transform = 'translate(-50%,' + Math.round(Math.min(dist, TH * 1.3) * 0.6) + 'px)';
-      ptr.style.opacity = String(Math.min(1, dist / 24));
-      ticks.forEach((t, i) => { t.style.opacity = i < Math.round(p * 8) ? '1' : '.15'; });
-      ptr.classList.toggle('ready', p >= 1);
+    const TH = 80, HOLD = 56; // eşik ve yenileme sırasında sayfanın bekleyeceği boşluk (px)
+    let y0 = 0, x0 = 0, on = false, pulling = false, off = 0, busy = false;
+    const setOff = (v, ms) => {
+      off = v;
+      const tr = ms ? 'transform ' + ms + 'ms cubic-bezier(.32,.72,0,1)' : 'none';
+      pg.style.transition = tr; ptr.style.transition = ms ? tr + ', opacity ' + ms + 'ms' : 'none';
+      pg.style.transform = v ? 'translateY(' + v + 'px)' : '';
+      ptr.style.transform = 'translate(-50%,' + Math.round(v / 2 - 17) + 'px)';
+      ptr.style.opacity = String(Math.min(1, v / 30));
+    };
+    const ticksFor = (p) => ticks.forEach((t, i) => { t.style.opacity = i < Math.ceil(p * 8) ? '1' : '0'; });
+    const refresh = () => {
+      busy = true; pulling = false; on = false;
+      ticks.forEach((t, i) => { t.style.opacity = String(0.25 + 0.75 * (1 - i / 8)); });
+      ptr.classList.add('spin');
+      setOff(HOLD, 300);
+      setTimeout(() => location.reload(), 650);
     };
     document.addEventListener('touchstart', (e) => {
       on = pulling = false;
@@ -3284,39 +3295,37 @@
       const t = e.touches[0];
       if (t.clientX < 28 || t.clientX > window.innerWidth - 28) return; // kenar şeridi sayfa geçişine ait
       if (e.target.closest('.chart-panel, .tapebar, .nav, .rk-wrap')) return;
-      on = true; y0 = t.clientY; x0 = t.clientX; dist = 0;
+      on = true; y0 = t.clientY; x0 = t.clientX;
     }, { passive: true });
     document.addEventListener('touchmove', (e) => {
-      if (!on) return;
+      if (!on || busy) return;
       const t = e.touches[0], dy = t.clientY - y0, dx = t.clientX - x0;
       if (!pulling) {
         if (Math.abs(dx) > Math.abs(dy) || dy < 0 || window.scrollY > 0) { if (Math.abs(dx) > 8 || dy < -4) on = false; return; }
-        if (dy < 8) return;
+        if (dy < 6) return;
         pulling = true;
         ptr.classList.add('on');
+        y0 = t.clientY;
       }
       if (e.cancelable) e.preventDefault();
-      dist = Math.max(0, dy - 8) * 0.75;
-      paint();
+      const raw = Math.max(0, t.clientY - y0);
+      const v = raw < TH ? raw * 0.9 : TH * 0.9 + (raw - TH) * 0.35; // iOS lastik direnci
+      setOff(v);
+      ticksFor(Math.min(1, v / (TH * 0.9)));
+      if (v >= TH * 0.9) refresh(); // iOS'ta eşik geçilince bırakmayı beklemeden yenilenir
     }, { passive: false });
     const end = () => {
-      if (!on) return;
+      if (!on && !pulling) return;
       on = false;
-      if (!pulling) return;
+      if (busy || !pulling) return;
       pulling = false;
-      if (dist >= TH) {
-        busy = true;
-        ptr.classList.add('spin');
-        ptr.style.transform = 'translate(-50%,' + Math.round(TH * 0.6) + 'px)';
-        setTimeout(() => location.reload(), 350);
-      } else {
-        ptr.classList.remove('on');
-        ptr.style.transform = ''; ptr.style.opacity = '';
-      }
+      setOff(0, 350);
+      setTimeout(() => { if (!busy) { ptr.classList.remove('on'); ticksFor(0); } }, 360);
     };
     document.addEventListener('touchend', end, { passive: true });
     document.addEventListener('touchcancel', end, { passive: true });
   }
+
 
   // ---------- Bağlantı uyarısı: iOS tarzı kısa bildirim şeridi ----------
   let toastTimer = 0, lastStatus = '';

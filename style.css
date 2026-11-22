@@ -1141,7 +1141,6 @@ html.head-stuck body::before { background: var(--surface); }
 .ptr svg { width: 22px; height: 22px; fill: var(--muted); }
 .ptr.ready svg { fill: var(--fg); }
 .ptr.spin svg { animation: ptrspin .8s steps(8) infinite; }
-.ptr.spin svg rect { opacity: 1 !important; }
 @keyframes ptrspin { to { transform: rotate(360deg); } }
 
 /* Durum hapı kısa; ayrıntı bildirim şeridinde */
@@ -1170,3 +1169,10 @@ html { -webkit-tap-highlight-color: transparent; }
 .oz-link { position: relative; }
 .oz-link::before { content: ""; position: absolute; inset: -10px -8px; }
 .panel-head h2[role="button"] { min-height: 32px; display: inline-flex; align-items: center; }
+
+/* Aşağı çekip yenileme: iOS gibi sayfanın açtığı boşlukta, zeminsiz etkinlik göstergesi */
+.ptr { top: calc(env(safe-area-inset-top, 0px)); margin-top: 0; width: 34px; height: 34px; background: none; box-shadow: none; z-index: 5; }
+.ptr svg { width: 28px; height: 28px; fill: var(--muted); }
+.ptr.ready svg, .ptr.spin svg { fill: var(--muted); }
+.ptr.spin svg { animation: ptrspin .9s steps(8) infinite; }
+.ptr.spin svg rect { opacity: inherit; }
