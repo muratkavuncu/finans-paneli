@@ -3327,6 +3327,33 @@
     };
     document.addEventListener('touchend', end, { passive: true });
     document.addEventListener('touchcancel', end, { passive: true });
+    // Sayfa biraz aşağıdayken başlayan çekme: Safari kaydırmayı kendisi yürütür ve en üstte sayfayı esnetir
+    // (scrollY eksiye iner). Bu esnemeyi ölçüp göstergeyi ona bağlarız; eşik aşılmışsa bırakınca yenilenir.
+    let touching = false, bounce = 0;
+    document.addEventListener('touchstart', () => { touching = true; bounce = 0; }, { passive: true });
+    window.addEventListener('scroll', () => {
+      if (busy || pulling || anySheet()) return;
+      const y = window.scrollY;
+      if (y < 0 && touching) {
+        bounce = Math.max(bounce, -y);
+        ptr.classList.add('on');
+        ptr.style.transition = 'none';
+        ptr.style.transform = 'translate(-50%,' + Math.round(-y / 2 - 17) + 'px)';
+        ptr.style.opacity = String(Math.min(1, -y / 30));
+        ticksFor(Math.min(1, -y / (TH * 0.9)));
+        ptr.classList.toggle('spin', -y >= TH * 0.9);
+      } else if (y >= 0 && !touching && ptr.classList.contains('on') && !busy) {
+        ptr.classList.remove('on', 'spin'); ptr.style.opacity = ''; ticksFor(0);
+      }
+    }, { passive: true });
+    const bounceEnd = () => {
+      touching = false;
+      if (busy || pulling) return;
+      if (window.scrollY < 0 && -window.scrollY >= TH * 0.9) { refresh(); return; }
+      if (window.scrollY >= 0) { ptr.classList.remove('on', 'spin'); ptr.style.opacity = ''; ticksFor(0); }
+    };
+    document.addEventListener('touchend', bounceEnd, { passive: true });
+    document.addEventListener('touchcancel', bounceEnd, { passive: true });
   }
 
 
