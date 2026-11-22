@@ -3206,7 +3206,7 @@
       const sc = root.querySelector(scrollSel);
       const inHead = !!e.target.closest('.sheet-head');
       cand = inHead || !sc || !sc.contains(e.target) || sc.scrollTop <= 0;
-      if (e.target.closest('.chips, .seg')) cand = false;
+      if (e.target.closest('.chips, .seg, .rk-when')) cand = false; // kaydırıcı sürüklemesi pencereyi taşımasın
       dragging = false; y0 = e.touches[0].clientY; t0 = Date.now();
     }, { passive: true });
     card.addEventListener('touchmove', (e) => {

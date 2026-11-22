@@ -1204,3 +1204,4 @@ html { -webkit-tap-highlight-color: transparent; }
 .rk-g b { min-width: 4em; }
 .rk-g-p { color: var(--muted); }
 .rk-g-n { margin-left: auto; color: var(--muted); font-size: 11.5px; white-space: nowrap; }
+.rk-when, #rk-slider { touch-action: none; overscroll-behavior: contain; }
