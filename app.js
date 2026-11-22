@@ -3044,9 +3044,11 @@
     }, { passive: true });
     document.addEventListener('touchmove', (e) => {
       if (!on) return;
+      // iOS dikey kaydırmayı ilk harekette başlatır; kenar şeridinden başlayan dokunuşta baştan engellenir
+      if (e.cancelable) e.preventDefault();
       const t = e.touches[0], dx = t.clientX - sx, dy = t.clientY - sy;
       if (!drag) {
-        if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) { on = false; return; }
+        if (Math.abs(dy) > 24 && Math.abs(dy) > Math.abs(dx) * 1.5) return;
         if (Math.abs(dx) < 10 || Math.sign(dx) !== -dir) return;
         drag = true;
         document.body.classList.add('swiping');
