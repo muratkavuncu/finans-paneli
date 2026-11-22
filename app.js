@@ -903,6 +903,7 @@
       text = 'Bağlanıyor…';
     }
     $('status').dataset.state = state;
+    $('topbar').dataset.state = state;
     $('status-text').textContent = text;
     $('status-time').textContent = detail;
   }
@@ -2626,6 +2627,9 @@
   let page = PAGES.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'ozet';
 
   function applyPage() {
+    const nm = (document.querySelector('#nav [data-go="' + page + '"] span') || {}).textContent || '';
+    $('lt').textContent = nm;
+    $('tb-title').textContent = nm;
     document.querySelectorAll('[data-page]').forEach((n) => {
       n.hidden = n.dataset.page !== page || (!!n.dataset.tab && n.dataset.tab !== tab) || (!!n.dataset.sub && n.dataset.sub !== aiSub);
     });
@@ -2656,6 +2660,11 @@
     requestAnimationFrame(step);
   }
   function initNav() {
+    // iOS büyük başlık: başlık üst çubuğun altına kayınca ortada küçük başlıklı cam çubuk belirir
+    const lt = $('lt'), tb = $('topbar');
+    const syncTitle = () => tb.classList.toggle('on', lt.getBoundingClientRect().bottom < tb.offsetHeight);
+    window.addEventListener('scroll', syncTitle, { passive: true });
+    syncTitle();
     // iOS 26: sekme çubuğu aşağı kaydırınca küçülür, yukarı kaydırınca ya da en üstte büyür
     const nav = $('nav');
     let lastY = window.scrollY, acc = 0;
