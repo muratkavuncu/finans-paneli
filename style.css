@@ -1036,3 +1036,9 @@ html.sheet-on, html.sheet-on body { overflow: hidden; }
 .tape-title b { font-family: var(--font-display); font-size: 18px; font-weight: 700; letter-spacing: -.01em; color: var(--fg); }
 .tape[data-state="live"] .tb-dot { background: var(--up); }
 .tape[data-state="down"] .tb-dot { background: var(--down); }
+/* iOS "sert kenar": kaydırınca saat şeridi + başlık çubuğu tek, belirgin, opak zemin */
+body::before { transition: background .2s; }
+html.head-stuck body::before { background: var(--surface); }
+.tape { transition: background .2s, border-color .2s; }
+.tape.stuck { background: var(--surface); border-bottom-color: color-mix(in srgb, var(--fg) 14%, transparent); box-shadow: 0 1px 0 rgba(0,0,0,.18); }
+.tape.stuck .tape-title { background: linear-gradient(90deg, var(--surface) 82%, transparent); }

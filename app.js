@@ -2668,6 +2668,7 @@
     const syncTitle = () => {
       const stuck = tapeBox.getBoundingClientRect().top <= (parseFloat(getComputedStyle(tapeBox).top) || 0) + 0.5 && window.scrollY > 0;
       tapeBox.classList.toggle('stuck', stuck);
+      document.documentElement.classList.toggle('head-stuck', stuck);
     };
     window.addEventListener('scroll', syncTitle, { passive: true });
     syncTitle();
