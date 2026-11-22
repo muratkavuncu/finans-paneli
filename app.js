@@ -904,6 +904,7 @@
     }
     $('status').dataset.state = state;
     $('topbar').dataset.state = state;
+    $('tape').dataset.state = state;
     $('status-text').textContent = text;
     $('status-time').textContent = detail;
   }
@@ -2630,6 +2631,7 @@
     const nm = (document.querySelector('#nav [data-go="' + page + '"] span') || {}).textContent || '';
     $('lt').textContent = nm;
     $('tb-title').textContent = nm;
+    const tt = $('tape-title-t'); if (tt) tt.textContent = nm;
     document.querySelectorAll('[data-page]').forEach((n) => {
       n.hidden = n.dataset.page !== page || (!!n.dataset.tab && n.dataset.tab !== tab) || (!!n.dataset.sub && n.dataset.sub !== aiSub);
     });
@@ -2661,8 +2663,12 @@
   }
   function initNav() {
     // iOS büyük başlık: başlık üst çubuğun altına kayınca ortada küçük başlıklı cam çubuk belirir
-    const lt = $('lt'), tb = $('topbar');
-    const syncTitle = () => tb.classList.toggle('on', lt.getBoundingClientRect().bottom < tb.offsetHeight);
+    // Başlık ve fiyat şeridi tek çubukta: şerit yapışınca solunda sayfa adı belirir (toplam 44 pt)
+    const tapeBox = $('tape');
+    const syncTitle = () => {
+      const stuck = tapeBox.getBoundingClientRect().top <= (parseFloat(getComputedStyle(tapeBox).top) || 0) + 0.5 && window.scrollY > 0;
+      tapeBox.classList.toggle('stuck', stuck);
+    };
     window.addEventListener('scroll', syncTitle, { passive: true });
     syncTitle();
     // iOS 26: sekme çubuğu aşağı kaydırınca küçülür, yukarı kaydırınca ya da en üstte büyür

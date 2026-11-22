@@ -1025,3 +1025,14 @@ html.sheet-on, html.sheet-on body { overflow: hidden; }
 .top .status { min-width: 0; max-width: 60%; white-space: nowrap; overflow: hidden; }
 .top .status #status-text { overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 560px) { .top .status-time { display: none; } }
+
+/* ===== Başlık + fiyat şeridi tek çubuk (iOS 44 pt) ===== */
+.topbar { display: none; }
+.tape { top: env(safe-area-inset-top, 0px); min-height: 44px; align-items: center; padding-top: 0; padding-bottom: 0; }
+.tape-title { display: none; position: sticky; left: calc(-1 * max(16px, env(safe-area-inset-left, 0px))); z-index: 1; flex: none; align-items: center; gap: 7px;
+  margin-left: calc(-1 * max(16px, env(safe-area-inset-left, 0px))); padding: 0 18px 0 max(16px, env(safe-area-inset-left, 0px)); align-self: stretch;
+  background: linear-gradient(90deg, var(--bg) 82%, transparent); }
+.tape.stuck .tape-title { display: inline-flex; }
+.tape-title b { font-family: var(--font-display); font-size: 18px; font-weight: 700; letter-spacing: -.01em; color: var(--fg); }
+.tape[data-state="live"] .tb-dot { background: var(--up); }
+.tape[data-state="down"] .tb-dot { background: var(--down); }
