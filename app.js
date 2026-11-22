@@ -129,9 +129,9 @@
   }
   function fmtBig(n) {
     if (!isFinite(n)) return '—';
-    if (n >= 1e12) return '$' + NF[2].format(n / 1e12) + ' Tn';
-    if (n >= 1e9) return '$' + NF[1].format(n / 1e9) + ' Mr';
-    if (n >= 1e6) return '$' + NF[1].format(n / 1e6) + ' Mn';
+    if (n >= 1e12) return '$' + NF[2].format(n / 1e12) + ' T';
+    if (n >= 1e9) return '$' + NF[1].format(n / 1e9) + ' B';
+    if (n >= 1e6) return '$' + NF[1].format(n / 1e6) + ' M';
     return '$' + NF[0].format(n);
   }
   const signClass = (v) => (v > 0 ? 'pos' : v < 0 ? 'neg' : '');
@@ -1878,7 +1878,7 @@
 
   // ---------- AI sekmesi: modeller, demolar, makaleler, projeler ----------
   let aiData = null, aiBusy = false, aiLoaded = 0;
-  const compact = (v) => (v >= 1e6 ? NF[1].format(v / 1e6) + ' Mn' : v >= 1e3 ? NF[1].format(v / 1e3) + ' B' : String(v));
+  const compact = (v) => (v >= 1e6 ? NF[1].format(v / 1e6) + ' M' : v >= 1e3 ? NF[1].format(v / 1e3) + ' K' : String(v));
   const safeUrl = (u, host) => (typeof u === 'string' && u.indexOf('https://' + host + '/') === 0 ? u : '');
   const priceText = (r) => (!r.in && !r.out ? 'ücretsiz' : '$' + NF[2].format(r.in) + ' / $' + NF[2].format(r.out) + ' (1M token giriş/çıkış)');
 
@@ -2844,7 +2844,7 @@
     $('chart-high').textContent = usd(Math.max.apply(null, session.map((r) => r[2])));
     $('chart-low').textContent = usd(Math.min.apply(null, session.map((r) => r[3])));
     const vol = session.reduce((s, r) => s + r[5], 0);
-    $('chart-vol').textContent = vol >= 1e6 ? NF[1].format(vol / 1e6) + ' Mn' : NF[0].format(vol);
+    $('chart-vol').textContent = vol >= 1e6 ? NF[1].format(vol / 1e6) + ' M' : NF[0].format(vol);
   }
 
   // 1 yıllık günlük hisse mumları: yalnızca günlük grafik açılınca bir kez yüklenir
@@ -2964,7 +2964,7 @@
       tr.appendChild(el('td', 'rk-p ' + signClass(p), isFinite(p) ? fmtPct(p) : '—'));
       tb.appendChild(tr);
     });
-    $('rk-note').textContent = 'Dün sırası, CoinGecko\'nun 24 saatlik piyasa değeri değişiminden hesaplanır; stablecoinler dahildir · ' + new Date(rk.at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+    $('rk-note').textContent = 'Dün sırası, CoinGecko\'nun 24 saatlik piyasa değeri değişiminden hesaplanır; stablecoinler dahildir · M milyon, B milyar, T trilyon · ' + new Date(rk.at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
   }
   function initRk() {
     const d = $('rk');
