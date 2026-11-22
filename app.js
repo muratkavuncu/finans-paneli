@@ -904,7 +904,7 @@
     }
     $('status').dataset.state = state;
     $('topbar').dataset.state = state;
-    $('tape').dataset.state = state;
+    $('tapebar').dataset.state = state;
     $('status-text').textContent = text;
     $('status-time').textContent = detail;
   }
@@ -2664,7 +2664,7 @@
   function initNav() {
     // iOS büyük başlık: başlık üst çubuğun altına kayınca ortada küçük başlıklı cam çubuk belirir
     // Başlık ve fiyat şeridi tek çubukta: şerit yapışınca solunda sayfa adı belirir (toplam 44 pt)
-    const tapeBox = $('tape');
+    const tapeBox = $('tapebar');
     const syncTitle = () => {
       const stuck = tapeBox.getBoundingClientRect().top <= (parseFloat(getComputedStyle(tapeBox).top) || 0) + 0.5 && window.scrollY > 0;
       tapeBox.classList.toggle('stuck', stuck);
@@ -3090,7 +3090,7 @@
   function initSwipe() {
     const EDGE = 24;
     const name = (p) => { const b = document.querySelector('#nav [data-go="' + p + '"] span'); return b ? b.textContent : p; };
-    const parts = () => Array.from(document.querySelectorAll('.page > :not(.top):not(.tape)')).filter((n) => !n.hidden && n.offsetParent !== null);
+    const parts = () => Array.from(document.querySelectorAll('.page > :not(.top):not(.tapebar)')).filter((n) => !n.hidden && n.offsetParent !== null);
     // Geçiş işareti (tasarım 3): fiyat şeridinin altında ince çizgi ve hedef sayfa adı; çizgi çektikçe çekilen yandan dolar
     const pill = el('div', 'swipe-line');
     pill.setAttribute('aria-hidden', 'true');
@@ -3099,7 +3099,7 @@
     document.body.appendChild(pill);
     function dots(p) {
       if (p === 0) {
-        const tape = document.querySelector('.tape');
+        const tape = document.querySelector('.tapebar');
         pill.style.top = (tape ? Math.max(0, tape.getBoundingClientRect().bottom) : 0) + 'px';
         pill.classList.toggle('l', dir < 0);
         lab.textContent = dir > 0 ? name(target) + ' ›' : '‹ ' + name(target);
@@ -3123,7 +3123,7 @@
       });
       page = keep; applyPage();
       window.scrollTo(0, y); // gizle/göster sırasında sayfa boyu değişip kaydırma kaymasın
-      const tape = document.querySelector('.tape');
+      const tape = document.querySelector('.tapebar');
       const top = tape ? Math.max(0, tape.getBoundingClientRect().bottom) : 0;
       const g = el('div', 'swipe-ghost');
       g.setAttribute('aria-hidden', 'true');

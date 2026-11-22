@@ -1042,3 +1042,17 @@ html.head-stuck body::before { background: var(--surface); }
 .tape { transition: background .2s, border-color .2s; }
 .tape.stuck { background: var(--surface); border-bottom-color: color-mix(in srgb, var(--fg) 14%, transparent); box-shadow: 0 1px 0 rgba(0,0,0,.18); }
 .tape.stuck .tape-title { background: linear-gradient(90deg, var(--surface) 82%, transparent); }
+
+/* Şerit: yapışma dış kapta, yana kaydırma iç kapta (iOS'ta yapışık + kayan katmanın yazıyı bulanık çizmesini önler) */
+.tapebar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 16; display: flex; align-items: center; min-height: 44px;
+  margin: -6px calc(-1 * max(16px, env(safe-area-inset-left, 0px))) 0;
+  background: var(--bg); border-bottom: 1px solid var(--line); transition: background .2s, border-color .2s;
+}
+.tapebar .tape { position: static; flex: 1; min-width: 0; margin: 0; min-height: 44px; border: 0; background: transparent; box-shadow: none; }
+.tapebar .tape-title { display: none; position: static; margin: 0; align-self: stretch; padding: 0 4px 0 max(16px, env(safe-area-inset-left, 0px)); background: none; }
+.tapebar.stuck .tape-title { display: inline-flex; }
+.tapebar.stuck .tape { padding-left: 12px; }
+.tapebar.stuck { background: var(--surface); border-bottom-color: color-mix(in srgb, var(--fg) 14%, transparent); box-shadow: 0 1px 0 rgba(0,0,0,.18); }
+.tapebar[data-state="live"] .tb-dot { background: var(--up); }
+.tapebar[data-state="down"] .tb-dot { background: var(--down); }
