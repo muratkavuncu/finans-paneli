@@ -3015,7 +3015,7 @@
       }
       const x = Math.sign(dx) === -dir ? dx : 0;
       move(x * 0.85, Math.max(0.35, 1 - Math.abs(x) / window.innerWidth));
-      pill.classList.toggle('go', Math.abs(x) > window.innerWidth * 0.25);
+      pill.style.setProperty('--p', Math.min(1, Math.abs(x) / (window.innerWidth * 0.25)).toFixed(3));
     }, { passive: true });
     const end = async (e) => {
       if (!on) return;
@@ -3037,7 +3037,8 @@
         await anim(0, 1, 180);
       }
       clear();
-      pill.classList.remove('on', 'go');
+      pill.classList.remove('on');
+      pill.style.setProperty('--p', '0');
       busy = false;
     };
     document.addEventListener('touchend', end, { passive: true });

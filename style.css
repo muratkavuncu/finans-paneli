@@ -869,3 +869,13 @@ html, body { overscroll-behavior-x: none; }
 .rk-table th:nth-child(4) { width: 4.9em; }
 .rk-table th:nth-child(5) { width: 4.9em; }
 .rk-table th:nth-child(5), .rk-table td:nth-child(5) { padding-left: 8px; }
+/* Geçiş etiketi: yarı saydam; renk tonu çekme miktarıyla kademeli artar */
+.swipe-pill {
+  --p: 0;
+  background: color-mix(in srgb, var(--accent) calc(var(--p) * 22%), color-mix(in srgb, var(--surface-2) 55%, transparent));
+  border-color: color-mix(in srgb, var(--accent) calc(var(--p) * 60%), color-mix(in srgb, var(--line) 60%, transparent));
+  color: color-mix(in srgb, var(--accent) calc(var(--p) * 100%), var(--muted));
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  transition: opacity .15s, transform .15s;
+}
+.swipe-pill.on { opacity: .9; }
