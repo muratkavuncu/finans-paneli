@@ -1061,3 +1061,7 @@ html.head-stuck body::before { background: var(--surface); }
 .tape-name { color: color-mix(in srgb, var(--fg) 72%, transparent); font-weight: 600; }
 .tape-item strong { color: var(--fg); font-weight: 700; }
 .tape-pct { font-weight: 700; }
+/* Şerit yazıları alt çizgiye yakın: çubuk yüksekliği (44) ve çizgi aynı yerde */
+.tapebar { align-items: flex-end; }
+.tapebar .tape { min-height: 0; padding-top: 0; padding-bottom: 5px; align-items: flex-end; }
+.tapebar .tape-title { align-self: flex-end; padding-bottom: 3px; }
