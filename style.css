@@ -1205,3 +1205,7 @@ html { -webkit-tap-highlight-color: transparent; }
 .rk-g-p { color: var(--muted); }
 .rk-g-n { margin-left: auto; color: var(--muted); font-size: 11.5px; white-space: nowrap; }
 .rk-when, #rk-slider { touch-action: none; overscroll-behavior: contain; }
+/* İlk 100: her satır aynı yükseklikte (iki satırlı fiyat hücresi olsa da olmasa da), kaydırıcıda tablo zıplamasın */
+.rk-table tbody td { height: 49px; box-sizing: border-box; padding-top: 0; padding-bottom: 0; vertical-align: middle; line-height: 1.25; }
+.rk-table tbody td.hint { height: auto; padding: 12px 6px; }
+.rk-tp { line-height: 1.2; }
