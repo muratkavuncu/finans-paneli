@@ -2644,9 +2644,22 @@
     if (p === 'grafik') { loadBasket(); renderWatchTable(); lq.dirty = true; lqRender(); }
     if (p === 'sinyal') { btkDepth(); btkTradesRender(); }
   }
+  function scrollTop() {
+    const y0 = window.scrollY, t0 = performance.now(), D = Math.min(600, 250 + y0 / 10);
+    if (y0 <= 0) return;
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) { window.scrollTo(0, 0); return; }
+    const step = (t) => {
+      const k = Math.min(1, (t - t0) / D), e = 1 - Math.pow(1 - k, 3);
+      window.scrollTo(0, Math.round(y0 * (1 - e)));
+      if (k < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
   function initNav() {
     document.querySelectorAll('[data-go]').forEach((b) => {
       b.addEventListener('click', () => {
+        // iOS sekme çubuğu: seçili sekmeye yeniden dokununca sayfa yumuşakça en üste kayar
+        if (b.closest('#nav') && b.dataset.go === page) { scrollTop(); return; }
         const sym = b.dataset.sym;
         if (sym && bySym[sym]) {
           if (tab !== 'kripto') { tab = 'kripto'; save('fp.tab', tab); applyTab(); }

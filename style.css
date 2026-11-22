@@ -954,3 +954,14 @@ html.sheet-on, html.sheet-on body { overflow: hidden; }
 .nav { padding-top: 4px; padding-bottom: max(4px, calc(env(safe-area-inset-bottom, 0px) - 10px)); }
 .nav button { min-height: 44px; padding: 4px 2px; }
 .page { padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); }
+/* Alt sekme çubuğu (iOS): yarı saydam bulanık malzeme, ince üst çizgi, seçim yalnızca renkle */
+.nav {
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+  -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px);
+  border-top: .5px solid color-mix(in srgb, var(--line) 80%, transparent);
+}
+.nav button { transition: color .2s, transform .12s; -webkit-tap-highlight-color: transparent; }
+.nav button[aria-current="page"] { background: transparent; color: var(--accent); }
+.nav button[aria-current="page"] svg { stroke-width: 2.2; }
+.nav button:active { transform: scale(.92); }
+@media (prefers-reduced-motion: reduce) { .nav button:active { transform: none; } }
