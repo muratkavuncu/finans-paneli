@@ -2959,26 +2959,31 @@
     }));
   }
 
-  // ---------- Kenardan kaydırarak sayfa geçişi ----------
+  // ---------- Yana kaydırarak sayfa geçişi ----------
   function initSwipe() {
     let sx = 0, sy = 0, st = 0, on = false;
-    const EDGE = 28;
+    const SKIP = '.tape, .chips, .maintabs, .ai-subs, svg, canvas, input, select, textarea, .rk-wrap, .heat, .chart-panel, [data-noswipe]';
+    const scrollsX = (n) => {
+      for (; n && n !== document.body; n = n.parentElement) {
+        if (n.scrollWidth > n.clientWidth + 2 && /(auto|scroll)/.test(getComputedStyle(n).overflowX)) return true;
+      }
+      return false;
+    };
     document.addEventListener('touchstart', (e) => {
-      if (e.touches.length !== 1) { on = false; return; }
+      on = false;
+      if (e.touches.length !== 1) return;
       const t = e.touches[0];
-      on = t.clientX < EDGE || t.clientX > window.innerWidth - EDGE;
-      sx = t.clientX; sy = t.clientY; st = Date.now();
+      if (e.target.closest && e.target.closest(SKIP)) return;
+      if (scrollsX(e.target)) return;
+      on = true; sx = t.clientX; sy = t.clientY; st = Date.now();
     }, { passive: true });
     document.addEventListener('touchend', (e) => {
       if (!on) return;
       on = false;
       const t = e.changedTouches[0];
       const dx = t.clientX - sx, dy = t.clientY - sy;
-      if (Math.abs(dx) < 60 || Math.abs(dy) > Math.abs(dx) * 0.6 || Date.now() - st > 800) return;
-      const i = PAGES.indexOf(page);
-      const n = dx < 0 ? i + 1 : i - 1;
-      if (sx < EDGE && dx < 0) return;
-      if (sx > window.innerWidth - EDGE && dx > 0) return;
+      if (Math.abs(dx) < 70 || Math.abs(dy) > Math.abs(dx) * 0.5 || Date.now() - st > 700) return;
+      const n = PAGES.indexOf(page) + (dx < 0 ? 1 : -1);
       if (n >= 0 && n < PAGES.length) setPage(PAGES[n]);
     }, { passive: true });
   }
