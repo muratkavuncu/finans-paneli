@@ -2974,33 +2974,73 @@
     }));
   }
 
-  // ---------- Yana kaydırarak sayfa geçişi ----------
+  // ---------- Kenardan çekerek sayfa geçişi (parmağı izleyen animasyonla) ----------
   function initSwipe() {
-    let sx = 0, sy = 0, st = 0, on = false;
-    const SKIP = '.tape, .chips, .maintabs, .ai-subs, svg, canvas, input, select, textarea, .rk-wrap, .heat, .chart-panel, [data-noswipe]';
-    const scrollsX = (n) => {
-      for (; n && n !== document.body; n = n.parentElement) {
-        if (n.scrollWidth > n.clientWidth + 2 && /(auto|scroll)/.test(getComputedStyle(n).overflowX)) return true;
-      }
-      return false;
-    };
+    const EDGE = 32;
+    const name = (p) => { const b = document.querySelector('#nav [data-go="' + p + '"] span'); return b ? b.textContent : p; };
+    const parts = () => Array.from(document.querySelectorAll('.page > :not(.top):not(.tape)')).filter((n) => !n.hidden && n.offsetParent !== null);
+    const pill = el('div', 'swipe-pill');
+    pill.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(pill);
+    let sx = 0, sy = 0, st = 0, on = false, drag = false, dir = 0, target = null, busy = false, nodes = [];
+    const move = (x, a) => nodes.forEach((n) => { n.style.transform = 'translateX(' + x + 'px)'; n.style.opacity = a; });
+    const clear = () => nodes.forEach((n) => { n.style.transition = ''; n.style.transform = ''; n.style.opacity = ''; });
+    const anim = (x, a, ms) => new Promise((res) => {
+      nodes.forEach((n) => { n.style.transition = 'transform ' + ms + 'ms cubic-bezier(.2,.7,.2,1), opacity ' + ms + 'ms'; });
+      requestAnimationFrame(() => move(x, a));
+      setTimeout(res, ms);
+    });
     document.addEventListener('touchstart', (e) => {
-      on = false;
-      if (e.touches.length !== 1) return;
-      const t = e.touches[0];
-      if (e.target.closest && e.target.closest(SKIP)) return;
-      if (scrollsX(e.target)) return;
+      on = drag = false;
+      if (busy || e.touches.length !== 1) return;
+      const t = e.touches[0], w = window.innerWidth;
+      if (t.clientX > EDGE && t.clientX < w - EDGE) return;
+      dir = t.clientX <= EDGE ? -1 : 1; // -1: önceki sayfa (soldan çek), 1: sonraki
+      const i = PAGES.indexOf(page) + dir;
+      if (i < 0 || i >= PAGES.length) return;
+      target = PAGES[i];
       on = true; sx = t.clientX; sy = t.clientY; st = Date.now();
     }, { passive: true });
-    document.addEventListener('touchend', (e) => {
+    document.addEventListener('touchmove', (e) => {
+      if (!on) return;
+      const t = e.touches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+      if (!drag) {
+        if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) { on = false; return; }
+        if (Math.abs(dx) < 10 || Math.sign(dx) !== -dir) return;
+        drag = true; nodes = parts();
+        nodes.forEach((n) => { n.style.transition = 'none'; n.style.willChange = 'transform'; });
+        pill.textContent = (dir < 0 ? '‹ ' : '') + name(target) + (dir > 0 ? ' ›' : '');
+        pill.classList.add('on');
+      }
+      const x = Math.sign(dx) === -dir ? dx : 0;
+      move(x * 0.85, Math.max(0.35, 1 - Math.abs(x) / window.innerWidth));
+      pill.classList.toggle('go', Math.abs(x) > window.innerWidth * 0.25);
+    }, { passive: true });
+    const end = async (e) => {
       if (!on) return;
       on = false;
-      const t = e.changedTouches[0];
-      const dx = t.clientX - sx, dy = t.clientY - sy;
-      if (Math.abs(dx) < 70 || Math.abs(dy) > Math.abs(dx) * 0.5 || Date.now() - st > 700) return;
-      const n = PAGES.indexOf(page) + (dx < 0 ? 1 : -1);
-      if (n >= 0 && n < PAGES.length) setPage(PAGES[n]);
-    }, { passive: true });
+      if (!drag) return;
+      const t = e.changedTouches[0], dx = t.clientX - sx, w = window.innerWidth;
+      const fast = Math.abs(dx) > 50 && Date.now() - st < 300;
+      busy = true;
+      if (Math.sign(dx) === -dir && (Math.abs(dx) > w * 0.25 || fast)) {
+        await anim(-dir * w, 0, 160);
+        clear(); nodes.forEach((n) => { n.style.willChange = ''; });
+        setPage(target);
+        nodes = parts();
+        nodes.forEach((n) => { n.style.transition = 'none'; });
+        move(dir * w * 0.4, 0);
+        nodes[0] && nodes[0].offsetWidth;
+        await anim(0, 1, 240);
+      } else {
+        await anim(0, 1, 180);
+      }
+      clear();
+      pill.classList.remove('on', 'go');
+      busy = false;
+    };
+    document.addEventListener('touchend', end, { passive: true });
+    document.addEventListener('touchcancel', end, { passive: true });
   }
 
   // ---------- RENDER'ın piyasa değeri sırası (CoinGecko) ----------
