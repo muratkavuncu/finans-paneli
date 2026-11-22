@@ -1056,3 +1056,8 @@ html.head-stuck body::before { background: var(--surface); }
 .tapebar.stuck { background: var(--surface); border-bottom-color: color-mix(in srgb, var(--fg) 14%, transparent); box-shadow: 0 1px 0 rgba(0,0,0,.18); }
 .tapebar[data-state="live"] .tb-dot { background: var(--up); }
 .tapebar[data-state="down"] .tb-dot { background: var(--down); }
+/* Şerit okunurluğu: daha büyük ve kontrastlı yazı, alt piksel kaymasını önleyen tam sayı ölçüler */
+.tape { font-size: 13.5px; line-height: 20px; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+.tape-name { color: color-mix(in srgb, var(--fg) 72%, transparent); font-weight: 600; }
+.tape-item strong { color: var(--fg); font-weight: 700; }
+.tape-pct { font-weight: 700; }
