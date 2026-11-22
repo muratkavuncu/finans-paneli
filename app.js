@@ -2907,6 +2907,82 @@
       new Date(ev.ts * 1000).toLocaleString('tr-TR', { weekday: 'short', hour: '2-digit', minute: '2-digit' });
   }
 
+  // ---------- İlk 100: günlük piyasa değeri sırası değişimi (CoinGecko) ----------
+  const rk = { rows: null, sort: 'rank', at: 0 };
+  async function loadRk() {
+    if (rk.rows && Date.now() - rk.at < 5 * 60000) return renderRk();
+    try {
+      const r = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1');
+      if (!r.ok) throw new Error('http');
+      const list = (await r.json()).filter((c) => c && +c.market_cap > 0);
+      list.forEach((c) => { c._y = +c.market_cap - (+c.market_cap_change_24h || 0); });
+      const ys = list.slice().sort((a, b) => b._y - a._y);
+      ys.forEach((c, i) => { c._yr = i + 1; });
+      list.sort((a, b) => b.market_cap - a.market_cap);
+      list.forEach((c, i) => { c._r = i + 1; c._d = c._yr - c._r; });
+      rk.rows = list.slice(0, 100);
+      rk.at = Date.now();
+      renderRk();
+    } catch (err) {
+      if (!rk.rows) { const tb = $('rk-body'); tb.textContent = ''; const tr = el('tr'); const td = el('td', 'hint', 'Veri alınamadı, biraz sonra yeniden dene.'); td.colSpan = 4; tr.appendChild(td); tb.appendChild(tr); }
+    }
+  }
+  function renderRk() {
+    if (!rk.rows) return;
+    const rows = rk.rows.slice();
+    if (rk.sort === 'up') rows.sort((a, b) => b._d - a._d || a._r - b._r);
+    if (rk.sort === 'down') rows.sort((a, b) => a._d - b._d || a._r - b._r);
+    const tb = $('rk-body');
+    tb.textContent = '';
+    rows.forEach((c) => {
+      const tr = el('tr', c.id === 'render-token' ? 'rk-me' : '');
+      tr.appendChild(el('td', 'rk-n', String(c._r)));
+      const nm = el('td', 'rk-c');
+      nm.appendChild(el('b', '', String(c.symbol || '').toUpperCase()));
+      nm.appendChild(el('span', '', String(c.name || '')));
+      tr.appendChild(nm);
+      const d = c._d;
+      tr.appendChild(el('td', 'rk-d ' + (d > 0 ? 'pos' : d < 0 ? 'neg' : ''), d > 0 ? '▲' + d : d < 0 ? '▼' + -d : '–'));
+      const p = +c.price_change_percentage_24h;
+      tr.appendChild(el('td', 'rk-p ' + signClass(p), isFinite(p) ? fmtPct(p) : '—'));
+      tb.appendChild(tr);
+    });
+    $('rk-note').textContent = 'Dün sırası, CoinGecko\'nun 24 saatlik piyasa değeri değişiminden hesaplanır; stablecoinler dahildir · ' + new Date(rk.at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+  }
+  function initRk() {
+    const d = $('rk');
+    d.addEventListener('toggle', () => { if (d.open) loadRk(); });
+    $('rk-sort').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
+      rk.sort = b.dataset.k;
+      $('rk-sort').querySelectorAll('button').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
+      renderRk();
+    }));
+  }
+
+  // ---------- Kenardan kaydırarak sayfa geçişi ----------
+  function initSwipe() {
+    let sx = 0, sy = 0, st = 0, on = false;
+    const EDGE = 28;
+    document.addEventListener('touchstart', (e) => {
+      if (e.touches.length !== 1) { on = false; return; }
+      const t = e.touches[0];
+      on = t.clientX < EDGE || t.clientX > window.innerWidth - EDGE;
+      sx = t.clientX; sy = t.clientY; st = Date.now();
+    }, { passive: true });
+    document.addEventListener('touchend', (e) => {
+      if (!on) return;
+      on = false;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - sx, dy = t.clientY - sy;
+      if (Math.abs(dx) < 60 || Math.abs(dy) > Math.abs(dx) * 0.6 || Date.now() - st > 800) return;
+      const i = PAGES.indexOf(page);
+      const n = dx < 0 ? i + 1 : i - 1;
+      if (sx < EDGE && dx < 0) return;
+      if (sx > window.innerWidth - EDGE && dx > 0) return;
+      if (n >= 0 && n < PAGES.length) setPage(PAGES[n]);
+    }, { passive: true });
+  }
+
   // ---------- RENDER'ın piyasa değeri sırası (CoinGecko) ----------
   async function loadRank() {
     try {
@@ -3305,6 +3381,8 @@
   safe(connect);
   safe(loadGlobal);
   safe(loadRank);
+  safe(initRk);
+  safe(initSwipe);
   safe(loadGoldDaily);
   setInterval(() => { if (!document.hidden) loadRank(); }, 600000);
   safe(loadFng);

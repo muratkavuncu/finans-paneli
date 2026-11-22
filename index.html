@@ -681,6 +681,17 @@
     </section>
   </div>
 
+  <details class="panel rk" id="rk" data-page="grafik" data-tab="kripto">
+    <summary><span><b>İlk 100 · günlük sıra değişimi</b><span class="hint">piyasa değeri sırası, 24 saat önceye göre</span></span></summary>
+    <nav class="chips" id="rk-sort" role="tablist" aria-label="Sıralama">
+      <button type="button" role="tab" data-k="rank" aria-selected="true">Sıraya göre</button>
+      <button type="button" role="tab" data-k="up" aria-selected="false">En çok yükselen</button>
+      <button type="button" role="tab" data-k="down" aria-selected="false">En çok düşen</button>
+    </nav>
+    <div class="rk-wrap"><table class="rk-table"><thead><tr><th>Sıra</th><th>Coin</th><th>Değişim</th><th>24 sa</th></tr></thead><tbody id="rk-body"><tr><td colspan="4" class="hint">Yükleniyor…</td></tr></tbody></table></div>
+    <p class="hint" id="rk-note">Dün sırası, CoinGecko'nun 24 saatlik piyasa değeri değişiminden hesaplanır; stablecoinler dahildir.</p>
+  </details>
+
   <section class="panel" data-page="grafik" data-tab="tek" aria-label="Teknoloji ısı haritası" hidden>
     <div class="panel-head">
       <h2>Büyük teknoloji</h2>
