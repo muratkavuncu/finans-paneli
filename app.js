@@ -334,11 +334,11 @@
   setInterval(() => {
     if (tab === 'tek') {
       const m = markets && markets.symbols[stock];
-      if (m) document.title = stock + ' $' + NF[2].format(m.price) + ' · Finans Paneli';
+      if (m) document.title = stock + ' $' + NF[2].format(m.price) + ' · MK Finans Paneli';
       return;
     }
     const st = state[selected];
-    if (st.price != null) document.title = selected + ' ' + fmtPrice(st.price) + ' · Finans Paneli';
+    if (st.price != null) document.title = selected + ' ' + fmtPrice(st.price) + ' · MK Finans Paneli';
   }, 1000);
 
   // ---------- Binance REST ----------
