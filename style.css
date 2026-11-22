@@ -966,3 +966,29 @@ html.sheet-on, html.sheet-on body { overflow: hidden; }
 .nav button:active { transform: scale(.92); }
 @media (prefers-reduced-motion: reduce) { .nav button:active { transform: none; } }
 .nav { background: color-mix(in srgb, var(--surface) 55%, transparent); -webkit-backdrop-filter: saturate(180%) blur(24px); backdrop-filter: saturate(180%) blur(24px); }
+
+/* ===== Alt sekme çubuğu: iOS 26 Liquid Glass — kenarlardan içeride yüzen cam kapsül ===== */
+.nav {
+  left: 12px; right: 12px; bottom: max(8px, calc(env(safe-area-inset-bottom, 0px) - 12px));
+  max-width: 520px; margin: 0 auto;
+  padding: 5px; gap: 2px; border-radius: 32px;
+  background: color-mix(in srgb, var(--surface) 50%, transparent);
+  -webkit-backdrop-filter: saturate(190%) blur(24px); backdrop-filter: saturate(190%) blur(24px);
+  border: .5px solid color-mix(in srgb, #fff 16%, transparent); border-top: .5px solid color-mix(in srgb, #fff 26%, transparent);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .28), inset 0 1px 0 color-mix(in srgb, #fff 10%, transparent);
+  transition: transform .4s cubic-bezier(.32,.72,0,1), padding .3s, left .4s cubic-bezier(.32,.72,0,1), right .4s cubic-bezier(.32,.72,0,1);
+}
+.nav button { min-height: 52px; padding: 5px 2px 4px; border-radius: 26px; gap: 1px; font-size: 10px; font-weight: 500; letter-spacing: .01em; transition: color .2s, background .25s, transform .12s, min-height .3s; }
+.nav svg { width: 25px; height: 25px; stroke-width: 1.7; }
+.nav button span { transition: opacity .2s, max-height .3s; max-height: 14px; overflow: hidden; }
+/* Seçili sekme: cam kapsül vurgu + renk */
+.nav button[aria-current="page"] { color: var(--accent); background: color-mix(in srgb, var(--fg) 9%, transparent); }
+.nav button[aria-current="page"] svg { stroke-width: 2.1; }
+/* Aşağı kaydırınca küçülür (yazılar gizlenir), yukarı kaydırınca büyür */
+.nav.min { padding: 3px; }
+.nav.min button { min-height: 40px; }
+.nav.min button span { opacity: 0; max-height: 0; }
+.page { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+@media (prefers-color-scheme: light) {
+  .nav { border-color: color-mix(in srgb, #000 8%, transparent); box-shadow: 0 8px 28px rgba(0, 0, 0, .14), inset 0 1px 0 rgba(255, 255, 255, .7); background: color-mix(in srgb, var(--surface) 62%, transparent); }
+}

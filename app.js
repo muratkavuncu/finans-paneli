@@ -2656,6 +2656,17 @@
     requestAnimationFrame(step);
   }
   function initNav() {
+    // iOS 26: sekme çubuğu aşağı kaydırınca küçülür, yukarı kaydırınca ya da en üstte büyür
+    const nav = $('nav');
+    let lastY = window.scrollY, acc = 0;
+    window.addEventListener('scroll', () => {
+      const y = window.scrollY, d = y - lastY;
+      lastY = y;
+      acc = Math.sign(d) === Math.sign(acc) ? acc + d : d;
+      if (y < 40) nav.classList.remove('min');
+      else if (acc > 24) nav.classList.add('min');
+      else if (acc < -24) nav.classList.remove('min');
+    }, { passive: true });
     document.querySelectorAll('[data-go]').forEach((b) => {
       b.addEventListener('click', () => {
         // iOS sekme çubuğu: seçili sekmeye yeniden dokununca sayfa yumuşakça en üste kayar
