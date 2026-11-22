@@ -950,3 +950,7 @@ html.sheet-on, html.sheet-on body { overflow: hidden; }
 .sheet .chips { flex: none; }
 .sheet .rk-wrap { flex: 1; min-height: 0; overscroll-behavior: contain; }
 .sheet #rk-note { flex: none; }
+/* Alt sekme çubuğu: iOS ölçüsü (49 pt + ev göstergesi alanı); alttaki fazla boşluk alındı */
+.nav { padding-top: 4px; padding-bottom: max(4px, calc(env(safe-area-inset-bottom, 0px) - 10px)); }
+.nav button { min-height: 44px; padding: 4px 2px; }
+.page { padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); }
