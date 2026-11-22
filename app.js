@@ -2984,19 +2984,57 @@
     const pill = el('div', 'swipe-pill');
     pill.setAttribute('aria-hidden', 'true');
     document.body.appendChild(pill);
-    let sx = 0, sy = 0, st = 0, on = false, drag = false, dir = 0, target = null, busy = false, nodes = [];
-    const move = (x, a) => nodes.forEach((n) => { n.style.transform = 'translateX(' + x + 'px)'; n.style.opacity = a; });
-    const clear = () => nodes.forEach((n) => { n.style.transition = ''; n.style.transform = ''; n.style.opacity = ''; });
-    const anim = (x, a, ms) => new Promise((res) => {
-      nodes.forEach((n) => { n.style.transition = 'transform ' + ms + 'ms cubic-bezier(.2,.7,.2,1), opacity ' + ms + 'ms'; });
-      requestAnimationFrame(() => move(x, a));
-      setTimeout(res, ms);
-    });
+    let sx = 0, sy = 0, st = 0, on = false, drag = false, dir = 0, target = null, busy = false, nodes = [], ghost = null;
+    // Hedef sayfanın görünür parçalarını bir anlığına açıp kopyalar (boyama olmadan geri döner); kopya parmakla birlikte gelir.
+    function makeGhost() {
+      const keep = page;
+      page = target; applyPage();
+      const src = parts();
+      const clones = src.map((n) => {
+        const c = n.cloneNode(true);
+        const a = n.querySelectorAll('canvas'), b = c.querySelectorAll('canvas');
+        b.forEach((cv, i) => { try { cv.getContext('2d').drawImage(a[i], 0, 0); } catch (err) { /* boş kalır */ } });
+        c.removeAttribute('id');
+        c.querySelectorAll('[id]').forEach((x) => x.removeAttribute('id'));
+        return c;
+      });
+      page = keep; applyPage();
+      const tape = document.querySelector('.tape');
+      const top = tape ? Math.max(0, tape.getBoundingClientRect().bottom) : 0;
+      const g = el('div', 'swipe-ghost');
+      g.setAttribute('aria-hidden', 'true');
+      g.inert = true;
+      g.style.top = top + 'px';
+      const inner = el('div', 'page');
+      clones.forEach((c) => inner.appendChild(c));
+      g.appendChild(inner);
+      document.body.appendChild(g);
+      return g;
+    }
+    const w = () => window.innerWidth;
+    function move(x) {
+      const W = w(), f = Math.min(1, Math.abs(x) / (W * 0.6));
+      nodes.forEach((n) => { n.style.transform = 'translateX(' + x + 'px)'; n.style.opacity = String(1 - f * 0.75); });
+      if (ghost) { ghost.style.transform = 'translateX(' + (dir * W + x) + 'px)'; ghost.style.opacity = String(0.1 + f * 0.9); }
+    }
+    function trans(ms) {
+      const t = ms ? 'transform ' + ms + 'ms cubic-bezier(.2,.7,.2,1), opacity ' + ms + 'ms' : 'none';
+      nodes.forEach((n) => { n.style.transition = t; });
+      if (ghost) ghost.style.transition = t;
+    }
+    const anim = (x, ms) => new Promise((res) => { trans(ms); requestAnimationFrame(() => move(x)); setTimeout(res, ms + 20); });
+    function clearAll() {
+      nodes.forEach((n) => { n.style.transition = ''; n.style.transform = ''; n.style.opacity = ''; n.style.willChange = ''; });
+      if (ghost) ghost.remove();
+      ghost = null; nodes = [];
+      pill.classList.remove('on');
+      pill.style.setProperty('--p', '0');
+    }
     document.addEventListener('touchstart', (e) => {
       on = drag = false;
       if (busy || e.touches.length !== 1) return;
-      const t = e.touches[0], w = window.innerWidth;
-      if (t.clientX > EDGE && t.clientX < w - EDGE) return;
+      const t = e.touches[0];
+      if (t.clientX > EDGE && t.clientX < w() - EDGE) return;
       dir = t.clientX <= EDGE ? -1 : 1; // -1: önceki sayfa (soldan çek), 1: sonraki
       const i = PAGES.indexOf(page) + dir;
       if (i < 0 || i >= PAGES.length) return;
@@ -3009,37 +3047,34 @@
       if (!drag) {
         if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) { on = false; return; }
         if (Math.abs(dx) < 10 || Math.sign(dx) !== -dir) return;
-        drag = true; nodes = parts();
-        nodes.forEach((n) => { n.style.transition = 'none'; n.style.willChange = 'transform'; });
+        drag = true;
+        nodes = parts();
+        nodes.forEach((n) => { n.style.willChange = 'transform'; });
+        ghost = makeGhost();
+        trans(0);
         pill.textContent = (dir < 0 ? '‹ ' : '') + name(target) + (dir > 0 ? ' ›' : '');
         pill.classList.add('on');
       }
       const x = Math.sign(dx) === -dir ? dx : 0;
-      move(x * 0.85, Math.max(0.35, 1 - Math.abs(x) / window.innerWidth));
-      pill.style.setProperty('--p', Math.min(1, Math.abs(x) / (window.innerWidth * 0.25)).toFixed(3));
+      move(x);
+      pill.style.setProperty('--p', Math.min(1, Math.abs(x) / (w() * 0.25)).toFixed(3));
     }, { passive: true });
     const end = async (e) => {
       if (!on) return;
       on = false;
       if (!drag) return;
-      const t = e.changedTouches[0], dx = t.clientX - sx, w = window.innerWidth;
+      const dx = e.changedTouches[0].clientX - sx;
       const fast = Math.abs(dx) > 50 && Date.now() - st < 300;
       busy = true;
-      if (Math.sign(dx) === -dir && (Math.abs(dx) > w * 0.25 || fast)) {
-        await anim(-dir * w, 0, 160);
-        clear(); nodes.forEach((n) => { n.style.willChange = ''; });
-        setPage(target);
-        nodes = parts();
-        nodes.forEach((n) => { n.style.transition = 'none'; });
-        move(dir * w * 0.4, 0);
-        nodes[0] && nodes[0].offsetWidth;
-        await anim(0, 1, 240);
-      } else {
-        await anim(0, 1, 180);
-      }
-      clear();
       pill.classList.remove('on');
-      pill.style.setProperty('--p', '0');
+      if (Math.sign(dx) === -dir && (Math.abs(dx) > w() * 0.25 || fast)) {
+        await anim(-dir * w(), 220);
+        clearAll();
+        setPage(target);
+      } else {
+        await anim(0, 200);
+        clearAll();
+      }
       busy = false;
     };
     document.addEventListener('touchend', end, { passive: true });

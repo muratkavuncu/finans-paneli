@@ -886,3 +886,5 @@ html, body { overscroll-behavior-x: none; }
 .rk-table th:nth-child(5) { width: 3.6em; }
 .rk-table th:nth-child(5), .rk-table td:nth-child(5) { padding-left: 4px; }
 .rk-table th:nth-child(4), .rk-table td:nth-child(4) { padding-left: 8px; }
+.swipe-ghost { position: fixed; left: 0; right: 0; bottom: 0; z-index: 15; overflow: hidden; pointer-events: none; opacity: 0; will-change: transform, opacity; }
+.swipe-ghost > .page { padding-top: 0; }
