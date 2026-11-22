@@ -3027,6 +3027,7 @@
       nodes.forEach((n) => { n.style.transition = ''; n.style.transform = ''; n.style.opacity = ''; n.style.willChange = ''; });
       if (ghost) ghost.remove();
       ghost = null; nodes = [];
+      document.body.classList.remove('swiping');
       pill.classList.remove('on');
       pill.style.setProperty('--p', '0');
     }
@@ -3048,6 +3049,7 @@
         if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) { on = false; return; }
         if (Math.abs(dx) < 10 || Math.sign(dx) !== -dir) return;
         drag = true;
+        document.body.classList.add('swiping');
         nodes = parts();
         nodes.forEach((n) => { n.style.willChange = 'transform'; });
         ghost = makeGhost();
@@ -3057,10 +3059,11 @@
         pill.setAttribute('title', name(target));
         pill.classList.add('on');
       }
+      if (e.cancelable) e.preventDefault(); // çekme sürerken sayfa dikey kaymasın
       const x = Math.sign(dx) === -dir ? dx : 0;
       move(x);
       pill.style.setProperty('--p', Math.min(1, Math.abs(x) / (w() * 0.25)).toFixed(3));
-    }, { passive: true });
+    }, { passive: false });
     const end = async (e) => {
       if (!on) return;
       on = false;
