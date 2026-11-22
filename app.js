@@ -3080,7 +3080,7 @@
       if (e.cancelable) e.preventDefault(); // çekme sürerken sayfa dikey kaymasın
       const x = Math.sign(dx) === -dir ? dx : 0;
       move(x);
-      dots(Math.min(1, Math.abs(x) / (w() * 0.25)));
+      dots(Math.min(1, Math.abs(x) / (w() * 0.5)));
     }, { passive: false });
     const end = async (e) => {
       if (!on) return;
@@ -3090,7 +3090,7 @@
       const fast = Math.abs(dx) > 50 && Date.now() - st < 300;
       busy = true;
       pill.classList.remove('on');
-      if (Math.sign(dx) === -dir && (Math.abs(dx) > w() * 0.25 || fast)) {
+      if (Math.sign(dx) === -dir && (Math.abs(dx) > w() * 0.5 || fast)) {
         await anim(-dir * w(), 220);
         clearAll();
         setPage(target);
