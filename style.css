@@ -1097,3 +1097,5 @@ html.head-stuck body::before { background: var(--surface); }
 .seg.seg > button[aria-selected="true"] { color: var(--fg); font-weight: 700; }
 .seg-thumb { background: color-mix(in srgb, var(--fg) 30%, var(--surface)); box-shadow: 0 3px 8px rgba(0,0,0,.25), 0 0 0 .5px color-mix(in srgb, var(--fg) 25%, transparent); }
 @media (prefers-color-scheme: light) { .seg.seg { background: rgba(118,118,128,.14); } .seg-thumb { background: #fff; box-shadow: 0 3px 8px rgba(0,0,0,.12), 0 0 0 .5px rgba(0,0,0,.06); } }
+/* Zaman aralığı seçicisi de diğerleri gibi tam genişlik: eşit parçalar, ölçüm kaymaz */
+#intervals.seg { width: 100%; }

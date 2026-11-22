@@ -2679,6 +2679,7 @@
     try { history.replaceState(null, '', p === 'ozet' ? location.pathname : '#' + p); } catch (err) { /* adres çubuğu güncellenemezse sorun değil */ }
     applyPage();
     window.scrollTo(0, 0);
+    segPlacers.forEach((f) => f());
     if (p === 'ai') { renderAi(); loadAiData(); }
     if (p === 'grafik') { loadBasket(); renderWatchTable(); lq.dirty = true; lqRender(); }
     if (p === 'sinyal') { btkDepth(); btkTradesRender(); }
@@ -3121,6 +3122,7 @@
 
   // ---------- iOS segmented control: az seçenekli gruplar tek kutu, seçili parçada kayan "başparmak" ----------
   const SEG_IDS = ['maintabs', 'ai-subs', 'intervals', 'btk-side', 'dp-range', 'tr-filters', 'bk-range', 'lq-filters', 'bt-intervals', 'rk-sort'];
+  const segPlacers = [];
   function initSeg() {
     SEG_IDS.forEach((id) => {
       const box = $(id);
@@ -3139,8 +3141,18 @@
         thumb.style.width = b.offsetWidth + 'px';
         if (first) { thumb.offsetWidth; thumb.style.transition = ''; first = false; }
       };
-      new MutationObserver(place).observe(box, { subtree: true, attributes: true, attributeFilter: ['aria-selected'] });
-      if (window.ResizeObserver) new ResizeObserver(() => { first = true; place(); }).observe(box);
+      // seçim değişince kalın yazı genişliği değiştirebilir: hemen ve yerleşim oturduktan sonra yeniden ölç
+      const later = () => { place(); setTimeout(place, 60); setTimeout(place, 400); };
+      new MutationObserver(later).observe(box, { subtree: true, attributes: true, attributeFilter: ['aria-selected'] });
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { first = true; place(); });
+      if (window.ResizeObserver) {
+        // kutu ya da herhangi bir düğme boyut değiştirince (sayfa açılınca, yazı yüklenince) yeniden ölç
+        const ro = new ResizeObserver(() => { first = true; place(); });
+        ro.observe(box);
+        box.querySelectorAll('button').forEach((b) => ro.observe(b));
+      }
+      window.addEventListener('resize', place);
+      segPlacers.push(place);
       place();
     });
   }
