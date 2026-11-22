@@ -2997,62 +2997,92 @@
   }
 
   // ---------- İlk 100: günlük piyasa değeri sırası değişimi (CoinGecko) ----------
-  // Dönem: 24 sa (CoinGecko'nun piyasa değeri değişimi, kesin) · 7 g / 30 g (fiyat değişiminden yaklaşık: arz değişimi yok sayılır)
-  const RK_SPANS = { d1: { lab: '24 sa', pf: 'price_change_percentage_24h_in_currency' }, d7: { lab: '7 g', pf: 'price_change_percentage_7d_in_currency' }, d30: { lab: '30 g', pf: 'price_change_percentage_30d_in_currency' } };
-  const rk = { rows: null, sort: 'rank', span: 'd1', at: 0 };
+  // Dönemler: 24 sa → CoinGecko'nun piyasa değeri değişimi (kesin).
+  // 7 gün…5 yıl → Internet Archive'daki coinmarketcap.com kopyalarından gerçek sıra (data/ranks.json, günde bir);
+  // tutarlılık için bu dönemlerde "bugünkü sıra" da aynı kaynaktan (arşivin en yeni kopyası) gelir.
+  const RK_SPANS = {
+    d1: { lab: '24 saat', pf: 'price_change_percentage_24h_in_currency' },
+    d7: { lab: '7 gün', pf: 'price_change_percentage_7d_in_currency' },
+    d30: { lab: '30 gün', pf: 'price_change_percentage_30d_in_currency' },
+    m3: { lab: '3 ay' }, m6: { lab: '6 ay' },
+    y1: { lab: '1 yıl', pf: 'price_change_percentage_1y_in_currency' },
+    y2: { lab: '2 yıl' }, y3: { lab: '3 yıl' }, y5: { lab: '5 yıl' },
+  };
+  const rk = { rows: null, bySym: null, hist: null, sort: 'rank', span: 'd1', at: 0 };
   async function loadRk() {
     if (rk.rows && Date.now() - rk.at < 5 * 60000) return renderRk();
     try {
-      const r = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&price_change_percentage=24h,7d,30d');
+      const [r, h] = await Promise.all([
+        fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&price_change_percentage=24h,7d,30d,1y'),
+        fetch('data/ranks.json?t=' + Math.floor(Date.now() / 3600000), { cache: 'no-store' }).then((x) => (x.ok ? x.json() : null)).catch(() => null),
+      ]);
       if (!r.ok) throw new Error('http');
       const list = (await r.json()).filter((c) => c && +c.market_cap > 0);
       list.sort((a, b) => b.market_cap - a.market_cap);
-      list.forEach((c, i) => { c._r = i + 1; c._d = {}; });
-      const past = (c, k) => {
-        if (k === 'd1') return +c.market_cap - (+c.market_cap_change_24h || 0);
-        const p = +c[RK_SPANS[k].pf];
-        return isFinite(p) && p > -100 ? +c.market_cap / (1 + p / 100) : NaN;
-      };
-      Object.keys(RK_SPANS).forEach((k) => {
-        const ys = list.map((c) => ({ c, v: past(c, k) })).filter((x) => isFinite(x.v)).sort((a, b) => b.v - a.v);
-        ys.forEach((x, i) => { x.c._d[k] = i + 1 - x.c._r; });
-      });
+      list.forEach((c, i) => { c._r = i + 1; });
+      const ys = list.map((c) => ({ c, v: +c.market_cap - (+c.market_cap_change_24h || 0) })).sort((a, b) => b.v - a.v);
+      ys.forEach((x, i) => { x.c._d1 = i + 1 - x.c._r; });
+      rk.bySym = {};
+      list.forEach((c) => { const k = String(c.symbol || '').toUpperCase(); if (!rk.bySym[k]) rk.bySym[k] = c; });
       rk.rows = list.slice(0, 100);
+      rk.hist = h && h.now && h.now.coins && h.spans ? h : null;
       rk.at = Date.now();
       renderRk();
     } catch (err) {
       if (!rk.rows) { const tb = $('rk-body'); tb.textContent = ''; const tr = el('tr'); const td = el('td', 'hint', 'Veri alınamadı, biraz sonra yeniden dene.'); td.colSpan = 5; tr.appendChild(td); tb.appendChild(tr); }
     }
   }
+  const tsDate = (t) => (t ? t.slice(6, 8) + '.' + t.slice(4, 6) + '.' + t.slice(0, 4) : '');
   function renderRk() {
     if (!rk.rows) return;
     const sp = RK_SPANS[rk.span];
-    $('rk-pct-h').textContent = sp.lab;
-    const pv = (c) => { const v = +c[sp.pf]; return isFinite(v) ? v : (rk.span === 'd1' ? +c.price_change_percentage_24h : NaN); };
-    const rows = rk.rows.slice();
-    const pc = (c) => (isFinite(pv(c)) ? pv(c) : 0);
-    if (rk.sort === 'up') rows.sort((a, b) => pc(b) - pc(a));
-    if (rk.sort === 'down') rows.sort((a, b) => pc(a) - pc(b));
+    const arch = rk.span !== 'd1';
+    const hs = arch && rk.hist ? rk.hist.spans[rk.span] : null;
+    $('rk-pct-h').textContent = sp.pf ? sp.lab.replace(' saat', ' sa').replace(' gün', ' g') : 'Fiyat';
+    // Satırlar: 24 sa → CoinGecko ilk 100; arşiv dönemleri → arşivdeki bugünkü ilk 100 (değerler CoinGecko'dan)
+    let rows;
+    if (!arch) {
+      rows = rk.rows.map((c) => ({ c, sym: String(c.symbol || '').toUpperCase(), rank: c._r, d: c._d1 }));
+    } else if (hs) {
+      rows = Object.entries(rk.hist.now.coins).map(([sym, v]) => {
+        const then = hs.ranks[String(v[0])];
+        return { c: rk.bySym[sym] || null, sym, rank: v[1], d: then ? then - v[1] : 'new' };
+      }).sort((a, b) => a.rank - b.rank);
+    } else {
+      rows = [];
+    }
+    const pv = (x) => { if (!x.c || !sp.pf) return NaN; const v = +x.c[sp.pf]; return isFinite(v) ? v : (rk.span === 'd1' ? +x.c.price_change_percentage_24h : NaN); };
+    const dv = (x) => (x.d === 'new' ? 1000 : isFinite(x.d) ? x.d : NaN);
+    const key = sp.pf ? pv : dv;
+    if (rk.sort === 'up') rows.sort((a, b) => (isFinite(key(b)) ? key(b) : -Infinity) - (isFinite(key(a)) ? key(a) : -Infinity) || a.rank - b.rank);
+    if (rk.sort === 'down') rows.sort((a, b) => (isFinite(key(a)) ? key(a) : Infinity) - (isFinite(key(b)) ? key(b) : Infinity) || a.rank - b.rank);
     const tb = $('rk-body');
     tb.textContent = '';
-    rows.forEach((c) => {
-      const tr = el('tr', c.id === 'render-token' ? 'rk-me' : '');
-      tr.appendChild(el('td', 'rk-n', String(c._r)));
+    if (!rows.length) {
+      const tr = el('tr'); const td = el('td', 'hint', 'Bu dönemin arşiv verisi henüz hazır değil; sunucu günde bir kez günceller.'); td.colSpan = 5; tr.appendChild(td); tb.appendChild(tr);
+    }
+    rows.forEach((x) => {
+      const c = x.c;
+      const tr = el('tr', (c && c.id === 'render-token') || x.sym === 'RENDER' ? 'rk-me' : '');
+      tr.appendChild(el('td', 'rk-n', String(x.rank)));
       const nm = el('td', 'rk-c');
-      nm.appendChild(el('b', '', String(c.symbol || '').toUpperCase()));
-      nm.appendChild(el('span', '', String(c.name || '')));
+      nm.appendChild(el('b', '', x.sym));
+      nm.appendChild(el('span', '', c ? String(c.name || '') : ''));
       tr.appendChild(nm);
-      tr.appendChild(el('td', 'rk-m', fmtBig(+c.market_cap).replace(' ', '')));
-      const p = pv(c);
+      tr.appendChild(el('td', 'rk-m', c ? fmtBig(+c.market_cap).replace(' ', '') : '—'));
+      const p = pv(x);
       tr.appendChild(el('td', 'rk-p ' + signClass(p), isFinite(p) ? fmtPct(p) : '—'));
-      const d = c._d[rk.span];
-      tr.appendChild(el('td', 'rk-d ' + (d > 0 ? 'pos' : d < 0 ? 'neg' : ''), !isFinite(d) ? '—' : d > 0 ? '▲' + d : d < 0 ? '▼' + -d : '–'));
+      const d = x.d;
+      const txt = d === 'new' ? 'yeni' : !isFinite(d) ? '—' : d > 0 ? '▲' + d : d < 0 ? '▼' + -d : '–';
+      tr.appendChild(el('td', 'rk-d ' + (d === 'new' || d > 0 ? 'pos' : d < 0 ? 'neg' : ''), txt));
       tb.appendChild(tr);
     });
-    $('rk-note').textContent = (rk.span === 'd1'
-      ? 'Dünkü sıra, CoinGecko\'nun 24 saatlik piyasa değeri değişiminden hesaplanır.'
-      : sp.lab + ' önceki sıra, fiyat değişiminden yaklaşık hesaplanır (bu sürede arz değiştiyse sapabilir).')
-      + ' Stablecoinler dahildir · ' + new Date(rk.at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+    const t = new Date(rk.at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+    $('rk-note').textContent = !arch
+      ? 'Sıra ve dünkü sıra CoinGecko\'dan (24 saatlik piyasa değeri değişimiyle, kesin). Stablecoinler dahildir · ' + t
+      : hs
+        ? 'Sıralar CoinMarketCap\'in Internet Archive\'daki kopyalarından: bugün ' + tsDate(rk.hist.now.ts) + ', karşılaştırılan ' + tsDate(hs.ts) + '. "yeni": o tarihte ilk 100\'de değildi. Değer ve fiyat değişimi CoinGecko\'dan' + (sp.pf ? '' : ' (bu dönem için fiyat değişimi verisi yok)') + '.'
+        : 'Arşiv verisi henüz yok.';
   }
   // iOS tarzı alttan açılan sayfa (sheet): tutamaktan/başlıktan aşağı çekince ya da arkaya dokununca kapanır
   const sheet = { el: null, card: null, open: false };
@@ -3140,7 +3170,7 @@
   }
 
   // ---------- iOS segmented control: az seçenekli gruplar tek kutu, seçili parçada kayan "başparmak" ----------
-  const SEG_IDS = ['rk-span', 'maintabs', 'ai-subs', 'intervals', 'btk-side', 'dp-range', 'tr-filters', 'bk-range', 'lq-filters', 'bt-intervals', 'rk-sort'];
+  const SEG_IDS = ['maintabs', 'ai-subs', 'intervals', 'btk-side', 'dp-range', 'tr-filters', 'bk-range', 'lq-filters', 'bt-intervals', 'rk-sort'];
   const segPlacers = [];
   function initSeg() {
     SEG_IDS.forEach((id) => {

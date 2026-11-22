@@ -96,10 +96,18 @@ jobs:
           python3 scripts/fetch_ai.py data/ai.json || echo "AI verisi alınamadı"
           test -s data/ai.json || curl -fsS "$PREV_AI_URL" -o data/ai.json || echo '{"updated":0}' > data/ai.json
 
+      - name: Kripto ilk 100 tarihsel sıralar (Internet Archive, günde bir)
+        env:
+          PREV_RANKS_URL: ${{ env.SITE }}/ranks.json
+        run: |
+          python3 scripts/fetch_ranks.py data/ranks.json || echo "Tarihsel sıralar alınamadı"
+          test -s data/ranks.json || curl -fsS "$PREV_RANKS_URL" -o data/ranks.json || echo '{"updated":0}' > data/ranks.json
+
       - name: Site klasörünü hazırla
         run: |
           mkdir -p _site/data
           cp data/ai.json _site/data/
+          cp data/ranks.json _site/data/
           test -s data/signals.json || curl -fsS "$SITE/signals.json" -o data/signals.json || echo '{}' > data/signals.json
           cp data/signals.json _site/data/
           cp index.html style.css app.js apple-touch-icon.png _site/
