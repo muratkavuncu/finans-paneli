@@ -1176,3 +1176,7 @@ html { -webkit-tap-highlight-color: transparent; }
 .ptr.ready svg, .ptr.spin svg { fill: var(--muted); }
 .ptr.spin svg { animation: ptrspin 1.3s steps(8) infinite; }
 .ptr.spin svg rect { opacity: inherit; }
+/* iOS UIActivityIndicatorView: sistem grisi, 8 adım, 1 saniyede bir tur */
+.ptr svg { width: 26px; height: 26px; fill: #8e8e93; }
+.ptr.ready svg, .ptr.spin svg { fill: #8e8e93; }
+.ptr.spin svg { animation: ptrspin 1s steps(8) infinite; }

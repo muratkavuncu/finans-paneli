@@ -3266,7 +3266,8 @@
     const ptr = $('ptr'), svg = ptr.querySelector('svg'), pg = document.querySelector('.page');
     for (let i = 0; i < 8; i++) {
       const r = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      r.setAttribute('x', '11'); r.setAttribute('y', '2'); r.setAttribute('width', '2.2'); r.setAttribute('height', '6'); r.setAttribute('rx', '1.1');
+      // UIActivityIndicatorView ölçüsü: 8 kol, kol iç yarıçapı ≈ dış yarıçapın yarısı, uçlar yuvarlak
+      r.setAttribute('x', '10.85'); r.setAttribute('y', '1.5'); r.setAttribute('width', '2.3'); r.setAttribute('height', '5.6'); r.setAttribute('rx', '1.15');
       r.setAttribute('transform', 'rotate(' + i * 45 + ' 12 12)');
       svg.appendChild(r);
     }
@@ -3284,7 +3285,8 @@
     const ticksFor = (p) => ticks.forEach((t, i) => { t.style.opacity = i < Math.ceil(p * 8) ? '1' : '0'; });
     const refresh = () => {
       busy = true; pulling = false; on = false;
-      ticks.forEach((t, i) => { t.style.opacity = String(0.25 + 0.75 * (1 - i / 8)); });
+      // iOS: saat yönünde dönerken öndeki kol en koyu, arkadakiler kademeli soluk
+      ticks.forEach((t, i) => { t.style.opacity = String(0.3 + 0.7 * (i / 7)); });
       ptr.classList.add('spin');
       setOff(HOLD, 300);
       setTimeout(() => location.reload(), 650);
@@ -3311,8 +3313,9 @@
       const raw = Math.max(0, t.clientY - y0);
       const v = raw < TH ? raw * 0.9 : TH * 0.9 + (raw - TH) * 0.35; // iOS lastik direnci
       setOff(v);
-      ticksFor(Math.min(1, v / (TH * 0.9)));
+      if (v < TH * 0.9) ticksFor(v / (TH * 0.9));
       // eşik geçilince gösterge dönmeye başlar; yenileme parmak bırakılınca (geri çekilirse iptal)
+      if (v >= TH * 0.9 && !ptr.classList.contains('spin')) ticks.forEach((t, i) => { t.style.opacity = String(0.3 + 0.7 * (i / 7)); });
       ptr.classList.toggle('spin', v >= TH * 0.9);
     }, { passive: false });
     const end = () => {
@@ -3340,7 +3343,8 @@
         ptr.style.transition = 'none';
         ptr.style.transform = 'translate(-50%,' + Math.round(-y / 2 - 17) + 'px)';
         ptr.style.opacity = String(Math.min(1, -y / 30));
-        ticksFor(Math.min(1, -y / (TH * 0.9)));
+        if (-y < TH * 0.9) ticksFor(-y / (TH * 0.9));
+        if (-y >= TH * 0.9 && !ptr.classList.contains('spin')) ticks.forEach((t, i) => { t.style.opacity = String(0.3 + 0.7 * (i / 7)); });
         ptr.classList.toggle('spin', -y >= TH * 0.9);
       } else if (y >= 0 && !touching && ptr.classList.contains('on') && !busy) {
         ptr.classList.remove('on', 'spin'); ptr.style.opacity = ''; ticksFor(0);
