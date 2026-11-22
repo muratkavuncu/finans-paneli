@@ -881,3 +881,8 @@ html, body { overscroll-behavior-x: none; }
 .swipe-pill.on { opacity: .9; }
 .rk-wrap { overflow-x: hidden; touch-action: pan-y; overscroll-behavior-x: none; }
 .rk-table { max-width: 100%; }
+.rk-table th:nth-child(3) { width: 4.9em; }
+.rk-table th:nth-child(4) { width: 4.9em; }
+.rk-table th:nth-child(5) { width: 3.6em; }
+.rk-table th:nth-child(5), .rk-table td:nth-child(5) { padding-left: 4px; }
+.rk-table th:nth-child(4), .rk-table td:nth-child(4) { padding-left: 8px; }

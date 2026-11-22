@@ -2957,11 +2957,11 @@
       nm.appendChild(el('b', '', String(c.symbol || '').toUpperCase()));
       nm.appendChild(el('span', '', String(c.name || '')));
       tr.appendChild(nm);
-      const d = c._d;
-      tr.appendChild(el('td', 'rk-d ' + (d > 0 ? 'pos' : d < 0 ? 'neg' : ''), d > 0 ? '▲' + d : d < 0 ? '▼' + -d : '–'));
       tr.appendChild(el('td', 'rk-m', fmtBig(+c.market_cap).replace('$', '')));
       const p = +c.price_change_percentage_24h;
       tr.appendChild(el('td', 'rk-p ' + signClass(p), isFinite(p) ? fmtPct(p) : '—'));
+      const d = c._d;
+      tr.appendChild(el('td', 'rk-d ' + (d > 0 ? 'pos' : d < 0 ? 'neg' : ''), d > 0 ? '▲' + d : d < 0 ? '▼' + -d : '–'));
       tb.appendChild(tr);
     });
     $('rk-note').textContent = 'Dün sırası, CoinGecko\'nun 24 saatlik piyasa değeri değişiminden hesaplanır; stablecoinler dahildir · M milyon, B milyar, T trilyon · ' + new Date(rk.at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
