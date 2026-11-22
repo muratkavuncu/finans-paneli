@@ -3271,7 +3271,7 @@
       svg.appendChild(r);
     }
     const ticks = Array.from(svg.children);
-    const TH = 80, HOLD = 56; // eşik ve yenileme sırasında sayfanın bekleyeceği boşluk (px)
+    const TH = 130, HOLD = 56; // eşik ve yenileme sırasında sayfanın bekleyeceği boşluk (px)
     let y0 = 0, x0 = 0, on = false, pulling = false, off = 0, busy = false;
     const setOff = (v, ms) => {
       off = v;

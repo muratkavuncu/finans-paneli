@@ -1174,5 +1174,5 @@ html { -webkit-tap-highlight-color: transparent; }
 .ptr { top: calc(env(safe-area-inset-top, 0px)); margin-top: 0; width: 34px; height: 34px; background: none; box-shadow: none; z-index: 5; }
 .ptr svg { width: 28px; height: 28px; fill: var(--muted); }
 .ptr.ready svg, .ptr.spin svg { fill: var(--muted); }
-.ptr.spin svg { animation: ptrspin .9s steps(8) infinite; }
+.ptr.spin svg { animation: ptrspin 1.3s steps(8) infinite; }
 .ptr.spin svg rect { opacity: inherit; }
