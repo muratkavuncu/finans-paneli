@@ -3235,7 +3235,7 @@
     SHEETS.push(sh);
     return sh;
   }
-  let rkSheet = null, genSheet = null, coinSheet = null;
+  let genSheet = null, coinSheet = null;
   function openInfo(title, nodes, opener) {
     $('gs-title').textContent = title;
     const body = $('gs-body');
@@ -3244,10 +3244,8 @@
     genSheet.show(opener);
   }
   function initSheet() {
-    rkSheet = makeSheet($('rk-sheet'), '.rk-wrap', loadRk);
     genSheet = makeSheet($('gen-sheet'), '.sheet-body');
     coinSheet = makeSheet($('coin-sheet'), '.sheet-body');
-    $('rk-open').addEventListener('click', () => rkSheet.show($('rk-open')));
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') SHEETS.forEach((x) => x.hide()); });
     // Sheet içindeki sayfa bağlantıları (kaynaklardaki "Haber", "AI" düğmeleri)
     $('gs-body').addEventListener('click', (e) => {
@@ -3431,6 +3429,12 @@
   }
 
   function initRk() {
+    // Tablo Grafik > Kripto sayfasında doğrudan görünür; veri, bölüm ekrana girince yüklenir
+    // (loadRk 5 dk önbellekli, tekrar görünmede gereksiz istek atmaz).
+    const panel = $('rk-panel');
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) loadRk(); }, { rootMargin: '200px' }).observe(panel);
+    } else loadRk();
     const sl = $('rk-slider');
     sl.addEventListener('input', () => {
       const i = +sl.value;

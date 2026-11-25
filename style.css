@@ -921,13 +921,6 @@ body.swiping { touch-action: none; overflow-anchor: none; }
 .swipe-line span { position: absolute; top: 8px; right: 14px; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; color: color-mix(in srgb, var(--accent) calc(var(--p) * 100%), var(--muted)); background: color-mix(in srgb, var(--surface-2) 65%, transparent); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
 .swipe-line.l span { right: auto; left: 14px; }
 
-/* İlk 100 açma satırı (iOS liste hücresi gibi) */
-.rk-open { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: left; color: var(--fg); font: inherit; cursor: pointer; min-height: 56px; }
-.rk-open > span { display: flex; flex-direction: column; gap: 2px; }
-.rk-open b { font-size: 16px; }
-.rk-open svg { width: 18px; height: 18px; flex: none; fill: none; stroke: var(--muted); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-.rk-open:active { background: var(--surface-2); }
-
 /* Alttan açılan sayfa (iOS sheet) */
 html.sheet-on, html.sheet-on body { overflow: hidden; }
 .sheet { --dim: 1; position: fixed; inset: 0; z-index: 60; }
@@ -948,8 +941,6 @@ html.sheet-on, html.sheet-on body { overflow: hidden; }
 .sheet-bar h2 { margin: 0; font-size: 17px; }
 .sheet-x { min-height: 44px; min-width: 44px; padding: 0 4px; background: none; border: 0; color: var(--accent); font: inherit; font-weight: 600; font-size: 16px; cursor: pointer; }
 .sheet .chips { flex: none; }
-.sheet .rk-wrap { flex: 1; min-height: 0; overscroll-behavior: contain; }
-.sheet #rk-note { flex: none; }
 /* Alt sekme çubuğu: iOS ölçüsü (49 pt + ev göstergesi alanı); alttaki fazla boşluk alındı */
 .nav { padding-top: 4px; padding-bottom: max(4px, calc(env(safe-area-inset-bottom, 0px) - 10px)); }
 .nav button { min-height: 44px; padding: 4px 2px; }
@@ -1157,12 +1148,12 @@ html.head-stuck body::before { background: var(--surface); }
 
 /* ===== 8: Basma tepkisi (iOS: basılı öğe hafif kararır/küçülür) ===== */
 html { -webkit-tap-highlight-color: transparent; }
-.card, .tile, .wt-row, .oz-hero, .rk-open, .list-row, .oz-next, .oz-link, .site, .chips button, .cs-go, .ref-go, .sheet-x, .info-btn {
+.card, .tile, .wt-row, .oz-hero, .list-row, .oz-next, .oz-link, .site, .chips button, .cs-go, .ref-go, .sheet-x, .info-btn {
   transition: transform .14s ease, opacity .14s ease, background-color .2s; }
-.card:active, .tile:active, .oz-hero:active, .rk-open:active, .list-row:active, .site:active, .cs-go:active { transform: scale(.975); opacity: .85; }
+.card:active, .tile:active, .oz-hero:active, .list-row:active, .site:active, .cs-go:active { transform: scale(.975); opacity: .85; }
 .wt-row:active, .oz-next:active { background: color-mix(in srgb, var(--fg) 8%, transparent); }
 .chips button:active, .oz-link:active, .ref-go:active, .sheet-x:active, .info-btn:active { opacity: .5; }
-@media (prefers-reduced-motion: reduce) { .card:active, .tile:active, .oz-hero:active, .rk-open:active, .list-row:active, .site:active, .cs-go:active { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .card:active, .tile:active, .oz-hero:active, .list-row:active, .site:active, .cs-go:active { transform: none; } }
 
 /* ===== 9: Dokunma hedefleri ≥ 44 pt (görünüm aynı, dokunma alanı büyük) ===== */
 .chips button { min-height: 36px; }
@@ -1187,7 +1178,7 @@ html { -webkit-tap-highlight-color: transparent; }
 .rk-tp { font-size: 10.5px; letter-spacing: -.2px; }
 
 /* İlk 100: tarih kaydırıcısı (iOS UISlider) ve "bugün yok" listesi */
-.rk-when { flex: none; padding: 4px 16px 10px; }
+.rk-when { flex: none; padding: 0 0 10px; }
 .rk-when-t { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
 .rk-when-t b { font-size: 20px; font-weight: 700; letter-spacing: -.3px; }
 .rk-when-t span { color: var(--muted); font-size: 13px; }
@@ -1204,8 +1195,13 @@ html { -webkit-tap-highlight-color: transparent; }
 .rk-g b { min-width: 4em; }
 .rk-g-p { color: var(--muted); }
 .rk-g-n { margin-left: auto; color: var(--muted); font-size: 11.5px; white-space: nowrap; }
-.rk-when, #rk-slider { touch-action: none; overscroll-behavior: contain; }
+/* Sayfa içinde: dikey kaydırma sayfayı, yatay sürükleme kaydırıcıyı oynatır */
+#rk-slider { touch-action: pan-y; }
 /* İlk 100: her satır aynı yükseklikte (iki satırlı fiyat hücresi olsa da olmasa da), kaydırıcıda tablo zıplamasın */
 .rk-table tbody td { height: 49px; box-sizing: border-box; padding-top: 0; padding-bottom: 0; vertical-align: middle; line-height: 1.25; }
 .rk-table tbody td.hint { height: auto; padding: 12px 6px; }
 .rk-tp { line-height: 1.2; }
+/* İlk 100 sayfada açık: tablo kendi alanında kayar, başlık satırı yapışık kalır */
+.rk-panel .rk-wrap { max-height: 70vh; overscroll-behavior: contain; }
+.rk-panel #rk-sort { margin-bottom: 8px; }
+.rk-panel .rk-gone { padding-left: 0; padding-right: 0; }

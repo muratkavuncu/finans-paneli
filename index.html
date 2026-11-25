@@ -682,10 +682,24 @@
     </section>
   </div>
 
-  <button type="button" class="panel rk-open" id="rk-open" data-page="grafik" data-tab="kripto" aria-haspopup="dialog" aria-controls="rk-sheet">
-    <span><b>İlk 100 · günlük sıra değişimi</b><span class="hint">piyasa değeri sırası, 24 saat önceye göre</span></span>
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
-  </button>
+  <section class="panel rk-panel" id="rk-panel" data-page="grafik" data-tab="kripto" aria-labelledby="rk-title">
+    <div class="panel-head">
+      <h2 id="rk-title">İlk 100</h2>
+      <span class="hint">piyasa değeri sırası ve değişimi</span>
+    </div>
+    <div class="rk-when">
+      <div class="rk-when-t"><b id="rk-when">Dün</b><span id="rk-when-s">24 saatlik değişim · CoinGecko</span></div>
+      <input type="range" id="rk-slider" min="0" max="0" step="1" value="0" aria-label="Karşılaştırılacak tarih">
+      <div class="rk-when-ends" aria-hidden="true"><span>4 yıl önce</span><span>Dün</span></div>
+    </div>
+    <nav class="chips" id="rk-sort" role="tablist" aria-label="Sıralama">
+      <button type="button" role="tab" data-k="rank" aria-selected="true">Sıraya göre</button>
+      <button type="button" role="tab" data-k="up" aria-selected="false">En çok yükselen</button>
+      <button type="button" role="tab" data-k="down" aria-selected="false">En çok düşen</button>
+    </nav>
+    <div class="rk-wrap"><table class="rk-table"><thead><tr><th>Sıra</th><th>Coin</th><th>Değer</th><th id="rk-pct-h">24 sa</th><th>Sıra ±</th></tr></thead><tbody id="rk-body"><tr><td colspan="5" class="hint">Yükleniyor…</td></tr></tbody></table><section class="rk-gone" id="rk-gone" hidden><h3 id="rk-gone-h"></h3><div id="rk-gone-list"></div></section></div>
+    <p class="hint" id="rk-note">Dün sırası, CoinGecko'nun 24 saatlik piyasa değeri değişiminden hesaplanır; stablecoinler dahildir.</p>
+  </section>
 
   <section class="panel" data-page="grafik" data-tab="tek" aria-label="Teknoloji ısı haritası" hidden>
     <div class="panel-head">
@@ -789,28 +803,6 @@
   <button type="button" data-go="haber"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="fl" d="M4 5.5A1.5 1.5 0 0 1 5.5 4h10A1.5 1.5 0 0 1 17 5.5V19a2 2 0 0 0 2 2H6a2 2 0 0 1-2-2z"/><path d="M17 8.5h2.5a.5.5 0 0 1 .5.5v10a2 2 0 0 1-2 2"/><path class="cut" d="M7.5 8h6M7.5 11.5h6M7.5 15h3.5"/></svg><span>Haber</span></button>
   <button type="button" data-go="ai"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="fl" d="M11 3.5c.4 3.9 2.6 6.1 6.5 6.5-3.9.4-6.1 2.6-6.5 6.5-.4-3.9-2.6-6.1-6.5-6.5 3.9-.4 6.1-2.6 6.5-6.5z"/><path class="fl" d="M18.5 15c.2 1.8 1.2 2.8 3 3-1.8.2-2.8 1.2-3 3-.2-1.8-1.2-2.8-3-3 1.8-.2 2.8-1.2 3-3z"/></svg><span>AI</span></button>
 </nav>
-
-<div class="sheet" id="rk-sheet" role="dialog" aria-modal="true" aria-labelledby="rk-title" hidden>
-  <div class="sheet-dim" data-close></div>
-  <div class="sheet-card">
-    <div class="sheet-head">
-      <span class="sheet-grab" aria-hidden="true"></span>
-      <div class="sheet-bar"><h2 id="rk-title">İlk 100</h2><button type="button" class="sheet-x" data-close aria-label="Kapat">Bitti</button></div>
-    </div>
-    <div class="rk-when">
-      <div class="rk-when-t"><b id="rk-when">Dün</b><span id="rk-when-s">24 saatlik değişim · CoinGecko</span></div>
-      <input type="range" id="rk-slider" min="0" max="0" step="1" value="0" aria-label="Karşılaştırılacak tarih">
-      <div class="rk-when-ends" aria-hidden="true"><span>4 yıl önce</span><span>Dün</span></div>
-    </div>
-    <nav class="chips" id="rk-sort" role="tablist" aria-label="Sıralama">
-      <button type="button" role="tab" data-k="rank" aria-selected="true">Sıraya göre</button>
-      <button type="button" role="tab" data-k="up" aria-selected="false">En çok yükselen</button>
-      <button type="button" role="tab" data-k="down" aria-selected="false">En çok düşen</button>
-    </nav>
-    <div class="rk-wrap"><table class="rk-table"><thead><tr><th>Sıra</th><th>Coin</th><th>Değer</th><th id="rk-pct-h">24 sa</th><th>Sıra ±</th></tr></thead><tbody id="rk-body"><tr><td colspan="5" class="hint">Yükleniyor…</td></tr></tbody></table><section class="rk-gone" id="rk-gone" hidden><h3 id="rk-gone-h"></h3><div id="rk-gone-list"></div></section></div>
-    <p class="hint" id="rk-note">Dün sırası, CoinGecko'nun 24 saatlik piyasa değeri değişiminden hesaplanır; stablecoinler dahildir.</p>
-  </div>
-</div>
 
 <div class="sheet" id="gen-sheet" role="dialog" aria-modal="true" aria-labelledby="gs-title" hidden>
   <div class="sheet-dim" data-close></div>
