@@ -202,4 +202,9 @@ jobs:
           KALAN=$(( BEKLE - $(date +%s) + BASLA ))
           if [ "$KALAN" -gt 0 ]; then sleep "$KALAN"; fi
           case "$FIYAT" in *[!A-Za-z0-9:,=]*) FIYAT="" ;; esac
-          gh workflow run yayinla.yml --repo "$GITHUB_REPOSITORY" --ref main -f zincir=true -f fiyat="$FIYAT"
+          # GitHub API ara sıra 500 verir; tek hata zinciri koparmasın: 5 kez dene
+          for i in 1 2 3 4 5; do
+            gh workflow run yayinla.yml --repo "$GITHUB_REPOSITORY" --ref main -f zincir=true -f fiyat="$FIYAT" && exit 0
+            sleep $(( i * 10 ))
+          done
+          exit 1
