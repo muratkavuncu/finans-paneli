@@ -689,10 +689,20 @@
 
   <section class="panel" data-page="grafik" data-tab="tek" aria-label="Teknoloji ısı haritası" hidden>
     <div class="panel-head">
-      <h2>Büyük teknoloji</h2>
+      <h2>Büyük hisseler</h2>
       <span class="hint">günlük değişim · dokun, grafiği aç</span>
     </div>
     <div class="heat" id="heat-tek"></div>
+  </section>
+
+  <section class="panel tk-panel" data-page="grafik" data-tab="tek" aria-labelledby="tk-title" hidden>
+    <div class="panel-head">
+      <h2 id="tk-title">Tokenize fonlar ve hisseler</h2>
+      <span class="hint">zincir üstünde 7/24 · piyasa değeri sırası</span>
+    </div>
+    <nav class="chips" id="tk-kind" role="tablist" aria-label="Tür"></nav>
+    <div class="rk-wrap"><table class="rk-table tk-table"><thead><tr><th>Varlık</th><th>Fiyat</th><th>24 sa</th><th id="tk-diff-h">Fark</th></tr></thead><tbody id="tk-body"><tr><td colspan="4" class="hint">Yükleniyor…</td></tr></tbody></table></div>
+    <p class="hint events-note" id="tk-note"></p>
   </section>
 
   <section class="panel" data-page="haber" aria-label="Büyük olaylar">

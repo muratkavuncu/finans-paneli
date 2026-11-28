@@ -34,6 +34,18 @@ SYMBOLS = [
     ("META", "META", "Meta", "hisse"),
     ("AMD", "AMD", "AMD", "hisse"),
     ("TSM", "TSM", "TSMC", "hisse"),
+    ("AVGO", "AVGO", "Broadcom", "hisse"),
+    ("ORCL", "ORCL", "Oracle", "hisse"),
+    ("NFLX", "NFLX", "Netflix", "hisse"),
+    ("PLTR", "PLTR", "Palantir", "hisse"),
+    ("MU", "MU", "Micron", "hisse"),
+    ("COIN", "COIN", "Coinbase", "hisse"),
+    ("MSTR", "MSTR", "Strategy", "hisse"),
+    ("BRK.B", "BRK-B", "Berkshire Hathaway", "hisse"),
+    ("JPM", "JPM", "JPMorgan", "hisse"),
+    ("LLY", "LLY", "Eli Lilly", "hisse"),
+    ("SPY", "SPY", "SPDR S&P 500 ETF", "fon"),
+    ("QQQ", "QQQ", "Invesco QQQ ETF", "fon"),
     ("NDX", "^NDX", "Nasdaq 100", "endeks"),
     ("SOX", "^SOX", "Yarı iletken endeksi", "endeks"),
     ("SPX", "^GSPC", "S&P 500", "endeks"),
@@ -112,7 +124,8 @@ def update_daily():
                 prev = json.load(fh)
     except Exception:
         prev = {}
-    stocks = [e for e in SYMBOLS if e[3] in ("hisse", "emtia")]  # altının 30/90 günlük getirisi için
+    # altın 30/90 günlük getirisi, NDX ve SPX günlük grafik için
+    stocks = [e for e in SYMBOLS if e[3] in ("hisse", "emtia") or e[0] in ("NDX", "SPX")]
     old = prev.get("symbols", {})
     out = prev
     if time.time() - prev.get("updated", 0) > DAILY_MAX_AGE or any(e[0] not in old for e in stocks):
@@ -136,6 +149,87 @@ def update_daily():
         json.dump(out, fh, separators=(",", ":"))
 
 
+# Zincir üstünde 7/24 işlem gören tokenize borsa fonları ve hisseler (CoinGecko kategorileri)
+TOKEN_CATS = [("fon", "tokenized-exchange-traded-funds-etfs"), ("hisse", "tokenized-stock")]
+TOKEN_MIN_VOL = 50000      # 24 saatlik hacmi bunun altında kalanlar gösterilmez (fiyatı güvenilmez)
+TOKEN_PER_CAT = 12
+# (adda geçen, görünen ad, sembol eki, sembol öneki): xStocks spyx, Ondo spyon, bStocks spyb, Reality rqqq
+ISSUERS = [("xstock", "xStocks", "x", ""), ("ondo", "Ondo", "on", ""), ("bstock", "bStocks", "b", ""),
+           ("robinhood", "Robinhood", "", ""), ("reality", "Reality", "", "r"), ("backed", "Backed", "", "b")]
+
+
+def split_symbol(sym, name):
+    """Token sembolünü dayanak varlık ve ihraççıya ayırır: spyx -> (SPY, xStocks, x)."""
+    s, low = sym.lower(), name.lower()
+    for key, issuer, suf, pre in ISSUERS:
+        if key in low:
+            if suf and s.endswith(suf) and len(s) > len(suf):
+                s = s[:-len(suf)]
+            if pre and s.startswith(pre) and len(s) > len(pre):
+                s = s[len(pre):]
+            return s.upper(), issuer, suf
+    return s.upper(), "", ""
+
+
+def fetch_tokens(known):
+    """Her dayanak varlık için en çok işlem gören tokeni alır; kaç ihraççıda bulunduğunu da yazar."""
+    out = []
+    for kind, cat in TOKEN_CATS:
+        url = ("https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=80"
+               "&category=" + cat)
+        groups = {}
+        for r in json.loads(fetch(url).decode("utf-8")):
+            if not r.get("current_price") or (r.get("total_volume") or 0) < TOKEN_MIN_VOL:
+                continue
+            base, issuer, suf = split_symbol(r.get("symbol") or "", r.get("name") or "")
+            g = groups.setdefault(base, {"mcap": 0, "issuers": set(), "best": None})
+            g["mcap"] += r.get("market_cap") or 0
+            if issuer:
+                g["issuers"].add(issuer)
+            if not g["best"] or (r.get("total_volume") or 0) > g["best"][0]["total_volume"]:
+                g["best"] = (r, issuer, suf)
+        ranked = sorted(groups.items(), key=lambda kv: -kv[1]["mcap"])[:TOKEN_PER_CAT]
+        for base, g in ranked:
+            r, issuer, suf = g["best"]
+            pct = r.get("price_change_percentage_24h")
+            out.append({
+                "kind": kind,
+                "sym": base + suf,
+                "name": (r.get("name") or "").split(" (")[0].split(" •")[0].replace(" xStock", "").replace(" Tokenized Stock", ""),
+                "issuer": issuer,
+                "issuers": len(g["issuers"]),
+                "base": base if base in known else None,
+                "u": base,
+                "price": r["current_price"],
+                "pct": round(pct, 2) if pct is not None else None,
+                "mcap": round(g["mcap"]),
+                "vol": round(r.get("total_volume") or 0),
+            })
+        time.sleep(2)  # CoinGecko ücretsiz sınırı
+    if not out:
+        raise ValueError("tokenize veri boş")
+    # Listede olmayan dayanakların borsa fiyatı: Yahoo'daki şirket adı token adıyla eşleşmezse alınmaz
+    # (halka açık olmayan şirketlerde aynı kısaltmalı başka bir şirketle karışmasın)
+    missing = [t for t in out if not t["base"]]
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        for t, ref in zip(missing, pool.map(lambda t: ref_price(t["u"], t["name"]), missing)):
+            if ref:
+                t["ref"] = ref
+    return out
+
+
+def ref_price(ticker, name):
+    try:
+        url = "https://query1.finance.yahoo.com/v8/finance/chart/" + urllib.parse.quote(ticker) + "?range=1d&interval=1d"
+        meta = json.loads(fetch(url, 10).decode("utf-8"))["chart"]["result"][0]["meta"]
+    except Exception:
+        return None
+    first = name.lower().replace(",", " ").split()[0]
+    long = " ".join(str(meta.get(k) or "") for k in ("longName", "shortName")).lower()
+    price = meta.get("regularMarketPrice")
+    return round(price, 4) if price and first and first in long else None
+
+
 def load_previous():
     try:
         if PREV_URL:
@@ -147,7 +241,8 @@ def load_previous():
 
 
 def main():
-    prev = load_previous().get("symbols", {})
+    prev_all = load_previous()
+    prev = prev_all.get("symbols", {})
     symbols = {}
     errors = []
     with ThreadPoolExecutor(max_workers=4) as pool:
@@ -163,6 +258,13 @@ def main():
                     symbols[entry[0]] = prev[entry[0]]  # eski veri kendi saatiyle kalır
 
     out = {"updated": int(time.time()), "symbols": symbols, "errors": errors}
+    try:
+        out["tokens"] = fetch_tokens(set(symbols) | {e[0] for e in SYMBOLS})
+        out["tokens_at"] = out["updated"]
+    except Exception as exc:  # çekilemezse önceki liste kendi saatiyle kalır
+        print("HATA tokenize", repr(exc)[:160], file=sys.stderr)
+        if prev_all.get("tokens"):
+            out["tokens"], out["tokens_at"] = prev_all["tokens"], prev_all.get("tokens_at", 0)
     os.makedirs(os.path.dirname(OUT) or ".", exist_ok=True)
     with open(OUT, "w", encoding="utf-8") as fh:
         json.dump(out, fh, ensure_ascii=False, separators=(",", ":"))

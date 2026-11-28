@@ -1209,3 +1209,13 @@ html { -webkit-tap-highlight-color: transparent; }
 .rk-table tbody td { height: 49px; box-sizing: border-box; padding-top: 0; padding-bottom: 0; vertical-align: middle; line-height: 1.25; }
 .rk-table tbody td.hint { height: auto; padding: 12px 6px; }
 .rk-tp { line-height: 1.2; }
+
+/* Teknoloji: 2 endeks + 4 hisse kartı; masaüstünde 3 sütun */
+#watch-tek { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 860px) { #watch-tek { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* Tokenize tablo: ilk sütun geniş, diğerleri sabit */
+.tk-table th:nth-child(1) { width: auto; }
+.tk-table th:nth-child(2) { width: 5.6em; }
+.tk-table th:nth-child(3), .tk-table th:nth-child(4) { width: 4.9em; }
+.tk-table th:nth-child(2), .tk-table td:nth-child(2) { text-align: right; }
+.tk-panel .rk-wrap { max-height: 70vh; }

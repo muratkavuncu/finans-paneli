@@ -88,7 +88,10 @@
   if (!INTERVALS.some((i) => i.id === interval)) interval = '1h';
 
   // Hisseler: veri GitHub zamanlayıcısının hazırladığı data/markets.json dosyasından gelir
+  // idx: endeks (dolar işareti yok, ısı haritasında yer almaz)
   const STOCKS = [
+    { s: 'NDX', name: 'Nasdaq 100', main: true, idx: true },
+    { s: 'SPX', name: 'S&P 500', main: true, idx: true },
     { s: 'NVDA', name: 'Nvidia', main: true },
     { s: 'MSFT', name: 'Microsoft', main: true },
     { s: 'AAPL', name: 'Apple', main: true },
@@ -98,9 +101,20 @@
     { s: 'META', name: 'Meta' },
     { s: 'AMD', name: 'AMD' },
     { s: 'TSM', name: 'TSMC' },
+    { s: 'AVGO', name: 'Broadcom' },
+    { s: 'ORCL', name: 'Oracle' },
+    { s: 'NFLX', name: 'Netflix' },
+    { s: 'PLTR', name: 'Palantir' },
+    { s: 'MU', name: 'Micron' },
+    { s: 'COIN', name: 'Coinbase' },
+    { s: 'MSTR', name: 'Strategy' },
+    { s: 'BRK.B', name: 'Berkshire' },
+    { s: 'JPM', name: 'JPMorgan' },
+    { s: 'LLY', name: 'Eli Lilly' },
   ];
   const STOCK_INTERVALS = [{ id: '30m', label: '30dk' }, { id: '1d', label: '1G' }];
   const stockBy = Object.fromEntries(STOCKS.map((c) => [c.s, c]));
+  const sFmt = (sym, v) => (stockBy[sym] && stockBy[sym].idx ? NF[2].format(v) : '$' + NF[2].format(v));
   const sEls = {};
   let markets = null, marketsStamp = 0;
   let tab = load('fp.tab', 'kripto');
@@ -193,6 +207,7 @@
         e.cardPct = b.querySelector('.chip');
         e.spark = b.querySelector('.spark');
       }
+      if (c.idx) return;
       const t = document.createElement('button');
       t.type = 'button';
       t.className = 'tile';
@@ -244,7 +259,7 @@
       b.setAttribute('aria-selected', String(b.dataset.id === (tek ? stockInterval : interval)));
     });
     $('chart-name').textContent = tek ? stockBy[stock].name : bySym[selected].name;
-    $('chart-pair').textContent = tek ? stock + ' · ABD borsası' : selected + '/' + q() + (q() === 'BTC' ? ' · ' + qNote() : '');
+    $('chart-pair').textContent = tek ? stock + (stockBy[stock].idx ? ' · ABD endeksi' : ' · ABD borsası') : selected + '/' + q() + (q() === 'BTC' ? ' · ' + qNote() : '');
     const tq = $('tg-q');
     tq.hidden = tek || selected === 'BTC';
     tq.setAttribute('aria-pressed', String(quote === 'BTC'));
@@ -331,7 +346,7 @@
   setInterval(() => {
     if (tab === 'tek') {
       const m = markets && markets.symbols[stock];
-      if (m) document.title = stock + ' $' + NF[2].format(m.price) + ' · MK Finans Paneli';
+      if (m) document.title = stock + ' ' + sFmt(stock, m.price) + ' · MK Finans Paneli';
       return;
     }
     const st = state[selected];
@@ -723,7 +738,7 @@
     if (!chart) return;
     const tek = tab === 'tek';
     const btcQ = !tek && q() === 'BTC';
-    const fmt = (p) => (tek ? usd(p) : btcQ ? fmtBtc(p) : fmtPrice(p));
+    const fmt = (p) => (tek ? sFmt(stock, p) : btcQ ? fmtBtc(p) : fmtPrice(p));
     const iv = (tek ? STOCK_INTERVALS : INTERVALS).find((i) => i.id === (tek ? stockInterval : interval));
     $('ta-sym').textContent = (tek ? stock : btcQ ? selected + '/BTC' : selected) + ' · ' + (iv ? iv.label : '');
     const pips = $('ta-pips');
@@ -2914,11 +2929,12 @@
       const e = sEls[c.s];
       if (!m) return;
       if (e.card) {
-        e.cardPrice.textContent = usd(m.price);
+        e.cardPrice.textContent = sFmt(c.s, m.price);
         e.cardPct.textContent = fmtPct(m.pct);
         setSigned(e.cardPct, 'chip', m.pct);
         drawSpark(e.spark, m.bars.slice(-70).map((r) => r[4]), m.pct >= 0 ? 1 : -1);
       }
+      if (!e.tile) return;
       e.tilePct.textContent = fmtPct(m.pct);
       e.tilePrice.textContent = usd(m.price);
       const mix = Math.min(70, 12 + (Math.abs(m.pct) / 5) * 58);
@@ -2935,13 +2951,13 @@
     if (tab !== 'tek') return;
     const m = markets.symbols[stock];
     if (!m) return;
-    $('chart-price').textContent = usd(m.price);
+    $('chart-price').textContent = sFmt(stock, m.price);
     $('chart-pct').textContent = fmtPct(m.pct);
     setSigned($('chart-pct'), 'chip', m.pct);
     const lastDay = Math.floor(m.bars[m.bars.length - 1][0] / 86400);
     const session = m.bars.filter((r) => Math.floor(r[0] / 86400) === lastDay);
-    $('chart-high').textContent = usd(Math.max.apply(null, session.map((r) => r[2])));
-    $('chart-low').textContent = usd(Math.min.apply(null, session.map((r) => r[3])));
+    $('chart-high').textContent = sFmt(stock, Math.max.apply(null, session.map((r) => r[2])));
+    $('chart-low').textContent = sFmt(stock, Math.min.apply(null, session.map((r) => r[3])));
     const vol = session.reduce((s, r) => s + r[5], 0);
     $('chart-vol').textContent = vol >= 1e6 ? NF[1].format(vol / 1e6) + ' M' : NF[0].format(vol);
   }
@@ -2994,6 +3010,62 @@
     } catch (err) { /* yalnızca 30/90 gün eksik kalır */ }
   }
 
+  // Tokenize fonlar ve hisseler: zincir üstünde 7/24 işlem görür; fark borsadaki son fiyata göre
+  let tkKind = load('fp.tk', 'fon') === 'hisse' ? 'hisse' : 'fon';
+  function initTokens() {
+    const nav = $('tk-kind');
+    [['fon', 'Borsa fonları'], ['hisse', 'Hisseler']].forEach(([id, label]) => {
+      const b = el('button', '', label);
+      b.type = 'button';
+      b.dataset.id = id;
+      b.setAttribute('role', 'tab');
+      b.addEventListener('click', () => { tkKind = id; save('fp.tk', id); renderTokens(); });
+      nav.appendChild(b);
+    });
+    renderTokens();
+  }
+  function renderTokens() {
+    document.querySelectorAll('#tk-kind button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.id === tkKind)));
+    const tb = $('tk-body');
+    const list = ((markets && markets.tokens) || []).filter((t) => t.kind === tkKind);
+    tb.textContent = '';
+    if (!list.length) {
+      const tr = el('tr');
+      const td = el('td', 'hint', markets ? 'Veri alınamadı, biraz sonra yeniden dene.' : 'Yükleniyor…');
+      td.colSpan = 4;
+      tr.appendChild(td);
+      tb.appendChild(tr);
+      return;
+    }
+    list.forEach((t) => {
+      const tr = el('tr');
+      const c = el('td', 'rk-c');
+      c.appendChild(el('b', '', t.sym));
+      c.appendChild(el('span', '', t.name));
+      c.title = t.name + (t.issuer ? ' · gösterilen: ' + t.issuer : '') + (t.issuers > 1 ? ' · ' + t.issuers + ' ihraççı' : '');
+      tr.appendChild(c);
+      tr.appendChild(el('td', '', '$' + NF[t.price >= 10 ? 2 : 3].format(t.price)));
+      const p = el('td', 'rk-d', t.pct == null ? '—' : fmtPct(t.pct));
+      if (t.pct != null) p.className += ' ' + signClass(t.pct);
+      tr.appendChild(p);
+      // Ondo tokenleri temettüyü fiyata ekler; borsa fiyatıyla doğrudan karşılaştırılamaz
+      const ondo = t.issuer === 'Ondo';
+      const b = ondo ? null : (t.base && markets.symbols[t.base]) || (t.ref ? { price: t.ref } : null);
+      const diff = b ? (t.price / b.price - 1) * 100 : null;
+      const d = el('td', 'rk-d', diff == null ? '—' : fmtPct(diff));
+      if (ondo) d.title = 'Ondo tokeni temettüyü fiyata ekler, borsa fiyatıyla karşılaştırılmaz';
+      if (diff != null && Math.abs(diff) >= 0.3) d.className += ' ' + signClass(diff);
+      if (b) d.title = (t.base || t.sym) + ' borsada: $' + NF[2].format(b.price);
+      tr.appendChild(d);
+      tb.appendChild(tr);
+    });
+    const at = markets.tokens_at;
+    $('tk-note').textContent = (at ? 'CoinGecko · ' + ago(at) + ' güncellendi. ' : '') +
+      'Aynı varlığı birden çok ihraççı çıkarıyorsa en çok işlem göreni gösterilir. Son sütun tokenin ' +
+      'borsadaki son fiyattan (≈15 dk gecikmeli) farkıdır; borsa kapalıyken gece ve hafta sonu beklentisini gösterir. ' +
+      'Ondo tokenleri temettüyü fiyata eklediği için farkı gösterilmez. Tokenler dayanak varlığı birebir izlemeyebilir.';
+  }
+
   async function loadMarkets() {
     try {
       const r = await fetch('data/markets.json?t=' + Math.floor(Date.now() / 60000), { cache: 'no-store' });
@@ -3001,6 +3073,7 @@
       markets = await r.json();
       renderIndexCells();
       renderStocks();
+      renderTokens();
       renderOzGold();
       if (markets.updated !== marketsStamp) {
         marketsStamp = markets.updated;
@@ -3960,6 +4033,7 @@
   const safe = (fn) => { try { fn(); } catch (err) { if (window.console) console.error('Başlatma hatası:', fn.name, err); } };
   safe(buildUI);
   safe(buildIndexCells);
+  safe(initTokens);
   safe(initChart);
   safe(applyTab);
   safe(loadNews);
